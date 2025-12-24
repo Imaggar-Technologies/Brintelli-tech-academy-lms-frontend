@@ -9,6 +9,7 @@ export const assessmentAPI = {
     if (filters.leadId) params.append('leadId', filters.leadId);
     if (filters.status) params.append('status', filters.status);
     if (filters.assessmentType) params.append('assessmentType', filters.assessmentType);
+    if (filters.assignedTo) params.append('assignedTo', filters.assignedTo);
     
     const queryString = params.toString();
     return apiRequest(`/api/assessments${queryString ? `?${queryString}` : ''}`);
@@ -45,6 +46,32 @@ export const assessmentAPI = {
     return apiRequest(`/api/assessments/${assessmentId}/score`, {
       method: 'PUT',
       body: JSON.stringify(scoreData),
+    });
+  },
+
+  // Evaluate assessment
+  evaluateAssessment: async (assessmentId, evaluationData) => {
+    return apiRequest(`/api/assessments/${assessmentId}/evaluate`, {
+      method: 'POST',
+      body: JSON.stringify(evaluationData),
+    });
+  },
+
+  // Get assessment questions
+  getAssessmentQuestions: async (assessmentId) => {
+    return apiRequest(`/api/assessments/${assessmentId}/questions`);
+  },
+
+  // Get assessment result
+  getAssessmentResult: async (assessmentId) => {
+    return apiRequest(`/api/assessments/${assessmentId}/result`);
+  },
+
+  // Reschedule assessment
+  rescheduleAssessment: async (assessmentId, daysToAdd = 7) => {
+    return apiRequest(`/api/assessments/${assessmentId}/reschedule`, {
+      method: 'POST',
+      body: JSON.stringify({ daysToAdd }),
     });
   },
 

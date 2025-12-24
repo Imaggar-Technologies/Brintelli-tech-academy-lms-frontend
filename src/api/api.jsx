@@ -9,7 +9,7 @@ const authApiRequest = async (endpoint, options = {}) => {
       'Content-Type': 'application/json',
       ...options.headers,
     },
-  };
+  };d
 
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, config);

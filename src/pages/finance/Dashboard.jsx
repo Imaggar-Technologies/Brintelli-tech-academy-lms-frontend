@@ -1,259 +1,539 @@
-import { Wallet, BarChart3, PiggyBank, BadgeCheck } from "lucide-react";
-import AnimationWrapper from "../../components/AnimationWrapper";
+import { useState, useEffect } from "react";
+import { Wallet, DollarSign, AlertCircle, Clock, TrendingUp, Download, ArrowRight, CreditCard, CheckCircle2, XCircle } from "lucide-react";
+import PageHeader from "../../components/PageHeader";
+import Button from "../../components/Button";
 import StatsCard from "../../components/StatsCard";
+import { offerAPI } from "../../api/offer";
+import { leadAPI } from "../../api/lead";
+import { scholarshipAPI } from "../../api/scholarship";
+import { financeAPI } from "../../api/finance";
+import toast from "react-hot-toast";
 
-const financeStats = [
-  {
-    icon: Wallet,
-    value: "₹82.4L",
-    label: "Collections (MTD)",
-    sublabel: "Cleared inflows this month",
-    trend: "+12.4% vs last month",
-  },
-  {
-    icon: BarChart3,
-    value: "₹5.8L",
-    label: "Pending Dues",
-    sublabel: "Across 4 active cohorts",
-    trend: "-9.1% week-on-week",
-    trendType: "positive",
-  },
-  {
-    icon: PiggyBank,
-    value: "₹28.3L",
-    label: "Scholarships & Discounts",
-    sublabel: "Approved YTD allocations",
-    trend: "+₹1.2L pending approval",
-  },
-  {
-    icon: BadgeCheck,
-    value: "97.2%",
-    label: "Fee Realisation",
-    sublabel: "Cohorts on track to targets",
-    trend: "+0.6% improvement",
-    trendType: "positive",
-  },
-];
-
-const upcomingEmi = [
-  {
-    learner: "Sanaya P",
-    cohort: "SDE Accelerator",
-    due: "₹24,500",
-    cycle: "10 Dec",
-    status: "Due in 3 days",
-  },
-  {
-    learner: "Amit K",
-    cohort: "Product Launchpad",
-    due: "₹18,000",
-    cycle: "12 Dec",
-    status: "Auto-debit ready",
-  },
-  {
-    learner: "Samar G",
-    cohort: "Cloud Architect",
-    due: "₹21,700",
-    cycle: "15 Dec",
-    status: "Follow-up pending",
-  },
-];
-
+/**
+ * FINANCE OVERVIEW DASHBOARD
+ * 
+ * One-glance financial health dashboard
+ * Shows KPIs, charts, and quick tables
+ * 
+ * RBAC: All finance roles (finance, finance_head)
+ */
 const FinanceDashboard = () => {
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalRevenue: 0,
+    totalCollected: 0,
+    totalOutstanding: 0,
+    overdueAmount: 0,
+    todayCollections: 0,
+    pendingScholarships: 0,
+    refunds: 0,
+  });
+  const [latestPayments, setLatestPayments] = useState([]);
+  const [topOverdue, setTopOverdue] = useState([]);
+  const [revenueTrend, setRevenueTrend] = useState([]);
+  const [paymentModeSplit, setPaymentModeSplit] = useState({
+    UPI: 0,
+    CARD: 0,
+    CASH: 0,
+    BANK_TRANSFER: 0,
+    CHEQUE: 0,
+  });
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      // Fetch all data in parallel
+      const [offersResponse, leadsResponse, scholarshipsResponse, statsResponse] = await Promise.all([
+        offerAPI.getAllOffers().catch(err => {
+          console.error('Error fetching offers:', err);
+          return { success: false, data: { offers: [] } };
+        }),
+        leadAPI.getAllLeads().catch(err => {
+          console.error('Error fetching leads:', err);
+          return { success: false, data: { leads: [] } };
+        }),
+        scholarshipAPI.getAllScholarships().catch(err => {
+          console.error('Error fetching scholarships:', err);
+          return { success: false, data: { scholarshipRequests: [] } };
+        }),
+        financeAPI.getDashboardStats().catch(() => null), // Optional: use backend stats endpoint
+      ]);
+
+      console.log('Dashboard data fetched:', {
+        offers: offersResponse?.data?.offers?.length || 0,
+        leads: leadsResponse?.data?.leads?.length || 0,
+        scholarships: scholarshipsResponse?.data?.scholarshipRequests?.length || 0,
+        stats: statsResponse?.data?.stats ? 'available' : 'not available',
+      });
+
+      // Use backend stats if available, otherwise calculate on frontend
+      if (statsResponse?.success && statsResponse.data?.stats) {
+        setStats(statsResponse.data.stats);
+      } else if (offersResponse.success && offersResponse.data.offers) {
+        const offers = offersResponse.data.offers;
+        
+        // Calculate stats from offers
+        const totalRevenue = offers.reduce((sum, offer) => sum + (offer.offeredPrice || 0), 0);
+        const totalCollected = offers
+          .filter(offer => offer.paymentStatus === 'PAID')
+          .reduce((sum, offer) => sum + (offer.paymentAmount || offer.offeredPrice || 0), 0);
+        const totalOutstanding = totalRevenue - totalCollected;
+        
+        // Overdue (offers with payment status PENDING or PARTIAL, older than 7 days)
+        const now = new Date();
+        const overdueOffers = offers.filter(offer => {
+          if (offer.paymentStatus === 'PAID') return false;
+          if (!offer.sentAt) return false;
+          const sentDate = new Date(offer.sentAt);
+          const daysDiff = (now - sentDate) / (1000 * 60 * 60 * 24);
+          return daysDiff > 7;
+        });
+        const overdueAmount = overdueOffers.reduce((sum, offer) => sum + (offer.offeredPrice || 0), 0);
+
+        // Today's collections
+        const today = new Date().toDateString();
+        const todayCollections = offers
+          .filter(offer => {
+            if (offer.paymentStatus !== 'PAID' || !offer.paymentDate) return false;
+            return new Date(offer.paymentDate).toDateString() === today;
+          })
+          .reduce((sum, offer) => sum + (offer.paymentAmount || 0), 0);
+
+        // Pending scholarships impact
+        const pendingScholarships = scholarshipsResponse.success && scholarshipsResponse.data.scholarshipRequests
+          ? scholarshipsResponse.data.scholarshipRequests
+              .filter(s => s.status === 'REQUESTED')
+              .reduce((sum, s) => sum + (s.requestedAmount || 0), 0)
+          : 0;
+
+        setStats({
+          totalRevenue,
+          totalCollected,
+          totalOutstanding,
+          overdueAmount,
+          todayCollections,
+          pendingScholarships,
+          refunds: 0, // TODO: Calculate from refunds data
+        });
+      }
+
+      // Process offers for tables and charts
+      if (offersResponse.success && offersResponse.data.offers) {
+        const offers = offersResponse.data.offers;
+
+        // Latest 10 payments
+        const now = new Date();
+        const paidOffers = offers
+          .filter(offer => offer.paymentStatus === 'PAID' && offer.paymentDate)
+          .sort((a, b) => {
+            const dateA = new Date(a.paymentDate);
+            const dateB = new Date(b.paymentDate);
+            return dateB - dateA;
+          })
+          .slice(0, 10);
+        
+        if (leadsResponse.success && leadsResponse.data.leads) {
+          const leadsMap = {};
+          leadsResponse.data.leads.forEach(lead => {
+            leadsMap[lead.id] = lead;
+          });
+
+          setLatestPayments(paidOffers.map(offer => ({
+            ...offer,
+            lead: leadsMap[offer.leadId],
+          })));
+
+          // Top 10 overdue
+          const overdueOffers = offers.filter(offer => {
+            if (offer.paymentStatus === 'PAID') return false;
+            if (!offer.sentAt) return false;
+            const sentDate = new Date(offer.sentAt);
+            const daysDiff = (now - sentDate) / (1000 * 60 * 60 * 24);
+            return daysDiff > 7;
+          });
+
+          const overdueWithLeads = overdueOffers
+            .map(offer => ({
+              ...offer,
+              lead: leadsMap[offer.leadId],
+              daysOverdue: Math.floor((now - new Date(offer.sentAt)) / (1000 * 60 * 60 * 24)) - 7,
+            }))
+            .filter(item => item.daysOverdue > 0)
+            .sort((a, b) => b.daysOverdue - a.daysOverdue)
+            .slice(0, 10);
+          
+          setTopOverdue(overdueWithLeads);
+        }
+
+        // Payment mode split
+        const modeSplit = {
+          UPI: 0,
+          CARD: 0,
+          CASH: 0,
+          BANK_TRANSFER: 0,
+          CHEQUE: 0,
+        };
+        offers.forEach(offer => {
+          if (offer.paymentMethod && offer.paymentAmount > 0) {
+            const method = offer.paymentMethod.toUpperCase();
+            if (modeSplit[method] !== undefined) {
+              modeSplit[method] += offer.paymentAmount;
+            }
+          }
+        });
+        setPaymentModeSplit(modeSplit);
+
+        // Revenue trend (last 30 days - simplified)
+        const last30Days = [];
+        for (let i = 29; i >= 0; i--) {
+          const date = new Date();
+          date.setDate(date.getDate() - i);
+          const dateStr = date.toDateString();
+          const dayRevenue = offers
+            .filter(offer => {
+              if (offer.paymentStatus !== 'PAID' || !offer.paymentDate) return false;
+              return new Date(offer.paymentDate).toDateString() === dateStr;
+            })
+            .reduce((sum, offer) => sum + (offer.paymentAmount || 0), 0);
+          last30Days.push({
+            date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+            revenue: dayRevenue,
+          });
+        }
+        setRevenueTrend(last30Days);
+      } else {
+        // If no offers, set empty data
+        console.log('No offers found, setting empty state');
+        setStats({
+          totalRevenue: 0,
+          totalCollected: 0,
+          totalOutstanding: 0,
+          overdueAmount: 0,
+          todayCollections: 0,
+          pendingScholarships: 0,
+          refunds: 0,
+        });
+        setLatestPayments([]);
+        setTopOverdue([]);
+        setRevenueTrend([]);
+        setPaymentModeSplit({
+          UPI: 0,
+          CARD: 0,
+          CASH: 0,
+          BANK_TRANSFER: 0,
+          CHEQUE: 0,
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+      toast.error("Failed to load dashboard data");
+      // Set empty state on error
+      setStats({
+        totalRevenue: 0,
+        totalCollected: 0,
+        totalOutstanding: 0,
+        overdueAmount: 0,
+        todayCollections: 0,
+        pendingScholarships: 0,
+        refunds: 0,
+      });
+      setLatestPayments([]);
+      setTopOverdue([]);
+      setRevenueTrend([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatCurrency = (amount) => {
+    if (amount >= 10000000) return `₹${(amount / 10000000).toFixed(2)}Cr`;
+    if (amount >= 100000) return `₹${(amount / 100000).toFixed(2)}L`;
+    if (amount >= 1000) return `₹${(amount / 1000).toFixed(2)}K`;
+    return `₹${amount.toLocaleString()}`;
+  };
+
+  const getRiskLevel = (daysOverdue) => {
+    if (daysOverdue > 30) return { level: 'High', color: 'bg-red-100 text-red-700' };
+    if (daysOverdue > 15) return { level: 'Medium', color: 'bg-yellow-100 text-yellow-700' };
+    return { level: 'Low', color: 'bg-green-100 text-green-700' };
+  };
+
   return (
-    <div className="space-y-8 pb-12">
-      <div className="rounded-3xl border border-brintelli-border bg-white p-8 shadow-card backdrop-blur">
-        <h1 className="text-2xl font-semibold text-text">Finance Command Console</h1>
-        <p className="mt-2 max-w-2xl text-sm text-textMuted">
-          Track learner finances, reconcile inflows, and coordinate with admissions on revenue KPIs from one view.
-        </p>
-      </div>
+    <>
+      <PageHeader
+        title="Finance Overview"
+        description="One-glance financial health dashboard"
+        actions={
+          <Button variant="ghost" size="sm" onClick={() => toast.info('Export functionality coming soon')}>
+            <Download className="h-4 w-4" />
+            Export Summary
+          </Button>
+        }
+      />
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {financeStats.map((item) => (
-          <AnimationWrapper key={item.label} className="h-full">
-            <StatsCard {...item} />
-          </AnimationWrapper>
-        ))}
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-[1.35fr_1fr]">
-        <div
-          id="payments"
-          className="rounded-2xl border border-brintelli-border bg-brintelli-card p-6 shadow-soft"
-        >
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-semibold text-text">Collections & Dues Overview</h2>
-              <p className="text-sm text-textMuted">Monitor real-time fee receipts and overdue accounts.</p>
-            </div>
-            <button className="inline-flex items-center gap-2 rounded-xl border border-brand/40 bg-brand/10 px-4 py-2 text-xs font-semibold text-brand transition hover:border-brand hover:bg-brand/15">
-              Download ledger
-            </button>
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-500 mx-auto mb-4"></div>
+            <p className="text-textMuted">Loading dashboard data...</p>
           </div>
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
-            {[
-              {
-                cohort: "SDE Accelerator",
-                collected: "₹28.6L",
-                outstanding: "₹1.2L",
-                action: "Send reminders",
-              },
-              {
-                cohort: "Product Launchpad",
-                collected: "₹19.1L",
-                outstanding: "₹0.8L",
-                action: "Share invoice digest",
-              },
-              {
-                cohort: "Data Engineering",
-                collected: "₹22.4L",
-                outstanding: "₹2.5L",
-                action: "Escalate to mentor ops",
-              },
-              {
-                cohort: "Cloud Architect",
-                collected: "₹12.7L",
-                outstanding: "₹1.3L",
-                action: "Review EMI cadence",
-              },
-            ].map((item) => (
-              <div
-                key={item.cohort}
-                className="rounded-2xl border border-brintelli-border bg-white/80 p-4 shadow-card backdrop-blur"
-              >
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-text">{item.cohort}</p>
-                  <span className="text-xs font-semibold text-emerald-600">₹ {item.collected}</span>
+        </div>
+      ) : (
+        <>
+      {/* Top KPI Cards */}
+      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4 mb-6">
+        <StatsCard
+          icon={DollarSign}
+          value={formatCurrency(stats.totalRevenue)}
+          label="Total Revenue (YTD)"
+          trend="All time revenue"
+        />
+        <StatsCard
+          icon={CheckCircle2}
+          value={formatCurrency(stats.totalCollected)}
+          label="Total Collected"
+          trend={stats.totalRevenue > 0 ? `${((stats.totalCollected / stats.totalRevenue) * 100).toFixed(1)}% collection rate` : "No revenue yet"}
+          trendType={stats.totalRevenue > 0 && stats.totalCollected / stats.totalRevenue > 0.8 ? "positive" : undefined}
+        />
+        <StatsCard
+          icon={AlertCircle}
+          value={formatCurrency(stats.totalOutstanding)}
+          label="Outstanding Dues"
+          trend={`${formatCurrency(stats.overdueAmount)} overdue`}
+          trendType={stats.totalOutstanding > 0 ? "negative" : undefined}
+        />
+        <StatsCard
+          icon={Clock}
+          value={formatCurrency(stats.overdueAmount)}
+          label="Overdue Amount"
+          trend="Requires immediate attention"
+          trendType="negative"
+        />
+      </div>
+
+      <div className="grid gap-5 md:grid-cols-3 mb-6">
+        <StatsCard
+          icon={TrendingUp}
+          value={formatCurrency(stats.todayCollections)}
+          label="Today's Collections"
+          trend="Collections today"
+        />
+        <StatsCard
+          icon={Wallet}
+          value={formatCurrency(stats.pendingScholarships)}
+          label="Pending Scholarships"
+          trend="Revenue impact"
+          trendType="negative"
+        />
+        <StatsCard
+          icon={XCircle}
+          value={formatCurrency(stats.refunds)}
+          label="Refunds"
+          trend="Total refunded"
+        />
+      </div>
+
+      {/* Charts and Quick Tables */}
+      <div className="grid gap-6 lg:grid-cols-2 mb-6">
+        {/* Revenue Trend */}
+        <div className="rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-text">Revenue Trend (Last 30 Days)</h3>
+            <Button variant="ghost" size="sm" onClick={() => toast.info('View full analytics')}>
+              View All <ArrowRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
+          <div className="h-64 flex items-end justify-between gap-1">
+            {revenueTrend.map((day, index) => {
+              const maxRevenue = Math.max(...revenueTrend.map(d => d.revenue), 1);
+              const height = (day.revenue / maxRevenue) * 100;
+              return (
+                <div key={index} className="flex-1 flex flex-col items-center">
+                  <div
+                    className="w-full bg-brand-500 rounded-t transition-all hover:bg-brand-600"
+                    style={{ height: `${Math.max(height, 2)}%` }}
+                    title={`${day.date}: ${formatCurrency(day.revenue)}`}
+                  />
+                  {index % 5 === 0 && (
+                    <span className="text-xs text-textMuted mt-1 transform -rotate-45 origin-left">
+                      {day.date.split(' ')[0]}
+                    </span>
+                  )}
                 </div>
-                <p className="mt-2 text-sm text-textMuted">Outstanding: {item.outstanding}</p>
-                <button className="mt-3 inline-flex w-full items-center justify-center rounded-xl border border-brand/30 bg-brand/5 px-3 py-2 text-xs font-semibold text-brand transition hover:border-brand hover:bg-brand/10">
-                  {item.action}
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
-        <div
-          id="refunds"
-          className="rounded-2xl border border-brintelli-border bg-white/90 p-6 shadow-card backdrop-blur"
-        >
-          <h2 className="text-lg font-semibold text-text">Refund & Scholarship Queue</h2>
-          <div className="mt-4 space-y-4">
-            {[
-              {
-                title: "Refund request: Priya N",
-                amount: "₹18,500",
-                note: "Course deferment approved by program ops",
-                cta: "Issue refund",
-              },
-              {
-                title: "Scholarship review: Cohort 24A",
-                amount: "₹2.1L",
-                note: "Pending director approval",
-                cta: "Send reminder",
-              },
-              {
-                title: "Discount approval: Rahul S",
-                amount: "₹12,000",
-                note: "Mentor recommendation received",
-                cta: "Approve discount",
-              },
-            ].map((item) => (
-              <div
-                key={item.title}
-                className="rounded-2xl border border-brintelli-border bg-white/80 p-4 shadow-sm"
-              >
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-text">{item.title}</p>
-                  <span className="text-xs font-semibold text-brand">{item.amount}</span>
+        {/* Payment Mode Split */}
+        <div className="rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft p-6">
+          <h3 className="text-lg font-semibold text-text mb-4">Payment Mode Split</h3>
+          <div className="space-y-4">
+            {Object.entries(paymentModeSplit).map(([mode, amount]) => {
+              const total = Object.values(paymentModeSplit).reduce((sum, val) => sum + val, 0);
+              const percentage = total > 0 ? (amount / total) * 100 : 0;
+              return (
+                <div key={mode}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm text-textMuted">{mode.replace('_', ' ')}</span>
+                    <span className="text-sm font-semibold text-text">{formatCurrency(amount)} ({percentage.toFixed(1)}%)</span>
+                  </div>
+                  <div className="w-full bg-brintelli-baseAlt rounded-full h-2">
+                    <div
+                      className="bg-brand-500 h-2 rounded-full transition-all"
+                      style={{ width: `${percentage}%` }}
+                    />
+                  </div>
                 </div>
-                <p className="mt-2 text-xs text-textMuted">{item.note}</p>
-                <button className="mt-3 inline-flex items-center justify-center rounded-xl border border-brand/30 bg-brand/5 px-3 py-1.5 text-xs font-semibold text-brand transition hover:border-brand hover:bg-brand/10">
-                  {item.cta}
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
 
-      <div
-        id="emi"
-        className="grid gap-6 lg:grid-cols-[1.1fr_1fr]"
-      >
-        <div className="rounded-2xl border border-brintelli-border bg-white/90 p-6 shadow-card backdrop-blur">
-          <h2 className="text-lg font-semibold text-text">Upcoming EMI Schedule</h2>
-          <p className="mt-1 text-sm text-textMuted">
-            Coordinate with admissions for students who need extensions or alternate payment plans.
-          </p>
-          <div className="mt-5 space-y-3">
-            {upcomingEmi.map((item) => (
-              <div
-                key={item.learner}
-                className="flex items-center justify-between rounded-xl border border-brintelli-border bg-brintelli-card px-4 py-3 text-sm text-text"
-              >
-                <div>
-                  <p className="font-semibold">{item.learner}</p>
-                  <p className="text-xs text-textMuted">{item.cohort}</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-semibold text-brand">{item.due}</p>
-                  <p className="text-xs text-textMuted">{item.cycle}</p>
-                </div>
-                <span className="rounded-full bg-brand/10 px-3 py-1 text-[11px] font-semibold text-brand">
-                  {item.status}
-                </span>
-              </div>
-            ))}
+      {/* Quick Tables */}
+      <div className="grid gap-6 lg:grid-cols-2 mb-6">
+        {/* Latest 10 Payments */}
+        <div className="rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-text">Latest 10 Payments</h3>
+            <Button variant="ghost" size="sm" onClick={() => window.location.href = '/finance/processing'}>
+              View All <ArrowRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-brintelli-baseAlt">
+                <tr>
+                  <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-textMuted">Student</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-textMuted">Amount</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-textMuted">Date</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-brintelli-border">
+                {loading ? (
+                  <tr>
+                    <td colSpan={3} className="px-3 py-4 text-center text-textMuted">Loading...</td>
+                  </tr>
+                ) : latestPayments.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="px-3 py-4 text-center text-textMuted">No payments found</td>
+                  </tr>
+                ) : (
+                  latestPayments.map((payment) => (
+                    <tr key={payment.id} className="hover:bg-brintelli-baseAlt">
+                      <td className="px-3 py-2">
+                        <p className="font-semibold text-text">{payment.lead?.name || 'N/A'}</p>
+                        <p className="text-xs text-textMuted">{payment.paymentMethod || 'N/A'}</p>
+                      </td>
+                      <td className="px-3 py-2">
+                        <span className="font-semibold text-text">₹{payment.paymentAmount?.toLocaleString() || '0'}</span>
+                      </td>
+                      <td className="px-3 py-2">
+                        <span className="text-textMuted text-xs">
+                          {payment.paymentDate ? new Date(payment.paymentDate).toLocaleDateString() : 'N/A'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
 
-        <div
-          id="analytics"
-          className="rounded-2xl border border-brintelli-border bg-white/90 p-6 shadow-card backdrop-blur"
-        >
-          <h2 className="text-lg font-semibold text-text">Revenue Analytics</h2>
-          <p className="mt-1 text-sm text-textMuted">
-            Month-on-month trending with variance explanations and linked drill-downs.
-          </p>
-          <div className="mt-5 space-y-4">
-            {[
-              {
-                label: "November collections",
-                value: "₹1.02 Cr",
-                status: "+6.3% vs target",
-              },
-              {
-                label: "Placement revenue share",
-                value: "₹18.5L",
-                status: "+2 new partners",
-              },
-              {
-                label: "Deferred payment backlog",
-                value: "₹9.7L",
-                status: "Clearing at expected rate",
-              },
-            ].map((item) => (
-              <div
-                key={item.label}
-                className="rounded-2xl border border-dashed border-brand/40 bg-brand/5 p-4 text-sm text-text"
-              >
-                <p className="font-semibold">{item.label}</p>
-                <div className="mt-2 flex items-center justify-between text-xs text-textMuted">
-                  <span>{item.value}</span>
-                  <span className="font-semibold text-brand">{item.status}</span>
-                </div>
-              </div>
-            ))}
+        {/* Top 10 Overdue */}
+        <div className="rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-text">Top 10 Overdue Students</h3>
+            <Button variant="ghost" size="sm" onClick={() => window.location.href = '/finance/dues'}>
+              View All <ArrowRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-brintelli-baseAlt">
+                <tr>
+                  <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-textMuted">Student</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-textMuted">Due</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-textMuted">Days</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-textMuted">Risk</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-brintelli-border">
+                {loading ? (
+                  <tr>
+                    <td colSpan={4} className="px-3 py-4 text-center text-textMuted">Loading...</td>
+                  </tr>
+                ) : topOverdue.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-3 py-4 text-center text-textMuted">No overdue found</td>
+                  </tr>
+                ) : (
+                  topOverdue.map((item) => {
+                    const risk = getRiskLevel(item.daysOverdue);
+                    return (
+                      <tr key={item.id} className="hover:bg-brintelli-baseAlt">
+                        <td className="px-3 py-2">
+                          <p className="font-semibold text-text">{item.lead?.name || 'N/A'}</p>
+                          <p className="text-xs text-textMuted">{item.lead?.email || 'N/A'}</p>
+                        </td>
+                        <td className="px-3 py-2">
+                          <span className="font-semibold text-text">₹{item.offeredPrice?.toLocaleString() || '0'}</span>
+                        </td>
+                        <td className="px-3 py-2">
+                          <span className="text-textMuted">{item.daysOverdue} days</span>
+                        </td>
+                        <td className="px-3 py-2">
+                          <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold ${risk.color}`}>
+                            {risk.level}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Paid vs Due vs Overdue Donut (Simplified) */}
+      <div className="rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft p-6">
+        <h3 className="text-lg font-semibold text-text mb-4">Payment Status Overview</h3>
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="text-center p-4 rounded-xl bg-green-50">
+            <p className="text-2xl font-bold text-green-700">{formatCurrency(stats.totalCollected)}</p>
+            <p className="text-sm text-green-600 mt-1">Paid</p>
+            <p className="text-xs text-textMuted mt-1">
+              {stats.totalRevenue > 0 ? ((stats.totalCollected / stats.totalRevenue) * 100).toFixed(1) : 0}%
+            </p>
+          </div>
+          <div className="text-center p-4 rounded-xl bg-yellow-50">
+            <p className="text-2xl font-bold text-yellow-700">{formatCurrency(stats.totalOutstanding - stats.overdueAmount)}</p>
+            <p className="text-sm text-yellow-600 mt-1">Due</p>
+            <p className="text-xs text-textMuted mt-1">
+              {stats.totalRevenue > 0 ? (((stats.totalOutstanding - stats.overdueAmount) / stats.totalRevenue) * 100).toFixed(1) : 0}%
+            </p>
+          </div>
+          <div className="text-center p-4 rounded-xl bg-red-50">
+            <p className="text-2xl font-bold text-red-700">{formatCurrency(stats.overdueAmount)}</p>
+            <p className="text-sm text-red-600 mt-1">Overdue</p>
+            <p className="text-xs text-textMuted mt-1">
+              {stats.totalRevenue > 0 ? ((stats.overdueAmount / stats.totalRevenue) * 100).toFixed(1) : 0}%
+            </p>
+          </div>
+        </div>
+      </div>
+        </>
+      )}
+    </>
   );
 };
 
 export default FinanceDashboard;
-
-

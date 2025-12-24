@@ -42,11 +42,28 @@ import TutorStudentPerformance from "../pages/tutor/StudentPerformance";
 
 // LSM pages
 import LsmDashboard from "../pages/lsm/Dashboard";
+import LsmOnboarding from "../pages/lsm/Onboarding";
 import LsmMenteesList from "../pages/lsm/MenteesList";
 import LsmMenteeProfile from "../pages/lsm/MenteeProfile";
 import LsmSessionSchedule from "../pages/lsm/SessionSchedule";
 import LsmProgressReports from "../pages/lsm/ProgressReports";
 import LsmPlacementTracker from "../pages/lsm/PlacementTracker";
+import LsmBatches from "../pages/lsm/Batches";
+import LsmBatchSessions from "../pages/lsm/BatchSessions";
+import LsmMentors from "../pages/lsm/Mentors";
+import RiskStudents from "../pages/lsm/RiskStudents";
+import Profiles from "../pages/lsm/Profiles";
+import Escalations from "../pages/lsm/Escalations";
+import Sessions from "../pages/lsm/Sessions";
+import OneOnOne from "../pages/lsm/OneOnOne";
+import SessionLogs from "../pages/lsm/SessionLogs";
+import Engagement from "../pages/lsm/Engagement";
+import Progress from "../pages/lsm/Progress";
+import Attendance from "../pages/lsm/Attendance";
+import Performance from "../pages/lsm/Performance";
+import WeeklyReports from "../pages/lsm/WeeklyReports";
+import Readiness from "../pages/lsm/Readiness";
+import InterviewPrep from "../pages/lsm/InterviewPrep";
 
 // Admin pages
 import AdminDashboard from "../pages/admin/Dashboard";
@@ -66,7 +83,18 @@ import MentorDashboard from "../pages/mentor/Dashboard";
 
 // Program manager dashboard
 import ProgramManagerDashboard from "../pages/programManager/Dashboard";
+import Programs from "../pages/program-manager/Programs";
+import Modules from "../pages/program-manager/Modules";
+import Assignments from "../pages/program-manager/Assignments";
+import Curriculum from "../pages/program-manager/Curriculum";
+import Batches from "../pages/program-manager/Batches";
+import BatchSessions from "../pages/program-manager/BatchSessions";
+import CreateBatch from "../pages/program-manager/CreateBatch";
 import FinanceDashboard from "../pages/finance/Dashboard";
+import FinanceDeals from "../pages/finance/Deals";
+import Scholarships from "../pages/finance/Scholarships";
+import FinancialProcessing from "../pages/finance/Processing";
+import OutstandingDues from "../pages/finance/Dues";
 
 // Sales imports
 import SalesDashboard from "../pages/sales/SalesDashboard";
@@ -96,8 +124,9 @@ import BatchCourseMapping from "../pages/sales/BatchCourseMapping";
 import SalesProfile from "../pages/sales/Profile";
 import MeetingsCounselling from "../pages/sales/MeetingsCounselling";
 import Assessments from "../pages/sales/Assessments";
-import FinancialProcessing from "../pages/sales/FinancialProcessing";
+import SalesFinancialProcessing from "../pages/sales/FinancialProcessing";
 import LSMAllocation from "../pages/sales/LSMAllocation";
+import OfferPage from "../pages/candidate/OfferPage";
 import SalesNotifications from "../pages/sales/Notifications";
 
 // Marketing imports
@@ -165,6 +194,7 @@ const AppRouter = () => {
           <Route path="register/student" element={<PublicRoute><RegisterStudent /></PublicRoute>} />
           <Route path="register/staff" element={<PublicRoute><RegisterStaff /></PublicRoute>} />
           <Route path="forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
+          <Route path="offer/:offerId" element={<PublicRoute><OfferPage /></PublicRoute>} />
           <Route path="choose-role" element={<ChooseRole />} />
           <Route path="select-user" element={<ChooseRole />} />
         </Route>
@@ -240,11 +270,29 @@ const AppRouter = () => {
 
           <Route path="lsm">
             <Route path="dashboard" element={<LsmDashboard />} />
+            <Route path="onboarding" element={<LsmOnboarding />} />
+            <Route path="batches" element={<LsmBatches />} />
+            <Route path="batches/:batchId/sessions" element={<LsmBatchSessions />} />
+            <Route path="batches/:batchId/students" element={<LsmBatches />} />
+            <Route path="mentors" element={<LsmMentors />} />
             <Route path="mentees" element={<LsmMenteesList />} />
             <Route path="mentee/:id" element={<LsmMenteeProfile />} />
             <Route path="session-schedule" element={<LsmSessionSchedule />} />
             <Route path="progress-reports" element={<LsmProgressReports />} />
             <Route path="placement-tracker" element={<LsmPlacementTracker />} />
+            <Route path="risk-students" element={<RiskStudents />} />
+            <Route path="profiles" element={<Profiles />} />
+            <Route path="escalations" element={<Escalations />} />
+            <Route path="sessions" element={<Sessions />} />
+            <Route path="one-on-one" element={<OneOnOne />} />
+            <Route path="session-logs" element={<SessionLogs />} />
+            <Route path="engagement" element={<Engagement />} />
+            <Route path="progress" element={<Progress />} />
+            <Route path="attendance" element={<Attendance />} />
+            <Route path="performance" element={<Performance />} />
+            <Route path="weekly-reports" element={<WeeklyReports />} />
+            <Route path="readiness" element={<Readiness />} />
+            <Route path="interview-prep" element={<InterviewPrep />} />
           </Route>
 
           <Route path="placement">
@@ -257,10 +305,22 @@ const AppRouter = () => {
 
           <Route path="program-manager">
             <Route path="dashboard" element={<ProgramManagerDashboard />} />
+            <Route path="programs" element={<Programs />} />
+            <Route path="modules/:programId" element={<Modules />} />
+            <Route path="modules/:programId/assignments/:moduleId" element={<Assignments />} />
+            <Route path="curriculum" element={<Curriculum />} />
+            <Route path="batches" element={<Batches />} />
+            <Route path="batches/:batchId/sessions" element={<BatchSessions />} />
+            <Route path="batches/create" element={<CreateBatch />} />
+            <Route path="batches/create/:programId" element={<CreateBatch />} />
           </Route>
 
           <Route path="finance">
             <Route path="dashboard" element={<FinanceDashboard />} />
+            <Route path="processing" element={<FinancialProcessing />} />
+            <Route path="deals" element={<FinanceDeals />} />
+            <Route path="scholarships" element={<Scholarships />} />
+            <Route path="dues" element={<OutstandingDues />} />
           </Route>
 
           {/* Sales routes */}
@@ -281,7 +341,7 @@ const AppRouter = () => {
             <Route path="team" element={<SalesTeam />} />
             <Route path="targets" element={<Targets />} />
             <Route path="targets-performance" element={<TargetsPerformance />} />
-            <Route path="financial-processing" element={<FinancialProcessing />} />
+            <Route path="financial-processing" element={<SalesFinancialProcessing />} />
             <Route path="batch-course-mapping" element={<BatchCourseMapping />} />
             <Route path="reports-analytics" element={<SalesReports />} />
             <Route path="tasks" element={<SalesTasks />} />

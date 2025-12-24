@@ -1,5 +1,42 @@
-// API Base URL
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+// API Base URL - Centralized configuration
+// Set VITE_API_BASE_URL in .env file, or it will default to 192.168.1.33:3000
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://192.168.1.33:3000';
+
+// Helper function to get full API URL for endpoints
+export const getApiUrl = (endpoint) => {
+  // Remove leading slash if present to avoid double slashes
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  return `${API_BASE_URL}${cleanEndpoint}`;
+};
+
+// Helper function for blob downloads (PDFs, Excel, etc.)
+export const downloadBlob = async (endpoint, filename, options = {}) => {
+  const token = localStorage.getItem('token');
+  const response = await fetch(getApiUrl(endpoint), {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      ...options.headers,
+    },
+    ...options,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to download: ${response.statusText}`);
+  }
+
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  window.URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+  
+  return { success: true };
+};
 
 // API Endpoints
 export const API_ENDPOINTS = {

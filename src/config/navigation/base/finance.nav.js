@@ -7,6 +7,8 @@ import {
   FileBarChart,
   TrendingUp,
   UsersRound,
+  Gift,
+  AlertCircle,
 } from "lucide-react";
 
 /**
@@ -48,6 +50,26 @@ export const financeNav = [
     permissions: ["finance:agent:view", "finance:lead:view", "finance:head:view"],
     // RBAC: All finance roles
     // ABAC: Filtered by deal owner/team/department
+  },
+  {
+    id: "scholarships",
+    label: "Scholarships",
+    icon: Gift,
+    path: "/finance/scholarships",
+    pageId: "finance-scholarships",
+    permissions: ["finance:agent:view", "finance:lead:view", "finance:head:view"],
+    // RBAC: All finance roles can review and approve/reject scholarship requests
+    // ABAC: All finance users can see all scholarship requests for review
+  },
+  {
+    id: "outstanding-dues",
+    label: "Outstanding Dues",
+    icon: AlertCircle,
+    path: "/finance/dues",
+    pageId: "finance-dues",
+    permissions: ["finance:agent:view", "finance:lead:view", "finance:head:view"],
+    // RBAC: All finance roles
+    // ABAC: All finance users can see all dues for follow-up
   },
   {
     id: "revenue-analytics",

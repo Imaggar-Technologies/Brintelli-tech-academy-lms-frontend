@@ -235,6 +235,33 @@ export const getRoleNavigation = (role, user = null) => {
   // CRITICAL: For sales roles, ALWAYS use new RBAC system - no legacy fallback
   const isSalesRole = role && (role.startsWith('sales_') || role === 'sales');
   
+  // For program-manager and lsm, use legacy system directly (has comprehensive navigation)
+  const isProgramManager = role === 'program-manager' || role === 'programManager';
+  const isLSM = role === 'lsm';
+  
+  if (isProgramManager) {
+    const roleMap = {
+      "program-manager": "programManager",
+      programManager: "programManager",
+    };
+    const mappedRole = roleMap[role] || "programManager";
+    const config = roleNavigationConfig[mappedRole] || roleNavigationConfig.learner;
+    
+    return {
+      ...config,
+      navigation: transformNavItems(config.nav || []),
+    };
+  }
+  
+  if (isLSM) {
+    const config = roleNavigationConfig.lsm || roleNavigationConfig.learner;
+    
+    return {
+      ...config,
+      navigation: transformNavItems(config.nav || []),
+    };
+  }
+  
   // Try new enterprise navigation system first
   try {
     // Get user permissions from role

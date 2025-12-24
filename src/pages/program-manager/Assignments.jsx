@@ -1,0 +1,677 @@
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
+import { Plus, ChevronLeft, ChevronRight, X, FileText, Code, BookOpen, Edit3, CheckSquare } from 'lucide-react';
+import PageHeader from '../../components/PageHeader';
+import Button from '../../components/Button';
+import Table from '../../components/Table';
+import programAPI from '../../api/program';
+
+const Assignments = () => {
+  const { programId, moduleId } = useParams();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [module, setModule] = useState(null);
+  const [assignments, setAssignments] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  const [showAssignmentModal, setShowAssignmentModal] = useState(false);
+  const [formData, setFormData] = useState({
+    type: 'PROJECT',
+    status: 'DRAFT',
+    maxMarks: 100,
+    passingMarks: 50,
+  });
+  const [testCases, setTestCases] = useState([]);
+  const [questions, setQuestions] = useState([]);
+  const [newTestCase, setNewTestCase] = useState({ input: '', expectedOutput: '', marks: 0, description: '' });
+  const [newQuestion, setNewQuestion] = useState({ question: '', options: ['', '', '', ''], correctAnswer: 0, marks: 0 });
+
+  useEffect(() => {
+    if (moduleId) {
+      fetchModuleDetails();
+      fetchAssignments();
+    }
+  }, [moduleId]);
+
+  const fetchModuleDetails = async () => {
+    try {
+      const response = await programAPI.getModulesByProgram(programId);
+      if (response.success) {
+        const foundModule = response.data.modules?.find(m => (m.id || m._id) === moduleId);
+        if (foundModule) {
+          setModule(foundModule);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching module:', error);
+    }
+  };
+
+  const fetchAssignments = async () => {
+    try {
+      setLoading(true);
+      const response = await programAPI.getAssignmentsByModule(moduleId);
+      if (response.success) {
+        setAssignments(response.data.assignments || []);
+      }
+    } catch (error) {
+      console.error('Error fetching assignments:', error);
+      toast.error('Failed to load assignments');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateAssignment = async () => {
+    try {
+      const assignmentData = {
+        ...formData,
+      };
+
+      // Add type-specific data
+      if (formData.type === 'CODING_CHALLENGE') {
+        assignmentData.testCases = testCases;
+      } else if (formData.type === 'MCQ') {
+        assignmentData.questions = questions;
+      } else if (formData.type === 'ESSAY') {
+        // essayPrompt is already in formData
+      } else if (formData.type === 'PROJECT') {
+        // projectGuidelines is already in formData
+      }
+
+      const response = await programAPI.createAssignment(moduleId, assignmentData);
+      if (response.success) {
+        toast.success('Assignment created successfully');
+        setShowAssignmentModal(false);
+        resetForm();
+        fetchAssignments();
+      }
+    } catch (error) {
+      console.error('Error creating assignment:', error);
+      toast.error(error.message || 'Failed to create assignment');
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      type: 'PROJECT',
+      status: 'DRAFT',
+      maxMarks: 100,
+      passingMarks: 50,
+      name: '',
+      description: '',
+      instructions: '',
+      essayPrompt: '',
+      projectGuidelines: '',
+      dueDate: '',
+    });
+    setTestCases([]);
+    setQuestions([]);
+    setNewTestCase({ input: '', expectedOutput: '', marks: 0, description: '' });
+    setNewQuestion({ question: '', options: ['', '', '', ''], correctAnswer: 0, marks: 0 });
+  };
+
+  const addTestCase = () => {
+    if (newTestCase.input && newTestCase.expectedOutput) {
+      setTestCases([...testCases, { ...newTestCase }]);
+      setNewTestCase({ input: '', expectedOutput: '', marks: 0, description: '' });
+    }
+  };
+
+  const removeTestCase = (index) => {
+    setTestCases(testCases.filter((_, i) => i !== index));
+  };
+
+  const addQuestion = () => {
+    if (newQuestion.question && newQuestion.options.filter(opt => opt.trim()).length >= 2) {
+      setQuestions([...questions, { ...newQuestion }]);
+      setNewQuestion({ question: '', options: ['', '', '', ''], correctAnswer: 0, marks: 0 });
+    }
+  };
+
+  const removeQuestion = (index) => {
+    setQuestions(questions.filter((_, i) => i !== index));
+  };
+
+  const updateQuestionOption = (index, optionIndex, value) => {
+    const updated = [...questions];
+    updated[index].options[optionIndex] = value;
+    setQuestions(updated);
+  };
+
+  // Pagination logic
+  const totalPages = Math.ceil(assignments.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedAssignments = assignments.slice(startIndex, endIndex);
+
+  const getAssignmentTypeIcon = (type) => {
+    switch (type) {
+      case 'PROJECT':
+        return <FileText className="h-4 w-4" />;
+      case 'CODING_CHALLENGE':
+        return <Code className="h-4 w-4" />;
+      case 'MCQ':
+        return <CheckSquare className="h-4 w-4" />;
+      case 'ESSAY':
+        return <Edit3 className="h-4 w-4" />;
+      default:
+        return <BookOpen className="h-4 w-4" />;
+    }
+  };
+
+  const assignmentColumns = [
+    { key: 'name', title: 'Assignment Name' },
+    {
+      key: 'type',
+      title: 'Type',
+      render: (value) => (
+        <div className="flex items-center gap-2">
+          {getAssignmentTypeIcon(value)}
+          <span>{value?.replace('_', ' ') || value}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'dueDate',
+      title: 'Due Date',
+      render: (value) => value ? new Date(value).toLocaleDateString() : 'No due date',
+    },
+    { key: 'maxMarks', title: 'Max Marks' },
+    { key: 'status', title: 'Status' },
+  ];
+
+  return (
+    <>
+      <PageHeader
+        title={module ? `Assignments - ${module.name}` : 'Assignments'}
+        description="Manage assignments for this module"
+        actions={
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              onClick={() => navigate(`/program-manager/modules/${programId}`)}
+            >
+              <ChevronLeft className="h-4 w-4 mr-2" />
+              Back to Modules
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                resetForm();
+                setShowAssignmentModal(true);
+              }}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Create Assignment
+            </Button>
+          </div>
+        }
+      />
+
+      {/* Assignments Table */}
+      <div className="rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft p-6 mb-6">
+        <h3 className="text-lg font-semibold text-text mb-4">All Assignments</h3>
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-500 mx-auto mb-4"></div>
+            <p className="text-textMuted">Loading...</p>
+          </div>
+        ) : assignments.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-textMuted">No assignments found. Create your first assignment!</p>
+          </div>
+        ) : (
+          <>
+            <Table columns={assignmentColumns} data={paginatedAssignments} minRows={10} />
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-4 pt-4 border-t border-brintelli-border">
+                <div className="text-sm text-textMuted">
+                  Showing {startIndex + 1} to {Math.min(endIndex, assignments.length)} of {assignments.length} assignments
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Previous
+                  </Button>
+                  <div className="text-sm text-text">
+                    Page {currentPage} of {totalPages}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Create Assignment Modal */}
+      {showAssignmentModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-brintelli-card rounded-2xl p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-xl font-semibold mb-4">Create Assignment</h3>
+            <div className="space-y-4">
+              {/* Basic Fields */}
+              <div>
+                <label className="block text-sm font-medium text-text mb-2">
+                  Assignment Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name || ''}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full px-4 py-2 border border-brintelli-border rounded-lg bg-brintelli-card text-text"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-text mb-2">Description</label>
+                <textarea
+                  name="description"
+                  value={formData.description || ''}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  className="w-full px-4 py-2 border border-brintelli-border rounded-lg bg-brintelli-card text-text"
+                  rows={3}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-text mb-2">
+                    Assignment Type <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    name="type"
+                    value={formData.type || 'PROJECT'}
+                    onChange={(e) => {
+                      setFormData({ ...formData, type: e.target.value });
+                      setTestCases([]);
+                      setQuestions([]);
+                    }}
+                    className="w-full px-4 py-2 border border-brintelli-border rounded-lg bg-brintelli-card text-text"
+                  >
+                    <option value="PROJECT">Project</option>
+                    <option value="CODING_CHALLENGE">Coding Challenge</option>
+                    <option value="MCQ">MCQ</option>
+                    <option value="ESSAY">Essay & Brief Answers</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text mb-2">Status</label>
+                  <select
+                    name="status"
+                    value={formData.status || 'DRAFT'}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    className="w-full px-4 py-2 border border-brintelli-border rounded-lg bg-brintelli-card text-text"
+                  >
+                    <option value="DRAFT">Draft</option>
+                    <option value="PUBLISHED">Published</option>
+                    <option value="CLOSED">Closed</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-text mb-2">Instructions</label>
+                <textarea
+                  name="instructions"
+                  value={formData.instructions || ''}
+                  onChange={(e) => setFormData({ ...formData, instructions: e.target.value })}
+                  className="w-full px-4 py-2 border border-brintelli-border rounded-lg bg-brintelli-card text-text"
+                  rows={3}
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-text mb-2">Due Date</label>
+                  <input
+                    type="datetime-local"
+                    name="dueDate"
+                    value={formData.dueDate || ''}
+                    onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                    className="w-full px-4 py-2 border border-brintelli-border rounded-lg bg-brintelli-card text-text"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text mb-2">Max Marks</label>
+                  <input
+                    type="number"
+                    name="maxMarks"
+                    value={formData.maxMarks || 100}
+                    onChange={(e) => setFormData({ ...formData, maxMarks: parseInt(e.target.value) || 100 })}
+                    className="w-full px-4 py-2 border border-brintelli-border rounded-lg bg-brintelli-card text-text"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text mb-2">Passing Marks</label>
+                  <input
+                    type="number"
+                    name="passingMarks"
+                    value={formData.passingMarks || 50}
+                    onChange={(e) => setFormData({ ...formData, passingMarks: parseInt(e.target.value) || 50 })}
+                    className="w-full px-4 py-2 border border-brintelli-border rounded-lg bg-brintelli-card text-text"
+                  />
+                </div>
+              </div>
+
+              {/* Type-specific fields */}
+              {formData.type === 'PROJECT' && (
+                <div>
+                  <label className="block text-sm font-medium text-text mb-2">
+                    Project Guidelines <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    name="projectGuidelines"
+                    value={formData.projectGuidelines || ''}
+                    onChange={(e) => setFormData({ ...formData, projectGuidelines: e.target.value })}
+                    className="w-full px-4 py-2 border border-brintelli-border rounded-lg bg-brintelli-card text-text"
+                    rows={5}
+                    placeholder="Enter project requirements, deliverables, and guidelines..."
+                  />
+                </div>
+              )}
+
+              {formData.type === 'CODING_CHALLENGE' && (
+                <div>
+                  <label className="block text-sm font-medium text-text mb-2">Test Cases</label>
+                  <div className="space-y-3">
+                    {testCases.map((testCase, index) => (
+                      <div key={index} className="border border-brintelli-border rounded-lg p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-text">Test Case {index + 1}</span>
+                          <button
+                            type="button"
+                            onClick={() => removeTestCase(index)}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-textMuted mb-1">Description</label>
+                          <input
+                            type="text"
+                            value={testCase.description || ''}
+                            onChange={(e) => {
+                              const updated = [...testCases];
+                              updated[index].description = e.target.value;
+                              setTestCases(updated);
+                            }}
+                            placeholder="Test case description"
+                            className="w-full px-3 py-1 border border-brintelli-border rounded bg-brintelli-card text-text text-sm"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-xs text-textMuted mb-1">Input</label>
+                            <textarea
+                              value={testCase.input || ''}
+                              onChange={(e) => {
+                                const updated = [...testCases];
+                                updated[index].input = e.target.value;
+                                setTestCases(updated);
+                              }}
+                              placeholder="Input"
+                              className="w-full px-3 py-1 border border-brintelli-border rounded bg-brintelli-card text-text text-sm"
+                              rows={2}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-textMuted mb-1">Expected Output</label>
+                            <textarea
+                              value={testCase.expectedOutput || ''}
+                              onChange={(e) => {
+                                const updated = [...testCases];
+                                updated[index].expectedOutput = e.target.value;
+                                setTestCases(updated);
+                              }}
+                              placeholder="Expected Output"
+                              className="w-full px-3 py-1 border border-brintelli-border rounded bg-brintelli-card text-text text-sm"
+                              rows={2}
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-textMuted mb-1">Marks</label>
+                          <input
+                            type="number"
+                            value={testCase.marks || 0}
+                            onChange={(e) => {
+                              const updated = [...testCases];
+                              updated[index].marks = parseFloat(e.target.value) || 0;
+                              setTestCases(updated);
+                            }}
+                            className="w-full px-3 py-1 border border-brintelli-border rounded bg-brintelli-card text-text text-sm"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                    <div className="border border-brintelli-border rounded-lg p-3 space-y-2">
+                      <div>
+                        <label className="block text-xs text-textMuted mb-1">Description</label>
+                        <input
+                          type="text"
+                          value={newTestCase.description}
+                          onChange={(e) => setNewTestCase({ ...newTestCase, description: e.target.value })}
+                          placeholder="Test case description"
+                          className="w-full px-3 py-1 border border-brintelli-border rounded bg-brintelli-card text-text text-sm"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-xs text-textMuted mb-1">Input</label>
+                          <textarea
+                            value={newTestCase.input}
+                            onChange={(e) => setNewTestCase({ ...newTestCase, input: e.target.value })}
+                            placeholder="Input"
+                            className="w-full px-3 py-1 border border-brintelli-border rounded bg-brintelli-card text-text text-sm"
+                            rows={2}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-textMuted mb-1">Expected Output</label>
+                          <textarea
+                            value={newTestCase.expectedOutput}
+                            onChange={(e) => setNewTestCase({ ...newTestCase, expectedOutput: e.target.value })}
+                            placeholder="Expected Output"
+                            className="w-full px-3 py-1 border border-brintelli-border rounded bg-brintelli-card text-text text-sm"
+                            rows={2}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-textMuted mb-1">Marks</label>
+                        <input
+                          type="number"
+                          value={newTestCase.marks}
+                          onChange={(e) => setNewTestCase({ ...newTestCase, marks: parseFloat(e.target.value) || 0 })}
+                          className="w-full px-3 py-1 border border-brintelli-border rounded bg-brintelli-card text-text text-sm"
+                        />
+                      </div>
+                      <Button type="button" variant="ghost" size="sm" onClick={addTestCase} className="w-full">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Test Case
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {formData.type === 'MCQ' && (
+                <div>
+                  <label className="block text-sm font-medium text-text mb-2">MCQ Questions</label>
+                  <div className="space-y-3">
+                    {questions.map((question, index) => (
+                      <div key={index} className="border border-brintelli-border rounded-lg p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-text">Question {index + 1}</span>
+                          <button
+                            type="button"
+                            onClick={() => removeQuestion(index)}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-textMuted mb-1">Question</label>
+                          <input
+                            type="text"
+                            value={question.question || ''}
+                            onChange={(e) => {
+                              const updated = [...questions];
+                              updated[index].question = e.target.value;
+                              setQuestions(updated);
+                            }}
+                            placeholder="Enter question"
+                            className="w-full px-3 py-1 border border-brintelli-border rounded bg-brintelli-card text-text text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-textMuted mb-1">Options</label>
+                          {question.options.map((option, optIndex) => (
+                            <div key={optIndex} className="flex items-center gap-2 mb-1">
+                              <input
+                                type="radio"
+                                name={`correct-${index}`}
+                                checked={question.correctAnswer === optIndex}
+                                onChange={() => {
+                                  const updated = [...questions];
+                                  updated[index].correctAnswer = optIndex;
+                                  setQuestions(updated);
+                                }}
+                                className="mr-1"
+                              />
+                              <input
+                                type="text"
+                                value={option}
+                                onChange={(e) => updateQuestionOption(index, optIndex, e.target.value)}
+                                placeholder={`Option ${optIndex + 1}`}
+                                className="flex-1 px-3 py-1 border border-brintelli-border rounded bg-brintelli-card text-text text-sm"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                        <div>
+                          <label className="block text-xs text-textMuted mb-1">Marks</label>
+                          <input
+                            type="number"
+                            value={question.marks || 0}
+                            onChange={(e) => {
+                              const updated = [...questions];
+                              updated[index].marks = parseFloat(e.target.value) || 0;
+                              setQuestions(updated);
+                            }}
+                            className="w-full px-3 py-1 border border-brintelli-border rounded bg-brintelli-card text-text text-sm"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                    <div className="border border-brintelli-border rounded-lg p-3 space-y-2">
+                      <div>
+                        <label className="block text-xs text-textMuted mb-1">Question</label>
+                        <input
+                          type="text"
+                          value={newQuestion.question}
+                          onChange={(e) => setNewQuestion({ ...newQuestion, question: e.target.value })}
+                          placeholder="Enter question"
+                          className="w-full px-3 py-1 border border-brintelli-border rounded bg-brintelli-card text-text text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-textMuted mb-1">Options</label>
+                        {newQuestion.options.map((option, optIndex) => (
+                          <div key={optIndex} className="flex items-center gap-2 mb-1">
+                            <input
+                              type="radio"
+                              name="new-correct"
+                              checked={newQuestion.correctAnswer === optIndex}
+                              onChange={() => setNewQuestion({ ...newQuestion, correctAnswer: optIndex })}
+                              className="mr-1"
+                            />
+                            <input
+                              type="text"
+                              value={option}
+                              onChange={(e) => {
+                                const updated = [...newQuestion.options];
+                                updated[optIndex] = e.target.value;
+                                setNewQuestion({ ...newQuestion, options: updated });
+                              }}
+                              placeholder={`Option ${optIndex + 1}`}
+                              className="flex-1 px-3 py-1 border border-brintelli-border rounded bg-brintelli-card text-text text-sm"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <div>
+                        <label className="block text-xs text-textMuted mb-1">Marks</label>
+                        <input
+                          type="number"
+                          value={newQuestion.marks}
+                          onChange={(e) => setNewQuestion({ ...newQuestion, marks: parseFloat(e.target.value) || 0 })}
+                          className="w-full px-3 py-1 border border-brintelli-border rounded bg-brintelli-card text-text text-sm"
+                        />
+                      </div>
+                      <Button type="button" variant="ghost" size="sm" onClick={addQuestion} className="w-full">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Question
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {formData.type === 'ESSAY' && (
+                <div>
+                  <label className="block text-sm font-medium text-text mb-2">
+                    Essay Prompt <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    name="essayPrompt"
+                    value={formData.essayPrompt || ''}
+                    onChange={(e) => setFormData({ ...formData, essayPrompt: e.target.value })}
+                    className="w-full px-4 py-2 border border-brintelli-border rounded-lg bg-brintelli-card text-text"
+                    rows={5}
+                    placeholder="Enter the essay question or prompt..."
+                  />
+                </div>
+              )}
+            </div>
+            <div className="flex gap-3 mt-6">
+              <Button variant="primary" onClick={handleCreateAssignment}>
+                Create Assignment
+              </Button>
+              <Button variant="ghost" onClick={() => {
+                setShowAssignmentModal(false);
+                resetForm();
+              }}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
+
+export default Assignments;
+

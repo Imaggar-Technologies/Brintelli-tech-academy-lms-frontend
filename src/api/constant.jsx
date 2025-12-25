@@ -1,6 +1,6 @@
 // API Base URL - Centralized configuration
 // Set VITE_API_BASE_URL in .env file, or it will default to 192.168.1.33:3000
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://16.112.146.20:3000';
 
 // Helper function to get full API URL for endpoints
 export const getApiUrl = (endpoint) => {

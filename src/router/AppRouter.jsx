@@ -87,6 +87,9 @@ import Programs from "../pages/program-manager/Programs";
 import Modules from "../pages/program-manager/Modules";
 import AddModules from "../pages/program-manager/AddModules";
 import CreateProgram from "../pages/program-manager/CreateProgram";
+import ModuleDetails from "../pages/program-manager/ModuleDetails";
+import ObjectivesList from "../pages/program-manager/ObjectivesList";
+import ObjectiveDetails from "../pages/program-manager/ObjectiveDetails";
 import Assignments from "../pages/program-manager/Assignments";
 import Curriculum from "../pages/program-manager/Curriculum";
 import Batches from "../pages/program-manager/Batches";
@@ -311,6 +314,11 @@ const AppRouter = () => {
             <Route path="programs" element={<Programs />} />
             <Route path="programs/create" element={<CreateProgram />} />
             <Route path="programs/create/:programId" element={<CreateProgram />} />
+            <Route path="programs/:programId/modules/new" element={<ModuleDetails />} />
+            <Route path="programs/:programId/modules/:moduleId" element={<ModuleDetails />} />
+            <Route path="programs/:programId/modules/:moduleId/objectives" element={<ObjectivesList />} />
+            <Route path="programs/:programId/modules/:moduleId/objectives/new" element={<ObjectiveDetails />} />
+            <Route path="programs/:programId/modules/:moduleId/objectives/:objectiveIndex" element={<ObjectiveDetails />} />
             <Route path="programs/:programId/add-modules" element={<AddModules />} />
             <Route path="modules/:programId" element={<Modules />} />
             <Route path="modules/:programId/assignments/:moduleId" element={<Assignments />} />

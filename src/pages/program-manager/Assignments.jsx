@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { Plus, ChevronLeft, ChevronRight, X, FileText, Code, BookOpen, Edit3, CheckSquare } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, X, FileText, Code, BookOpen, Edit3, CheckSquare, Link, File, Database, ListChecks } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
 import Table from '../../components/Table';
@@ -24,8 +24,12 @@ const Assignments = () => {
   });
   const [testCases, setTestCases] = useState([]);
   const [questions, setQuestions] = useState([]);
+  const [resources, setResources] = useState([]);
+  const [scoringRubric, setScoringRubric] = useState([]);
   const [newTestCase, setNewTestCase] = useState({ input: '', expectedOutput: '', marks: 0, description: '' });
   const [newQuestion, setNewQuestion] = useState({ question: '', options: ['', '', '', ''], correctAnswer: 0, marks: 0 });
+  const [newResource, setNewResource] = useState({ type: 'URL', title: '', url: '', description: '', fileUrl: '' });
+  const [newRubricItem, setNewRubricItem] = useState({ criterion: '', description: '', marks: 0, required: false });
 
   useEffect(() => {
     if (moduleId) {
@@ -80,6 +84,10 @@ const Assignments = () => {
         // projectGuidelines is already in formData
       }
 
+      // Add resources and scoring rubric
+      assignmentData.resources = resources;
+      assignmentData.scoringRubric = scoringRubric;
+
       const response = await programAPI.createAssignment(moduleId, assignmentData);
       if (response.success) {
         toast.success('Assignment created successfully');
@@ -102,14 +110,19 @@ const Assignments = () => {
       name: '',
       description: '',
       instructions: '',
+      problemStatement: '',
       essayPrompt: '',
       projectGuidelines: '',
       dueDate: '',
     });
     setTestCases([]);
     setQuestions([]);
+    setResources([]);
+    setScoringRubric([]);
     setNewTestCase({ input: '', expectedOutput: '', marks: 0, description: '' });
     setNewQuestion({ question: '', options: ['', '', '', ''], correctAnswer: 0, marks: 0 });
+    setNewResource({ type: 'URL', title: '', url: '', description: '', fileUrl: '' });
+    setNewRubricItem({ criterion: '', description: '', marks: 0, required: false });
   };
 
   const addTestCase = () => {
@@ -138,6 +151,41 @@ const Assignments = () => {
     const updated = [...questions];
     updated[index].options[optionIndex] = value;
     setQuestions(updated);
+  };
+
+  const addResource = () => {
+    if (newResource.title && (newResource.url || newResource.fileUrl)) {
+      setResources([...resources, { ...newResource }]);
+      setNewResource({ type: 'URL', title: '', url: '', description: '', fileUrl: '' });
+    }
+  };
+
+  const removeResource = (index) => {
+    setResources(resources.filter((_, i) => i !== index));
+  };
+
+  const addRubricItem = () => {
+    if (newRubricItem.criterion && newRubricItem.marks > 0) {
+      setScoringRubric([...scoringRubric, { ...newRubricItem }]);
+      setNewRubricItem({ criterion: '', description: '', marks: 0, required: false });
+    }
+  };
+
+  const removeRubricItem = (index) => {
+    setScoringRubric(scoringRubric.filter((_, i) => i !== index));
+  };
+
+  const getResourceIcon = (type) => {
+    switch (type) {
+      case 'DOCUMENT':
+        return <File className="h-4 w-4" />;
+      case 'URL':
+        return <Link className="h-4 w-4" />;
+      case 'DATA':
+        return <Database className="h-4 w-4" />;
+      default:
+        return <FileText className="h-4 w-4" />;
+    }
   };
 
   // Pagination logic
@@ -289,6 +337,22 @@ const Assignments = () => {
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   className="w-full px-4 py-2 border border-brintelli-border rounded-lg bg-brintelli-card text-text"
                   rows={3}
+                  placeholder="Brief description of the assignment..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-text mb-2">
+                  Detailed Problem Statement <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  name="problemStatement"
+                  value={formData.problemStatement || ''}
+                  onChange={(e) => setFormData({ ...formData, problemStatement: e.target.value })}
+                  className="w-full px-4 py-2 border border-brintelli-border rounded-lg bg-brintelli-card text-text"
+                  rows={6}
+                  placeholder="Enter the detailed problem statement, requirements, and what students need to accomplish..."
+                  required
                 />
               </div>
 
@@ -654,6 +718,204 @@ const Assignments = () => {
                   />
                 </div>
               )}
+
+              {/* Supporting Resources Section */}
+              <div className="border-t border-brintelli-border pt-4">
+                <h4 className="text-md font-semibold text-text mb-3 flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Supporting Resources (Documents, URLs, Data)
+                </h4>
+                <div className="space-y-3">
+                  {resources.map((resource, index) => (
+                    <div key={index} className="border border-brintelli-border rounded-lg p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {getResourceIcon(resource.type)}
+                          <span className="font-medium text-text">{resource.title}</span>
+                          <span className="text-xs text-textMuted">({resource.type})</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeResource(index)}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                      {resource.description && (
+                        <p className="text-sm text-textMuted">{resource.description}</p>
+                      )}
+                      {resource.url && (
+                        <a href={resource.url} target="_blank" rel="noopener noreferrer" className="text-sm text-brand-500 hover:underline">
+                          {resource.url}
+                        </a>
+                      )}
+                      {resource.fileUrl && (
+                        <a href={resource.fileUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-brand-500 hover:underline">
+                          {resource.fileUrl}
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                  <div className="border border-brintelli-border rounded-lg p-3 space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs text-textMuted mb-1">Resource Type</label>
+                        <select
+                          value={newResource.type}
+                          onChange={(e) => setNewResource({ ...newResource, type: e.target.value })}
+                          className="w-full px-3 py-1 border border-brintelli-border rounded bg-brintelli-card text-text text-sm"
+                        >
+                          <option value="URL">URL/Link</option>
+                          <option value="DOCUMENT">Document/File</option>
+                          <option value="DATA">Data File</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-textMuted mb-1">Title <span className="text-red-500">*</span></label>
+                        <input
+                          type="text"
+                          value={newResource.title}
+                          onChange={(e) => setNewResource({ ...newResource, title: e.target.value })}
+                          placeholder="Resource title"
+                          className="w-full px-3 py-1 border border-brintelli-border rounded bg-brintelli-card text-text text-sm"
+                        />
+                      </div>
+                    </div>
+                    {newResource.type === 'URL' ? (
+                      <div>
+                        <label className="block text-xs text-textMuted mb-1">URL <span className="text-red-500">*</span></label>
+                        <input
+                          type="url"
+                          value={newResource.url}
+                          onChange={(e) => setNewResource({ ...newResource, url: e.target.value })}
+                          placeholder="https://example.com"
+                          className="w-full px-3 py-1 border border-brintelli-border rounded bg-brintelli-card text-text text-sm"
+                        />
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="block text-xs text-textMuted mb-1">File URL <span className="text-red-500">*</span></label>
+                        <input
+                          type="url"
+                          value={newResource.fileUrl}
+                          onChange={(e) => setNewResource({ ...newResource, fileUrl: e.target.value })}
+                          placeholder="https://example.com/file.pdf or /uploads/file.pdf"
+                          className="w-full px-3 py-1 border border-brintelli-border rounded bg-brintelli-card text-text text-sm"
+                        />
+                      </div>
+                    )}
+                    <div>
+                      <label className="block text-xs text-textMuted mb-1">Description (Optional)</label>
+                      <textarea
+                        value={newResource.description}
+                        onChange={(e) => setNewResource({ ...newResource, description: e.target.value })}
+                        placeholder="Brief description of this resource"
+                        className="w-full px-3 py-1 border border-brintelli-border rounded bg-brintelli-card text-text text-sm"
+                        rows={2}
+                      />
+                    </div>
+                    <Button type="button" variant="ghost" size="sm" onClick={addResource} className="w-full">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Resource
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Scoring Rubric / Validation Checklist Section */}
+              <div className="border-t border-brintelli-border pt-4">
+                <h4 className="text-md font-semibold text-text mb-3 flex items-center gap-2">
+                  <ListChecks className="h-4 w-4" />
+                  Scoring Rubric / Validation Checklist
+                </h4>
+                <p className="text-sm text-textMuted mb-3">
+                  Define validation criteria and marks allocation. Students will be evaluated based on these checkpoints.
+                </p>
+                <div className="space-y-3">
+                  {scoringRubric.map((item, index) => (
+                    <div key={index} className="border border-brintelli-border rounded-lg p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <CheckSquare className="h-4 w-4 text-brand-500" />
+                          <span className="font-medium text-text">{item.criterion}</span>
+                          {item.required && (
+                            <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">Required</span>
+                          )}
+                          <span className="text-sm text-brand-500 font-semibold">{item.marks} marks</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeRubricItem(index)}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                      {item.description && (
+                        <p className="text-sm text-textMuted">{item.description}</p>
+                      )}
+                    </div>
+                  ))}
+                  <div className="border border-brintelli-border rounded-lg p-3 space-y-2">
+                    <div>
+                      <label className="block text-xs text-textMuted mb-1">Criterion/Checkpoint <span className="text-red-500">*</span></label>
+                      <input
+                        type="text"
+                        value={newRubricItem.criterion}
+                        onChange={(e) => setNewRubricItem({ ...newRubricItem, criterion: e.target.value })}
+                        placeholder="e.g., Implemented feature X, Code follows best practices, Documentation provided"
+                        className="w-full px-3 py-1 border border-brintelli-border rounded bg-brintelli-card text-text text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-textMuted mb-1">Description (Optional)</label>
+                      <textarea
+                        value={newRubricItem.description}
+                        onChange={(e) => setNewRubricItem({ ...newRubricItem, description: e.target.value })}
+                        placeholder="Detailed description of what needs to be checked"
+                        className="w-full px-3 py-1 border border-brintelli-border rounded bg-brintelli-card text-text text-sm"
+                        rows={2}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs text-textMuted mb-1">Marks <span className="text-red-500">*</span></label>
+                        <input
+                          type="number"
+                          value={newRubricItem.marks}
+                          onChange={(e) => setNewRubricItem({ ...newRubricItem, marks: parseFloat(e.target.value) || 0 })}
+                          min="0"
+                          step="0.5"
+                          className="w-full px-3 py-1 border border-brintelli-border rounded bg-brintelli-card text-text text-sm"
+                        />
+                      </div>
+                      <div className="flex items-end">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={newRubricItem.required}
+                            onChange={(e) => setNewRubricItem({ ...newRubricItem, required: e.target.checked })}
+                            className="rounded"
+                          />
+                          <span className="text-xs text-textMuted">Required (must be completed)</span>
+                        </label>
+                      </div>
+                    </div>
+                    <Button type="button" variant="ghost" size="sm" onClick={addRubricItem} className="w-full">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Checklist Item
+                    </Button>
+                    {scoringRubric.length > 0 && (
+                      <div className="text-sm text-textMuted pt-2 border-t border-brintelli-border">
+                        Total Marks from Rubric: <span className="font-semibold text-text">
+                          {scoringRubric.reduce((sum, item) => sum + (item.marks || 0), 0)} / {formData.maxMarks}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
             <div className="flex gap-3 mt-6">
               <Button variant="primary" onClick={handleCreateAssignment}>

@@ -41,6 +41,13 @@ export const programAPI = {
     return apiRequest(`/api/programs/${programId}/modules`);
   },
 
+  getModuleById: async (moduleId) => {
+    // Since there's no direct endpoint, we'll need to search through modules
+    // For now, we'll use a workaround by getting all modules and finding the one
+    // This should be improved in the backend later
+    return apiRequest(`/api/programs/modules/${moduleId}`);
+  },
+
   updateModule: async (moduleId, updates) => {
     return apiRequest(`/api/programs/modules/${moduleId}`, {
       method: 'PUT',

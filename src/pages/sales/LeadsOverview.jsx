@@ -160,28 +160,32 @@ const LeadsOverview = () => {
         </div>
       ) : (
         <div className="rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft overflow-hidden">
-          <div className="overflow-x-auto">
+          <div>
             <table className="w-full">
-              <thead className="bg-brintelli-baseAlt border-b border-brintelli-border">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Name</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Email</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Phone</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Stage</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Assigned To</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Source</th>
+              <thead>
+                <tr className="border-b border-brintelli-border/50">
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Name</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Email</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Phone</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Stage</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Assigned To</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Source</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-brintelli-border">
+              <tbody className="divide-y divide-brintelli-border/30">
                 {paginatedLeads.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-textMuted">
-                      {searchTerm ? "No leads match your search" : "No leads found"}
+                    <td colSpan={6} className="px-6 py-16 text-center">
+                      <div className="flex flex-col items-center justify-center">
+                        <p className="text-sm font-medium text-textMuted">
+                          {searchTerm ? "No leads match your search" : "No leads found"}
+                        </p>
+                      </div>
                     </td>
                   </tr>
                 ) : (
                   paginatedLeads.map((lead) => (
-                    <tr key={lead.id} className="hover:bg-brintelli-baseAlt transition-colors">
+                    <tr key={lead.id} className="transition-colors duration-150 hover:bg-brintelli-baseAlt/30">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-semibold text-text">{lead.name || "Unnamed"}</div>
                       </td>

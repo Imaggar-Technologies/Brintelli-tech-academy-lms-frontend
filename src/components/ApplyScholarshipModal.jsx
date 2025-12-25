@@ -4,6 +4,7 @@ import Modal from "./Modal";
 import Button from "./Button";
 import { scholarshipAPI } from "../api/scholarship";
 import { offerAPI } from "../api/offer";
+import { programAPI } from "../api/program";
 import toast from "react-hot-toast";
 
 const ApplyScholarshipModal = ({ isOpen, onClose, lead, assessmentResult, onSuccess }) => {
@@ -13,40 +14,51 @@ const ApplyScholarshipModal = ({ isOpen, onClose, lead, assessmentResult, onSucc
   const [requestedAmount, setRequestedAmount] = useState("");
   const [reason, setReason] = useState("");
   const [documents, setDocuments] = useState([]);
-  const [courses, setCourses] = useState([]);
+  const [programs, setPrograms] = useState([]);
 
-  // Mock courses - in production, fetch from API
+  // Fetch programs from API
   useEffect(() => {
-    const mockCourses = [
-      { id: "1", name: "Full Stack Web Development", basePrice: 50000, levels: ["BEGINNER", "INTERMEDIATE", "EXPERT"] },
-      { id: "2", name: "Data Science & Machine Learning", basePrice: 60000, levels: ["INTERMEDIATE", "EXPERT"] },
-      { id: "3", name: "Cloud Computing & DevOps", basePrice: 55000, levels: ["BEGINNER", "INTERMEDIATE", "EXPERT"] },
-      { id: "4", name: "Mobile App Development", basePrice: 52000, levels: ["BEGINNER", "INTERMEDIATE"] },
-      { id: "5", name: "Cybersecurity", basePrice: 65000, levels: ["INTERMEDIATE", "EXPERT"] },
-    ];
-    setCourses(mockCourses);
-  }, []);
-
-  useEffect(() => {
-    if (assessmentResult?.level && courses.length > 0) {
-      const filteredCourses = courses.filter(course => 
-        course.levels.includes(assessmentResult.level)
-      );
-      if (filteredCourses.length > 0 && !courseId) {
-        setCourseId(filteredCourses[0].id);
-        setBasePrice(filteredCourses[0].basePrice.toString());
+    const fetchPrograms = async () => {
+      try {
+        const response = await programAPI.getAllPrograms({ status: 'ACTIVE' });
+        if (response.success && response.data.programs) {
+          // Map programs to the expected format
+          const formattedPrograms = response.data.programs.map(program => ({
+            id: program.id || program._id,
+            name: program.name || program.title,
+            basePrice: program.price || program.basePrice || program.fee || 0,
+            // Programs don't have levels, so we'll show all programs
+            levels: ["BEGINNER", "INTERMEDIATE", "EXPERT"]
+          }));
+          setPrograms(formattedPrograms);
+        }
+      } catch (error) {
+        console.error('Error fetching programs:', error);
+        toast.error('Failed to load programs');
       }
+    };
+    
+    if (isOpen) {
+      fetchPrograms();
     }
-  }, [assessmentResult, courses, courseId]);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (programs.length > 0 && !courseId) {
+      // Auto-select first program if available
+      setCourseId(programs[0].id);
+      setBasePrice(programs[0].basePrice.toString());
+    }
+  }, [programs, courseId]);
 
   const handleCourseChange = (e) => {
-    const selectedCourseId = e.target.value;
-    setCourseId(selectedCourseId);
-    const selectedCourse = courses.find(c => c.id === selectedCourseId);
-    if (selectedCourse) {
-      setBasePrice(selectedCourse.basePrice.toString());
+    const selectedProgramId = e.target.value;
+    setCourseId(selectedProgramId);
+    const selectedProgram = programs.find(p => p.id === selectedProgramId);
+    if (selectedProgram) {
+      setBasePrice(selectedProgram.basePrice.toString());
       // Reset requested amount if it exceeds new base price
-      if (requestedAmount && parseFloat(requestedAmount) > selectedCourse.basePrice) {
+      if (requestedAmount && parseFloat(requestedAmount) > selectedProgram.basePrice) {
         setRequestedAmount("");
       }
     }
@@ -65,7 +77,7 @@ const ApplyScholarshipModal = ({ isOpen, onClose, lead, assessmentResult, onSucc
     e.preventDefault();
     
     if (!courseId || !basePrice) {
-      toast.error("Please select a course");
+      toast.error("Please select a program");
       return;
     }
 
@@ -120,7 +132,7 @@ const ApplyScholarshipModal = ({ isOpen, onClose, lead, assessmentResult, onSucc
   };
 
   const maxAmount = parseFloat(basePrice) || 0;
-  const selectedCourse = courses.find(c => c.id === courseId);
+  const selectedProgram = programs.find(p => p.id === courseId);
 
   return (
     <Modal
@@ -148,11 +160,11 @@ const ApplyScholarshipModal = ({ isOpen, onClose, lead, assessmentResult, onSucc
           )}
         </div>
 
-        {/* Course Selection */}
+        {/* Program Selection */}
         <div>
           <label className="block text-sm font-semibold text-text mb-2">
             <BookOpen className="inline h-4 w-4 mr-1" />
-            Select Course
+            Select Program
           </label>
           <select
             value={courseId}
@@ -160,14 +172,12 @@ const ApplyScholarshipModal = ({ isOpen, onClose, lead, assessmentResult, onSucc
             className="w-full px-4 py-2 rounded-xl border border-brintelli-border bg-brintelli-baseAlt text-sm focus:border-brand-500 focus:outline-none"
             required
           >
-            <option value="">Select a course...</option>
-            {courses
-              .filter(course => !assessmentResult?.level || course.levels.includes(assessmentResult.level))
-              .map(course => (
-                <option key={course.id} value={course.id}>
-                  {course.name} - ₹{course.basePrice.toLocaleString()}
-                </option>
-              ))}
+            <option value="">Select a program...</option>
+            {programs.map(program => (
+              <option key={program.id} value={program.id}>
+                {program.name} - ₹{program.basePrice.toLocaleString()}
+              </option>
+            ))}
           </select>
         </div>
 

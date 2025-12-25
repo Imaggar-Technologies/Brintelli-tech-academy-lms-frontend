@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { Plus, ChevronLeft, ChevronRight, X, FileText } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, X, FileText, Layers3 } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
 import Table from '../../components/Table';
@@ -114,11 +114,54 @@ const Modules = () => {
   const endIndex = startIndex + itemsPerPage;
   const paginatedModules = modules.slice(startIndex, endIndex);
 
+  const getStatusBadge = (status) => {
+    const statusConfig = {
+      DRAFT: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Draft' },
+      ACTIVE: { bg: 'bg-green-100', text: 'text-green-700', label: 'Active' },
+      COMPLETED: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Completed' },
+    };
+    const config = statusConfig[status] || statusConfig.DRAFT;
+    return (
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
+        {config.label}
+      </span>
+    );
+  };
+
   const moduleColumns = [
-    { key: 'name', title: 'Module Name' },
-    { key: 'order', title: 'Order' },
-    { key: 'duration', title: 'Duration (hours)' },
-    { key: 'status', title: 'Status' },
+    { 
+      key: 'name', 
+      title: 'Module Name',
+      render: (_, row) => (
+        <div>
+          <div className="font-semibold text-text">{row.name || '—'}</div>
+          {row.description && (
+            <div className="text-xs text-textMuted mt-0.5 line-clamp-1">{row.description}</div>
+          )}
+        </div>
+      )
+    },
+    { 
+      key: 'order', 
+      title: 'Order',
+      render: (_, row) => (
+        <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-brand-100 text-brand-700 font-semibold text-sm">
+          {row.order ?? '—'}
+        </span>
+      )
+    },
+    { 
+      key: 'duration', 
+      title: 'Duration',
+      render: (_, row) => (
+        <span className="text-text">{row.duration ? `${row.duration} hours` : '—'}</span>
+      )
+    },
+    { 
+      key: 'status', 
+      title: 'Status',
+      render: (_, row) => getStatusBadge(row.status)
+    },
     {
       key: 'actions',
       title: 'Actions',
@@ -127,9 +170,11 @@ const Modules = () => {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               navigate(`/program-manager/modules/${programId}/assignments/${row.id || row._id}`);
             }}
+            className="hover:bg-brand-50 hover:text-brand-600"
           >
             <FileText className="h-4 w-4 mr-1" />
             Assignments
@@ -170,7 +215,14 @@ const Modules = () => {
 
       {/* Modules Table */}
       <div className="rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft p-6 mb-6">
-        <h3 className="text-lg font-semibold text-text mb-4">All Modules</h3>
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h3 className="text-xl font-semibold text-text">All Modules</h3>
+            <p className="text-sm text-textMuted mt-1">
+              {program ? `Modules for ${program.name}` : 'Manage modules for this program'}
+            </p>
+          </div>
+        </div>
         {loading ? (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-500 mx-auto mb-4"></div>
@@ -178,11 +230,15 @@ const Modules = () => {
           </div>
         ) : modules.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-textMuted">No modules found. Create your first module!</p>
+            <Layers3 className="h-12 w-12 text-textMuted mx-auto mb-4" />
+            <p className="text-textMuted mb-2">No modules found</p>
+            <p className="text-sm text-textMuted">Create your first module to get started!</p>
           </div>
         ) : (
           <>
-            <Table columns={moduleColumns} data={paginatedModules} minRows={10} />
+            <div className="overflow-hidden">
+              <Table columns={moduleColumns} data={paginatedModules} minRows={10} />
+            </div>
             {/* Pagination */}
             {totalPages > 1 && (
               <div className="flex items-center justify-between mt-4 pt-4 border-t border-brintelli-border">

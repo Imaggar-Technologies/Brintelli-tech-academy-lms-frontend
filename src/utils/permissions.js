@@ -191,6 +191,7 @@ export const ROLE_PERMISSIONS = {
   sales: [
     PERMISSIONS.SALES_READ, PERMISSIONS.SALES_UPDATE, PERMISSIONS.SALES_CREATE,
     PERMISSIONS.STUDENTS_READ, PERMISSIONS.STUDENTS_CREATE,
+    PERMISSIONS.PROGRAMS_READ, // Need to view programs for assessment scheduling
     PERMISSIONS.SALES_AGENT_VIEW, // Default sales role gets agent view
   ],
   sales_admin: [
@@ -199,6 +200,7 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.SALES_MANAGE_TEAM, PERMISSIONS.SALES_VIEW_REPORTS,
     PERMISSIONS.STUDENTS_READ, PERMISSIONS.STUDENTS_CREATE, PERMISSIONS.STUDENTS_UPDATE,
     PERMISSIONS.USERS_READ, // Can view team members
+    PERMISSIONS.PROGRAMS_READ, // Need to view programs for assessment scheduling
     PERMISSIONS.SALES_HEAD_VIEW, // Sales admin = head level
   ],
   sales_lead: [
@@ -206,11 +208,13 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.SALES_APPROVE, PERMISSIONS.SALES_VIEW_REPORTS, PERMISSIONS.SALES_MANAGE_TEAM,
     PERMISSIONS.STUDENTS_READ, PERMISSIONS.STUDENTS_CREATE, PERMISSIONS.STUDENTS_UPDATE,
     PERMISSIONS.BATCHES_READ, // Can view batches for assignment
+    PERMISSIONS.PROGRAMS_READ, // Need to view programs for assessment scheduling
     PERMISSIONS.SALES_LEAD_VIEW,
   ],
   sales_agent: [
     PERMISSIONS.SALES_READ, PERMISSIONS.SALES_CREATE, PERMISSIONS.SALES_UPDATE,
     PERMISSIONS.STUDENTS_READ, PERMISSIONS.STUDENTS_CREATE,
+    PERMISSIONS.PROGRAMS_READ, // Need to view programs for assessment scheduling
     PERMISSIONS.SALES_AGENT_VIEW,
   ],
   sales_head: [
@@ -221,6 +225,7 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.USERS_READ, // Can view team members
     PERMISSIONS.FINANCE_READ, // Can view financial data
     PERMISSIONS.BATCHES_READ, // Can view batches
+    PERMISSIONS.PROGRAMS_READ, // Need to view programs for assessment scheduling
     PERMISSIONS.SALES_HEAD_VIEW,
   ],
   // Marketing roles with hierarchy

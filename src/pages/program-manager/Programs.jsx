@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { Plus, BookOpen, Layers3, Calendar, FileText, Edit2, Trash2, ChevronRight, ChevronDown, X, Link as LinkIcon, ChevronLeft } from 'lucide-react';
+import { Plus, BookOpen, Layers3, Calendar, FileText, Edit2, Trash2, ChevronRight, ChevronDown, X, Link as LinkIcon, ChevronLeft, CheckCircle2, Circle, Search, RefreshCw, Eye } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
-import Table from '../../components/Table';
+import Pagination from '../../components/Pagination';
 import programAPI from '../../api/program';
 import { apiRequest } from '../../api/apiClient';
 
@@ -12,8 +12,9 @@ const Programs = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [programs, setPrograms] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [selectedProgram, setSelectedProgram] = useState(null);
   const [modules, setModules] = useState([]);
   const [sessions, setSessions] = useState([]);
@@ -57,7 +58,39 @@ const Programs = () => {
       setLoading(true);
       const response = await programAPI.getAllPrograms();
       if (response.success) {
-        setPrograms(response.data.programs);
+        // Normalize the data structure - handle both id and _id
+        let normalizedPrograms = (response.data.programs || []).map(program => ({
+          ...program,
+          id: program.id || program._id,
+          name: program.name || '',
+          code: program.code || '',
+          duration: program.duration || 0,
+          price: program.price || 0,
+          status: program.status || 'DRAFT',
+          description: program.description || '',
+          modulesCount: 0,
+        }));
+
+        // Fetch module counts for each program
+        const programsWithModules = await Promise.all(
+          normalizedPrograms.map(async (program) => {
+            try {
+              const modulesRes = await programAPI.getModulesByProgram(program.id).catch(() => null);
+              if (modulesRes?.success && modulesRes.data?.modules) {
+                return {
+                  ...program,
+                  modulesCount: modulesRes.data.modules.length,
+                };
+              }
+              return program;
+            } catch (error) {
+              console.error(`Error fetching modules for program ${program.id}:`, error);
+              return program;
+            }
+          })
+        );
+
+        setPrograms(programsWithModules);
       }
     } catch (error) {
       console.error('Error fetching programs:', error);
@@ -175,43 +208,43 @@ const Programs = () => {
     });
   };
 
+  // Get unique values for filters
+  // Filter programs by search term
+  const filteredPrograms = programs.filter(program => {
+    if (!searchTerm) return true;
+    const search = searchTerm.toLowerCase();
+    return (
+      program.name?.toLowerCase().includes(search) ||
+      program.code?.toLowerCase().includes(search) ||
+      program.description?.toLowerCase().includes(search)
+    );
+  });
+
   // Pagination logic
-  const totalPages = Math.ceil(programs.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredPrograms.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedPrograms = programs.slice(startIndex, endIndex);
+  const paginatedPrograms = filteredPrograms.slice(startIndex, endIndex);
 
-  const programColumns = [
-    { key: 'name', title: 'Program Name' },
-    { key: 'code', title: 'Code' },
-    { key: 'duration', title: 'Duration (months)' },
-    { 
-      key: 'price', 
-      title: 'Price', 
-      render: (value) => {
-        const price = typeof value === 'number' ? value : parseFloat(value) || 0;
-        return `₹${price.toLocaleString('en-IN')}`;
-      }
-    },
-    { key: 'status', title: 'Status' },
-    {
-      key: 'actions',
-      title: 'Actions',
-      render: (_, row) => (
-        <div className="flex gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              navigate(`/program-manager/modules/${row.id || row._id}`);
-            }}
-          >
-            View Details
-          </Button>
-        </div>
-      ),
-    },
-  ];
+  // Reset to page 1 when search term changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
+  const getStatusBadge = (status) => {
+    const statusConfig = {
+      DRAFT: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Draft' },
+      ACTIVE: { bg: 'bg-green-100', text: 'text-green-700', label: 'Active' },
+      ARCHIVED: { bg: 'bg-gray-100', text: 'text-gray-600', label: 'Archived' },
+    };
+    const config = statusConfig[status] || statusConfig.DRAFT;
+    return (
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
+        {config.label}
+      </span>
+    );
+  };
+
 
   return (
     <>
@@ -222,61 +255,176 @@ const Programs = () => {
           <Button
             variant="secondary"
             onClick={() => {
-              setFormData({});
-              setShowProgramModal(true);
+              navigate('/program-manager/programs/create');
             }}
           >
             <Plus className="h-4 w-4 mr-2" />
-            Create Program
+            Create Program with Modules
           </Button>
         }
       />
 
       {/* Programs Table */}
-      <div className="rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft p-6 mb-6">
-        <h3 className="text-lg font-semibold text-text mb-4">All Programs</h3>
-        {loading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-500 mx-auto mb-4"></div>
-            <p className="text-textMuted">Loading...</p>
+      <div className="rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft">
+        <div className="border-b border-brintelli-border p-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-text">All Programs</h3>
+            <div className="relative w-64">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-textMuted" />
+              <input
+                type="text"
+                placeholder="Search programs..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full rounded-xl border border-brintelli-border bg-brintelli-baseAlt px-10 py-2 text-sm focus:border-brand-500 focus:outline-none"
+              />
+            </div>
           </div>
-        ) : (
-          <>
-            <Table columns={programColumns} data={paginatedPrograms} minRows={10} />
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between mt-4 pt-4 border-t border-brintelli-border">
-                <div className="text-sm text-textMuted">
-                  Showing {startIndex + 1} to {Math.min(endIndex, programs.length)} of {programs.length} programs
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                    disabled={currentPage === 1}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                    Previous
-                  </Button>
-                  <div className="text-sm text-text">
-                    Page {currentPage} of {totalPages}
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                    disabled={currentPage === totalPages}
-                  >
-                    Next
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            )}
-          </>
-        )}
+        </div>
+        <div>
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <RefreshCw className="h-6 w-6 animate-spin text-brand" />
+              <span className="ml-3 text-textMuted">Loading programs...</span>
+            </div>
+          ) : (
+            <table className="w-full divide-y divide-brintelli-border">
+              <thead className="bg-brintelli-baseAlt/50">
+                <tr>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Program Name</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Code</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Duration</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Price</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Status</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Modules</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Assigned To</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-brintelli-border/30">
+                {paginatedPrograms.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="px-6 py-16 text-center">
+                      <div className="flex flex-col items-center justify-center">
+                        <p className="text-sm font-medium text-textMuted">
+                          {searchTerm ? "No programs match your search." : "No programs found."}
+                        </p>
+                        {!searchTerm && (
+                          <Button
+                            variant="ghost"
+                            className="mt-4"
+                            onClick={() => navigate('/program-manager/programs/create')}
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Create Your First Program
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedPrograms.map((program) => {
+                    const programId = program.id || program._id;
+                    return (
+                      <tr 
+                        key={programId} 
+                        className="transition-colors duration-150 hover:bg-brintelli-baseAlt/30"
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div>
+                            <div className="font-semibold text-text">{program.name || '—'}</div>
+                            {program.description && (
+                              <div className="text-xs text-textMuted mt-0.5 line-clamp-1 max-w-xs">
+                                {program.description}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="font-mono text-sm text-textMuted">{program.code || '—'}</span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm text-text">
+                            {program.duration ? `${program.duration} months` : '—'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="font-semibold text-text">
+                            ₹{program.price ? program.price.toLocaleString('en-IN') : '0'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {getStatusBadge(program.status || 'DRAFT')}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <Layers3 className="h-4 w-4 text-textMuted" />
+                            <span className="text-sm text-text">
+                              {program.modulesCount || 0} modules
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm text-text">
+                            {program.createdByEmail || program.createdBy || program.assignedTo || '—'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (programId) {
+                                  navigate(`/program-manager/modules/${programId}`);
+                                }
+                              }}
+                              className="gap-1"
+                            >
+                              <Eye className="h-3 w-3" />
+                              View
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (programId) {
+                                  navigate(`/program-manager/programs/create/${programId}`);
+                                }
+                              }}
+                              className="gap-1"
+                            >
+                              <Edit2 className="h-3 w-3" />
+                              Edit
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
+
+      {/* Pagination */}
+      {!loading && filteredPrograms.length > 0 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filteredPrograms.length}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={setItemsPerPage}
+        />
+      )}
 
       {/* Program Details */}
       {selectedProgram && (
@@ -389,7 +537,10 @@ const Programs = () => {
         </div>
       )}
 
-      {/* Create Program Modal */}
+      {/* Create Program with Modules Wizard */}
+      {/* Create Program Wizard removed - now navigates to CreateProgram page */}
+
+      {/* Create Program Modal (Legacy - kept for backward compatibility) */}
       {showProgramModal && (
         <Modal
           title="Create Program"
@@ -960,6 +1111,8 @@ const SessionModal = ({ title, onClose, onSubmit, formData, setFormData, tutors 
     </div>
   );
 };
+
+// Multi-step wizard for creating Program with Modules
 
 export default Programs;
 

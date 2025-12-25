@@ -21,6 +21,7 @@ import {
   UserCog,
   Bell,
   TrendingUp,
+  Gift,
 } from "lucide-react";
 
 // Navigation for sales_head (highest level - full access)
@@ -76,6 +77,13 @@ const salesHeadNav = [
     icon: FileCheck,
     path: "/sales/assessments",
     pageId: "sales-assessments",
+  },
+  {
+    id: "scholarship-offers",
+    label: "Scholarship and Offers",
+    icon: Gift,
+    path: "/sales/scholarship-and-offers",
+    pageId: "sales-scholarship-offers",
   },
   {
     id: "financial",
@@ -158,6 +166,13 @@ const salesLeadNav = [
     pageId: "sales-assessments",
   },
   {
+    id: "scholarship-offers",
+    label: "Scholarship and Offers",
+    icon: Gift,
+    path: "/sales/scholarship-and-offers",
+    pageId: "sales-scholarship-offers",
+  },
+  {
     id: "financial",
     label: "Financial Processing",
     icon: Wallet,
@@ -218,6 +233,13 @@ const salesAgentNav = [
     icon: FileCheck,
     path: "/sales/assessments",
     pageId: "sales-assessments",
+  },
+  {
+    id: "scholarship-offers",
+    label: "Scholarship and Offers",
+    icon: Gift,
+    path: "/sales/scholarship-and-offers",
+    pageId: "sales-scholarship-offers",
   },
   {
     id: "deals",

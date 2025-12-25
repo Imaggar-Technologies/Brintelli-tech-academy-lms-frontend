@@ -133,7 +133,7 @@ const TargetsPerformance = () => {
         </div>
       ) : (
         <div className="rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft overflow-hidden">
-          <div className="overflow-x-auto">
+          <div>
             <table className="w-full">
               <thead className="bg-brintelli-baseAlt border-b border-brintelli-border">
                 <tr>

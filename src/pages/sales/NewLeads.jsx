@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Sparkles, Search, Filter, Plus, Mail, Phone, Building2, UserPlus, ClipboardList, Users, X, RefreshCw, Eye, FileText, Flag } from "lucide-react";
+import { Sparkles, Search, Filter, Plus, Mail, Phone, Building2, UserPlus, ClipboardList, Users, X, RefreshCw, Eye, FileText, Flag, ArrowUpDown, ArrowUp, ArrowDown, Check, ChevronLeft, ChevronRight } from "lucide-react";
 import PageHeader from "../../components/PageHeader";
 import Button from "../../components/Button";
 import StatsCard from "../../components/StatsCard";
@@ -12,6 +12,7 @@ import FlagLeadModal from "../../components/FlagLeadModal";
 import BookingOptionsMenu from "../../components/BookingOptionsMenu";
 import Modal from "../../components/Modal";
 import { leadAPI } from "../../api/lead";
+import { programAPI } from "../../api/program";
 import toast from "react-hot-toast";
 import { selectCurrentUser } from "../../store/slices/authSlice";
 import { fetchSalesTeam, selectSalesTeam, selectSalesTeamLoading } from "../../store/slices/salesTeamSlice";
@@ -43,8 +44,12 @@ const NewLeads = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [selectedLead, setSelectedLead] = useState(null);
+  const [selectedLeads, setSelectedLeads] = useState(new Set());
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+  const [showBulkAssignModal, setShowBulkAssignModal] = useState(false);
+  const [bulkAssignData, setBulkAssignData] = useState({ assignedTo: "" });
   const [isCallNotesModalOpen, setIsCallNotesModalOpen] = useState(false);
   const [showViewAllCallNotesModal, setShowViewAllCallNotesModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -68,6 +73,22 @@ const NewLeads = () => {
   const isSalesHead = currentUser?.role === 'sales_head' || currentUser?.role === 'sales_admin';
   const userEmail = currentUser?.email;
   const userTeamId = currentUser?.teamId;
+  const [programs, setPrograms] = useState([]);
+
+  // Fetch programs
+  useEffect(() => {
+    const fetchPrograms = async () => {
+      try {
+        const response = await programAPI.getAllPrograms({ status: 'ACTIVE' });
+        if (response.success && response.data.programs) {
+          setPrograms(response.data.programs);
+        }
+      } catch (error) {
+        console.error('Error fetching programs:', error);
+      }
+    };
+    fetchPrograms();
+  }, []);
 
   // Calculate pre-screening completion percentage
   const calculateCompletionPercentage = (data) => {
@@ -136,6 +157,15 @@ const NewLeads = () => {
     try {
       const { leadId, ...preScreeningPayload } = preScreeningData;
       
+      // Check if any pre-screening data was added
+      const hasData = 
+        Object.values(preScreeningPayload.education || {}).some(v => v && v.toString().trim() !== '') ||
+        Object.values(preScreeningPayload.financial || {}).some(v => v && v.toString().trim() !== '') ||
+        Object.values(preScreeningPayload.job || {}).some(v => v && v.toString().trim() !== '') ||
+        Object.values(preScreeningPayload.social || {}).some(v => v && v.toString().trim() !== '') ||
+        Object.values(preScreeningPayload.courseInterest || {}).some(v => v && v.toString().trim() !== '') ||
+        (preScreeningPayload.notes && preScreeningPayload.notes.trim() !== '');
+      
       const response = await leadAPI.updatePreScreening(leadId, {
         education: preScreeningPayload.education,
         financial: preScreeningPayload.financial,
@@ -145,8 +175,18 @@ const NewLeads = () => {
         notes: preScreeningPayload.notes,
       });
 
-      // Check if lead was automatically moved to meet_and_call
+      // Check if lead was automatically moved to meet_and_call (100% complete)
       const wasAutoMoved = response.data?.lead?.pipelineStage === 'meet_and_call';
+
+      // If pre-screening data was added but lead wasn't auto-moved, move it to meet_and_call stage
+      if (hasData && !wasAutoMoved) {
+        try {
+          await leadAPI.updatePipelineStage(leadId, 'meet_and_call');
+        } catch (stageError) {
+          console.error('Error updating pipeline stage:', stageError);
+          // Continue even if stage update fails
+        }
+      }
 
       // Refresh leads list
       const fetchLeads = async () => {
@@ -179,8 +219,8 @@ const NewLeads = () => {
 
       await fetchLeads();
 
-      if (wasAutoMoved) {
-        toast.success("Pre-screening completed! Lead automatically moved to 'Meet and Call' stage.");
+      if (wasAutoMoved || hasData) {
+        toast.success("Pre-screening data saved! Lead moved to 'Active Leads'.");
       } else {
         toast.success("Pre-screening data saved successfully");
       }
@@ -338,8 +378,30 @@ const NewLeads = () => {
     fetchLeads();
   }, [isSalesAgent, isSalesLead, userEmail, userTeamId, salesTeam]);
 
-  // Pagination
-  const filteredLeads = leads.filter(lead => {
+  // Sorting
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const sortedLeads = [...leads].sort((a, b) => {
+    if (!sortConfig.key) return 0;
+    
+    const aValue = a[sortConfig.key] || '';
+    const bValue = b[sortConfig.key] || '';
+    
+    if (sortConfig.direction === 'asc') {
+      return aValue > bValue ? 1 : -1;
+    } else {
+      return aValue < bValue ? 1 : -1;
+    }
+  });
+
+  // Filtering
+  const filteredLeads = sortedLeads.filter(lead => {
     if (!searchTerm) return true;
     const search = searchTerm.toLowerCase();
     return (
@@ -350,10 +412,101 @@ const NewLeads = () => {
     );
   });
 
+  // Pagination
   const totalPages = Math.ceil(filteredLeads.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const paginatedLeads = filteredLeads.slice(startIndex, endIndex);
+
+  // Checkbox handlers
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedLeads(new Set(paginatedLeads.map(lead => lead.id || lead._id)));
+    } else {
+      setSelectedLeads(new Set());
+    }
+  };
+
+  const handleSelectLead = (leadId) => {
+    const newSelected = new Set(selectedLeads);
+    if (newSelected.has(leadId)) {
+      newSelected.delete(leadId);
+    } else {
+      newSelected.add(leadId);
+    }
+    setSelectedLeads(newSelected);
+  };
+
+  const isAllSelected = paginatedLeads.length > 0 && paginatedLeads.every(lead => selectedLeads.has(lead.id || lead._id));
+  const isIndeterminate = selectedLeads.size > 0 && selectedLeads.size < paginatedLeads.length;
+
+  // Bulk assign handler
+  const handleBulkAssign = async () => {
+    if (!bulkAssignData.assignedTo) {
+      toast.error("Please select a team member");
+      return;
+    }
+
+    if (selectedLeads.size === 0) {
+      toast.error("Please select at least one lead");
+      return;
+    }
+
+    try {
+      const leadIds = Array.from(selectedLeads);
+      await leadAPI.bulkAssignLeads(leadIds, bulkAssignData.assignedTo);
+
+      // Refresh leads list
+      const fetchLeads = async () => {
+        try {
+          const response = await leadAPI.getAllLeads();
+          
+          if (response.success && response.data.leads) {
+            let filteredLeads;
+            
+            if (isSalesAgent && userEmail) {
+              filteredLeads = response.data.leads.filter(lead => 
+                lead.assignedTo === userEmail && 
+                lead.pipelineStage === 'primary_screening'
+              );
+            } else if (isSalesLead) {
+              filteredLeads = response.data.leads.filter(lead => 
+                (lead.pipelineStage === 'primary_screening' || !lead.pipelineStage) &&
+                (!lead.assignedTo || lead.assignedTo === '')
+              );
+            } else {
+              filteredLeads = [];
+            }
+            
+            setLeads(filteredLeads);
+          }
+        } catch (error) {
+          console.error('Error refreshing leads:', error);
+        }
+      };
+
+      await fetchLeads();
+
+      const assignedMember = salesTeam.find(m => m.email === bulkAssignData.assignedTo);
+      toast.success(`${leadIds.length} lead(s) assigned to ${assignedMember?.name || assignedMember?.fullName || bulkAssignData.assignedTo}`);
+      
+      setShowBulkAssignModal(false);
+      setSelectedLeads(new Set());
+      setBulkAssignData({ assignedTo: "" });
+    } catch (error) {
+      console.error('Error bulk assigning leads:', error);
+      toast.error(error.message || "Failed to assign leads");
+    }
+  };
+
+  const getSortIcon = (columnKey) => {
+    if (sortConfig.key !== columnKey) {
+      return <ArrowUpDown className="h-3.5 w-3.5 text-textMuted opacity-40" />;
+    }
+    return sortConfig.direction === 'asc' 
+      ? <ArrowUp className="h-3.5 w-3.5 text-brand" />
+      : <ArrowDown className="h-3.5 w-3.5 text-brand" />;
+  };
 
   const newLeadsCount = leads.length;
   const unassignedCount = leads.filter(l => !l.assignedTo || l.assignedTo === '').length;
@@ -366,11 +519,11 @@ const NewLeads = () => {
   return (
     <>
       <PageHeader
-        title={isSalesAgent ? "My New Leads" : "New Leads"}
+        title={isSalesAgent ? "My New Leads" : "New Leads - Assignment"}
         description={
           isSalesAgent 
             ? "Leads in screening stage assigned to you - validate interest and qualify."
-            : "Unassigned leads and team leads in screening stage. Assign to agents to begin engagement."
+            : "Assign unassigned leads to team members. Select multiple leads to bulk assign."
         }
         actions={
           <AnyPermissionGate permissions={[PERMISSIONS.SALES_MANAGE_TEAM]}>
@@ -425,237 +578,280 @@ const NewLeads = () => {
             </Button>
           </div>
         </div>
-        <div className="overflow-x-auto">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <RefreshCw className="h-6 w-6 animate-spin text-brand" />
-              <span className="ml-3 text-textMuted">Loading new leads...</span>
-            </div>
-          ) : (
-            <table className="w-full">
-              <thead className="bg-brintelli-baseAlt">
+        {selectedLeads.size > 0 && (
+          <div className="flex items-center justify-between border-b border-brintelli-border bg-brand-50 px-4 py-3">
+            <span className="text-sm font-medium text-text">
+              {selectedLeads.size} lead{selectedLeads.size > 1 ? 's' : ''} selected
+            </span>
+            <AnyPermissionGate permissions={[PERMISSIONS.SALES_MANAGE_TEAM]}>
+              <Button 
+                variant="secondary" 
+                size="sm"
+                onClick={() => setShowBulkAssignModal(true)}
+                className="gap-2"
+              >
+                <Users className="h-4 w-4" />
+                Bulk Assign
+              </Button>
+            </AnyPermissionGate>
+          </div>
+        )}
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <RefreshCw className="h-6 w-6 animate-spin text-brand" />
+            <span className="ml-3 text-textMuted">Loading new leads...</span>
+          </div>
+        ) : (
+          <div>
+            <table className="w-full divide-y divide-brintelli-border">
+              <thead className="bg-brintelli-baseAlt/50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-textMuted">Name</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-textMuted">Contact</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-textMuted">Source</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-textMuted">Stage</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-textMuted">Pre-Screening</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-textMuted">Last Call Note</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-textMuted">Flag</th>
                   <AnyPermissionGate permissions={[PERMISSIONS.SALES_MANAGE_TEAM]}>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-textMuted">Assigned To</th>
+                    <th className="w-12 px-4 py-3.5 text-left">
+                      <input
+                        type="checkbox"
+                        checked={isAllSelected}
+                        ref={(input) => {
+                          if (input) input.indeterminate = isIndeterminate;
+                        }}
+                        onChange={handleSelectAll}
+                        className="h-4 w-4 rounded border-brintelli-border text-brand-600 focus:ring-brand-500 cursor-pointer"
+                      />
+                    </th>
                   </AnyPermissionGate>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-textMuted">Actions</th>
+                  <th 
+                    className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted cursor-pointer hover:bg-brintelli-baseAlt transition-colors"
+                    onClick={() => handleSort('name')}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span>Lead Name</span>
+                      {getSortIcon('name')}
+                    </div>
+                  </th>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Contact</th>
+                  <th 
+                    className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted cursor-pointer hover:bg-brintelli-baseAlt transition-colors"
+                    onClick={() => handleSort('source')}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span>Source</span>
+                      {getSortIcon('source')}
+                    </div>
+                  </th>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Status</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Pre-Screening</th>
+                  <AnyPermissionGate permissions={[PERMISSIONS.SALES_MANAGE_TEAM]}>
+                    <th 
+                      className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted cursor-pointer hover:bg-brintelli-baseAlt transition-colors"
+                      onClick={() => handleSort('assignedTo')}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span>Assigned To</span>
+                        {getSortIcon('assignedTo')}
+                      </div>
+                    </th>
+                  </AnyPermissionGate>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-brintelli-border">
+              <tbody className="bg-brintelli-card divide-y divide-brintelli-border/30">
                 {paginatedLeads.length === 0 ? (
                   <tr>
-                    <td colSpan={isSalesAgent ? 8 : 9} className="px-4 py-8 text-center text-textMuted">
-                      {searchTerm ? "No leads match your search." : "No new leads found."}
+                    <td colSpan={isSalesAgent ? 5 : (isSalesLead ? 6 : 5)} className="px-6 py-12 text-center">
+                      <div className="flex flex-col items-center justify-center">
+                        <UserPlus className="h-12 w-12 text-textMuted mb-4" />
+                        <p className="text-text font-medium mb-1">
+                          {searchTerm ? "No leads match your search" : "No new leads found"}
+                        </p>
+                        <p className="text-sm text-textMuted">
+                          {searchTerm ? "Try adjusting your search criteria" : "New leads will appear here for assignment"}
+                        </p>
+                      </div>
                     </td>
                   </tr>
                 ) : (
-                  paginatedLeads.map((lead, idx) => (
-                    <tr key={lead.id || idx} className="transition hover:bg-brintelli-baseAlt">
-                      <td className="px-4 py-3">
-                        <p className="font-semibold text-text">{lead.name}</p>
-                      </td>
-                      <td className="px-4 py-3">
-                        <p className="text-xs text-textMuted">{lead.email}</p>
-                        <p className="text-xs text-textMuted">{lead.phone}</p>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-xs text-textSoft">{lead.source || 'N/A'}</span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="rounded-full px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-700">
-                          {lead.pipelineStage?.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase()) || 'Primary Screening'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        {lead.preScreening ? (
-                          <span className="text-xs text-textSoft">
-                            {calculateCompletionPercentage(lead.preScreening)}% Complete
-                          </span>
-                        ) : (
-                          <span className="text-xs text-textMuted italic">Not Screened</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 max-w-xs">
-                        <CallNotesViewer callNotes={lead.callNotes} showLastOnly={true} />
-                      </td>
-                      <td className="px-4 py-3">
-                        {lead.flag ? (
-                          <div className="flex items-center gap-1">
-                            <Flag className={`h-4 w-4 ${
-                              lead.flag.type === 'red' ? 'text-red-600' : 
-                              lead.flag.type === 'green' ? 'text-green-600' : 
-                              'text-blue-600'
-                            }`} />
-                            <span className={`text-xs font-medium ${
-                              lead.flag.type === 'red' ? 'text-red-600' : 
-                              lead.flag.type === 'green' ? 'text-green-600' : 
-                              'text-blue-600'
-                            }`}>
-                              {lead.flag.type === 'red' ? 'Red' : lead.flag.type === 'green' ? 'Green' : 'Blue'}
-                            </span>
+                  paginatedLeads.map((lead) => {
+                    const leadId = lead.id || lead._id;
+                    const isSelected = selectedLeads.has(leadId);
+                    return (
+                      <tr 
+                        key={leadId} 
+                        className={`transition-colors duration-150 hover:bg-brintelli-baseAlt/40 ${
+                          isSelected ? 'bg-brand-50 border-l-2 border-l-brand-500' : ''
+                        }`}
+                      >
+                        <AnyPermissionGate permissions={[PERMISSIONS.SALES_MANAGE_TEAM]}>
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => handleSelectLead(leadId)}
+                              className="h-4 w-4 rounded border-brintelli-border text-brand-600 focus:ring-brand-500 cursor-pointer"
+                            />
+                          </td>
+                        </AnyPermissionGate>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div>
+                            <p className="text-sm font-semibold text-text">{lead.name || 'N/A'}</p>
+                            {lead.company && (
+                              <p className="text-xs text-textMuted mt-0.5">{lead.company}</p>
+                            )}
                           </div>
-                        ) : (
-                          <span className="text-xs text-textMuted">-</span>
-                        )}
-                      </td>
-                      <AnyPermissionGate permissions={[PERMISSIONS.SALES_MANAGE_TEAM]}>
-                        <td className="px-4 py-3">
-                          {lead.assignedTo ? (
-                            <span className="text-xs text-textSoft">{getAssignedName(lead.assignedTo)}</span>
-                          ) : (
-                            <span className="text-xs text-textMuted">Unassigned</span>
-                          )}
                         </td>
-                      </AnyPermissionGate>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          {/* Call Notes: Only Sales Agents can add call notes */}
-                          {isSalesAgent && (
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="gap-1"
-                              onClick={() => {
-                                setSelectedLead(lead);
-                                setIsCallNotesModalOpen(true);
-                              }}
-                            >
-                              <Phone className="h-3 w-3" />
-                              Call Notes
-                            </Button>
-                          )}
-                          {/* View Notes: All roles can view call notes */}
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="gap-1"
-                            onClick={() => {
-                              setSelectedLead(lead);
-                              setShowViewAllCallNotesModal(true);
-                            }}
-                          >
-                            <ClipboardList className="h-3 w-3" />
-                            View Notes
-                          </Button>
-                          {/* Pre-Screening: Editable for Sales Agents, View-only for Leads/Heads */}
-                          {isSalesAgent ? (
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="gap-1"
-                              onClick={() => handlePreScreening(lead)}
-                            >
-                              <FileText className="h-3 w-3" />
-                              Pre-Screening
-                            </Button>
-                          ) : (
-                            lead.preScreening && (
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="gap-1"
-                                onClick={() => {
-                                  setSelectedLead(lead);
-                                  setShowPreScreeningViewModal(true);
-                                }}
-                              >
-                                <Eye className="h-3 w-3" />
-                                View Pre-Screening
-                              </Button>
-                            )
-                          )}
-                          {/* Flag Button */}
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="gap-1"
-                            onClick={() => {
-                              setSelectedLead(lead);
-                              setShowFlagModal(true);
-                            }}
-                          >
-                            <Flag className={`h-3 w-3 ${
-                              lead.flag 
-                                ? lead.flag.type === 'red' ? 'text-red-600' : 
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1.5">
+                              <Mail className="h-3.5 w-3.5 text-textMuted flex-shrink-0" />
+                              <p className="text-xs text-textMuted truncate max-w-[200px]">{lead.email || 'N/A'}</p>
+                            </div>
+                            {lead.phone && (
+                              <div className="flex items-center gap-1.5">
+                                <Phone className="h-3.5 w-3.5 text-textMuted flex-shrink-0" />
+                                <p className="text-xs text-textMuted">{lead.phone}</p>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                            {lead.source || 'N/A'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex flex-col gap-1.5">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 w-fit">
+                              {lead.pipelineStage?.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase()) || 'Primary Screening'}
+                            </span>
+                            {lead.flag && (
+                              <div className="flex items-center gap-1">
+                                <Flag className={`h-3 w-3 ${
+                                  lead.flag.type === 'red' ? 'text-red-600' : 
                                   lead.flag.type === 'green' ? 'text-green-600' : 
                                   'text-blue-600'
-                                : 'text-textMuted'
-                            }`} />
-                            Flag
-                          </Button>
-                          {/* Booking Options Menu */}
-                          {isSalesAgent && (
-                            <BookingOptionsMenu 
-                              lead={lead}
-                              onSuccess={() => {
-                                // Refresh leads after booking - lead will move to demo_and_mentor_screening stage
-                                const fetchLeads = async () => {
-                                  try {
-                                    const response = await leadAPI.getAllLeads();
-                                    if (response.success && response.data.leads) {
-                                      let filteredLeads;
-                                      if (isSalesAgent && userEmail) {
-                                        filteredLeads = response.data.leads.filter(lead => 
-                                          lead.assignedTo === userEmail && 
-                                          lead.pipelineStage === 'primary_screening'
-                                        );
-                                      } else if (isSalesLead) {
-                                        filteredLeads = response.data.leads.filter(lead => 
-                                          (lead.pipelineStage === 'primary_screening' || !lead.pipelineStage) &&
-                                          (!lead.assignedTo || lead.assignedTo === '')
-                                        );
-                                      } else {
-                                        filteredLeads = [];
-                                      }
-                                      setLeads(filteredLeads);
-                                    }
-                                  } catch (error) {
-                                    console.error('Error refreshing leads:', error);
-                                  }
-                                };
-                                fetchLeads();
-                                toast.success("Meeting booked! Lead moved to Meetings & Counselling page.");
-                              }}
-                            />
+                                }`} />
+                                <span className={`text-xs font-medium ${
+                                  lead.flag.type === 'red' ? 'text-red-600' : 
+                                  lead.flag.type === 'green' ? 'text-green-600' : 
+                                  'text-blue-600'
+                                }`}>
+                                  {lead.flag.type === 'red' ? 'Red Flag' : lead.flag.type === 'green' ? 'Green Flag' : 'Blue Flag'}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {lead.preScreening ? (
+                            <div className="flex items-center gap-2">
+                              <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-gradient-to-r from-brand via-brand-dark to-brand transition-all duration-300"
+                                  style={{ width: `${calculateCompletionPercentage(lead.preScreening)}%` }}
+                                />
+                              </div>
+                              <span className="text-xs font-medium text-text">{calculateCompletionPercentage(lead.preScreening)}%</span>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-textMuted">Not started</span>
                           )}
-                          <AnyPermissionGate permissions={[PERMISSIONS.SALES_MANAGE_TEAM]}>
+                        </td>
+                        <AnyPermissionGate permissions={[PERMISSIONS.SALES_MANAGE_TEAM]}>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {lead.assignedTo ? (
+                              <div className="flex items-center gap-2">
+                                <div className="flex items-center justify-center w-7 h-7 rounded-full bg-brand-100 text-brand-700 text-xs font-semibold flex-shrink-0">
+                                  {getAssignedName(lead.assignedTo).charAt(0).toUpperCase()}
+                                </div>
+                                <span className="text-sm font-medium text-text">{getAssignedName(lead.assignedTo)}</span>
+                              </div>
+                            ) : (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                Unassigned
+                              </span>
+                            )}
+                          </td>
+                        </AnyPermissionGate>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <AnyPermissionGate permissions={[PERMISSIONS.SALES_MANAGE_TEAM]}>
+                              <Button 
+                                variant={lead.assignedTo ? "ghost" : "secondary"}
+                                size="sm" 
+                                className="gap-1.5"
+                                onClick={() => handleAssign(lead)}
+                              >
+                                <Users className="h-4 w-4" />
+                                {lead.assignedTo ? "Reassign" : "Assign"}
+                              </Button>
+                            </AnyPermissionGate>
                             <Button 
                               variant="ghost" 
                               size="sm" 
-                              className="gap-1"
-                              onClick={() => handleAssign(lead)}
+                              className="gap-1.5"
+                              onClick={() => {
+                                setSelectedLead(lead);
+                                setShowViewAllCallNotesModal(true);
+                              }}
+                              title="View Details"
                             >
-                              <Users className="h-3 w-3" />
-                              {lead.assignedTo ? "Reassign" : "Assign"}
+                              <Eye className="h-4 w-4" />
                             </Button>
-                          </AnyPermissionGate>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Pagination */}
       {filteredLeads.length > 0 && (
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          totalItems={filteredLeads.length}
-          itemsPerPage={itemsPerPage}
-          onPageChange={setCurrentPage}
-        />
+        <div className="flex items-center justify-between border-t border-brintelli-border px-4 py-3">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-textMuted">Rows per page:</span>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => {
+                setItemsPerPage(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="rounded border border-brintelli-border bg-brintelli-card px-2 py-1 text-sm text-text focus:border-brand-500 focus:outline-none"
+            >
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+            </select>
+            <span className="text-sm text-textMuted">
+              {startIndex + 1}-{Math.min(endIndex, filteredLeads.length)} of {filteredLeads.length}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm text-text">
+              Page {currentPage} of {totalPages}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
       )}
 
       {/* Call Notes Modal */}
@@ -1074,30 +1270,40 @@ const NewLeads = () => {
               <h3 className="text-lg font-semibold text-text">Course Interest</h3>
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-text">Primary Course Interest</label>
-                  <input
-                    type="text"
+                  <label className="mb-1 block text-sm font-medium text-text">Primary Program</label>
+                  <select
                     value={preScreeningData.courseInterest.primary}
                     onChange={(e) => setPreScreeningData({
                       ...preScreeningData,
                       courseInterest: { ...preScreeningData.courseInterest, primary: e.target.value }
                     })}
-                    placeholder="e.g., Full Stack Development"
                     className="w-full rounded-xl border border-brintelli-border bg-brintelli-baseAlt px-4 py-2 text-sm focus:border-brand-500 focus:outline-none"
-                  />
+                  >
+                    <option value="">Select a program...</option>
+                    {programs.map(program => (
+                      <option key={program.id || program._id} value={program.name || program.title}>
+                        {program.name || program.title}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-text">Secondary Interest</label>
-                  <input
-                    type="text"
+                  <label className="mb-1 block text-sm font-medium text-text">Secondary Program</label>
+                  <select
                     value={preScreeningData.courseInterest.secondary}
                     onChange={(e) => setPreScreeningData({
                       ...preScreeningData,
                       courseInterest: { ...preScreeningData.courseInterest, secondary: e.target.value }
                     })}
-                    placeholder="e.g., Data Science"
                     className="w-full rounded-xl border border-brintelli-border bg-brintelli-baseAlt px-4 py-2 text-sm focus:border-brand-500 focus:outline-none"
-                  />
+                  >
+                    <option value="">Select a program...</option>
+                    {programs.map(program => (
+                      <option key={program.id || program._id} value={program.name || program.title}>
+                        {program.name || program.title}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium text-text">Preferred Batch</label>
@@ -1511,6 +1717,71 @@ const NewLeads = () => {
           </div>
         </Modal>
       )}
+
+      {/* Bulk Assign Modal */}
+      <Modal
+        isOpen={showBulkAssignModal}
+        onClose={() => {
+          setShowBulkAssignModal(false);
+          setBulkAssignData({ assignedTo: "" });
+        }}
+        title={`Bulk Assign ${selectedLeads.size} Lead${selectedLeads.size > 1 ? 's' : ''}`}
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm">
+            <p className="font-medium text-blue-900">
+              You are about to assign {selectedLeads.size} lead{selectedLeads.size > 1 ? 's' : ''} to a team member.
+            </p>
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-text">
+              Select Team Member
+            </label>
+            {loadingTeam ? (
+              <div className="flex items-center justify-center py-4">
+                <RefreshCw className="h-5 w-5 animate-spin text-textMuted" />
+                <span className="ml-2 text-sm text-textMuted">Loading team...</span>
+              </div>
+            ) : salesTeam.length === 0 ? (
+              <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-800">
+                <p className="mb-2">No team members found.</p>
+                <Button size="sm" onClick={() => dispatch(fetchSalesTeam())} className="mt-2">
+                  <RefreshCw className="h-4 w-4" />
+                  Refresh Team
+                </Button>
+              </div>
+            ) : (
+              <select
+                value={bulkAssignData.assignedTo}
+                onChange={(e) => setBulkAssignData({ ...bulkAssignData, assignedTo: e.target.value })}
+                className="w-full rounded-xl border border-brintelli-border bg-brintelli-baseAlt px-4 py-2 text-sm focus:border-brand-500 focus:outline-none"
+              >
+                <option value="">Select a team member...</option>
+                {salesTeam.map((member) => (
+                  <option key={member.email || member.id} value={member.email}>
+                    {member.name || member.fullName} ({member.role})
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+          <div className="flex justify-end gap-2 pt-4">
+            <Button 
+              variant="ghost" 
+              onClick={() => {
+                setShowBulkAssignModal(false);
+                setBulkAssignData({ assignedTo: "" });
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleBulkAssign} disabled={!bulkAssignData.assignedTo}>
+              Assign {selectedLeads.size} Lead{selectedLeads.size > 1 ? 's' : ''}
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Flag Lead Modal */}
       <FlagLeadModal

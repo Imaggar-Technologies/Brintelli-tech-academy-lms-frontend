@@ -12,7 +12,6 @@ import {
   Wallet,
   Settings,
   UsersRound,
-  ListTodo,
   BarChart3,
   TrendingUp,
   CalendarClock,
@@ -21,6 +20,7 @@ import {
   ClipboardCheck,
   XCircle,
   CheckCircle,
+  Gift,
 } from "lucide-react";
 
 /**
@@ -177,6 +177,24 @@ export const salesNav = [
   },
 
   // ============================================
+  // SCHOLARSHIP AND OFFERS (All Roles)
+  // ============================================
+  {
+    id: "scholarship-offers",
+    label: "Scholarship and Offers",
+    icon: Gift,
+    path: "/sales/scholarship-and-offers",
+    pageId: "sales-scholarship-offers",
+    permissions: ["sales:agent:view", "sales:lead:view", "sales:head:view"],
+    // RBAC: All sales roles
+    // ABAC:
+    // - Agent: Can apply scholarships and send offers for their completed assessments
+    // - Lead: Can manage scholarships and offers for team leads
+    // - Head: Department-wide scholarship and offer tracking
+    // WORKFLOW: Completed assessments move here, where scholarships can be applied and offers sent
+  },
+
+  // ============================================
   // DEALS & CONVERSIONS (Parent Menu - Lead & Head)
   // ============================================
   {
@@ -326,21 +344,6 @@ export const salesNav = [
     // RBAC: Only Sales Head/Admin
     // ABAC: Department-wide analytics
     // WORKFLOW: Revenue tracking, conversion analysis, performance reports
-  },
-
-  // ============================================
-  // TASKS (Sales Agent Only)
-  // ============================================
-  {
-    id: "tasks",
-    label: "Tasks",
-    icon: ListTodo,
-    path: "/sales/tasks",
-    pageId: "sales-tasks",
-    permissions: ["sales:agent:view"],
-    // RBAC: Only Sales Agent
-    // ABAC: Tasks assigned to the agent
-    // WORKFLOW: Personal task management for agents
   },
 
   // ============================================

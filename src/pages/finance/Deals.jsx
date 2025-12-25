@@ -368,7 +368,7 @@ const FinanceDeals = () => {
                             <CreditCard className="h-3 w-3" />
                             {offer.paymentStatus}
                             {offer.paymentAmount > 0 && (
-                              <span className="ml-1">(₹{offer.paymentAmount.toLocaleString()})</span>
+                              <span className="ml-1">(₹{Math.round(offer.paymentAmount).toLocaleString('en-IN')})</span>
                             )}
                           </span>
                         ) : (

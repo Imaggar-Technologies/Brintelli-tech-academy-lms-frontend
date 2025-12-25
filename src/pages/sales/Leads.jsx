@@ -601,30 +601,30 @@ const SalesLeads = () => {
             </div>
           </div>
         </div>
-        <div className="overflow-x-auto">
+        <div>
           {loadingLeads ? (
             <div className="flex items-center justify-center py-12">
               <RefreshCw className="h-6 w-6 animate-spin text-brand" />
               <span className="ml-3 text-textMuted">Loading leads...</span>
             </div>
           ) : (
-          <table className="w-full">
-            <thead className="bg-brintelli-baseAlt">
+          <table className="w-full divide-y divide-brintelli-border">
+            <thead className="bg-brintelli-baseAlt/50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-textMuted">Name</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-textMuted">Contact</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-textMuted">Source</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-textMuted">Stage</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-textMuted">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-textMuted">Value</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-textMuted">Pre-Screening</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Name</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Contact</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Source</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Stage</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Status</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Value</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Pre-Screening</th>
                 <AnyPermissionGate permissions={[PERMISSIONS.SALES_MANAGE_TEAM, PERMISSIONS.SALES_APPROVE]}>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-textMuted">Assigned To</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Assigned To</th>
                 </AnyPermissionGate>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-textMuted">Actions</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-brintelli-border">
+            <tbody className="divide-y divide-brintelli-border/30">
               {(() => {
                 // Filter leads based on search (all leads here are already unassigned)
                 let filteredLeads = leads;
@@ -643,7 +643,9 @@ const SalesLeads = () => {
                   const colSpan = isSalesAgent ? 8 : 9; // Adjust based on whether "Assigned To" column is visible
                   return (
                     <tr>
-                      <td colSpan={colSpan} className="px-4 py-8 text-center text-textMuted">
+                      <td colSpan={colSpan} className="px-6 py-16 text-center">
+                        <div className="flex flex-col items-center justify-center">
+                          <p className="text-sm font-medium text-textMuted">
                         {searchTerm 
                           ? (isSalesAgent 
                               ? "No leads assigned to you match your search."
@@ -651,31 +653,33 @@ const SalesLeads = () => {
                           : (isSalesAgent
                               ? "No leads assigned to you yet."
                               : "No unassigned leads found. All leads have been assigned.")}
+                          </p>
+                        </div>
                       </td>
                     </tr>
                   );
                 }
                 
                 return filteredLeads.map((lead, idx) => (
-                <tr key={idx} className="transition hover:bg-brintelli-baseAlt">
-                  <td className="px-4 py-3">
+                <tr key={idx} className="transition-colors duration-150 hover:bg-brintelli-baseAlt/30">
+                  <td className="px-6 py-4 whitespace-nowrap">
                     <p className="font-semibold text-text">{lead.name}</p>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-6 py-4 whitespace-nowrap">
                     <p className="text-xs text-textMuted">{lead.email}</p>
                     <p className="text-xs text-textMuted">{lead.phone}</p>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-6 py-4 whitespace-nowrap">
                     <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-700">
                       {lead.source}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`rounded-full px-2 py-1 text-xs font-semibold ${getStageColor(lead.pipelineStage)}`}>
                       {getStageName(lead.pipelineStage)}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-6 py-4 whitespace-nowrap">
                     {(() => {
                       const statusDetails = getStatusDetails(lead);
                       return (
@@ -685,10 +689,10 @@ const SalesLeads = () => {
                       );
                     })()}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-6 py-4 whitespace-nowrap">
                     <p className="font-semibold text-text">{lead.value}</p>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-6 py-4 whitespace-nowrap">
                     {(() => {
                       const completion = calculateCompletionPercentage(lead.preScreening);
                       
@@ -743,7 +747,7 @@ const SalesLeads = () => {
                     })()}
                   </td>
                   <AnyPermissionGate permissions={[PERMISSIONS.SALES_MANAGE_TEAM, PERMISSIONS.SALES_APPROVE]}>
-                    <td className="px-4 py-3">
+                    <td className="px-6 py-4 whitespace-nowrap">
                       {lead.assignedTo ? (
                         <span className="text-xs text-textSoft">{getAssignedName(lead.assignedTo)}</span>
                       ) : (
@@ -751,7 +755,7 @@ const SalesLeads = () => {
                       )}
                     </td>
                   </AnyPermissionGate>
-                  <td className="px-4 py-3">
+                  <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-2">
                       <Button 
                         variant="ghost" 

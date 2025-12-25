@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Phone, Calendar, MessageSquare, FileText, Video, Clock, CheckCircle, XCircle, Search, RefreshCw, ClipboardList, Edit2, Plus } from "lucide-react";
+import { Phone, Calendar, MessageSquare, FileText, Video, Clock, CheckCircle, XCircle, Search, RefreshCw, ClipboardList, Edit2, Plus, MoreVertical } from "lucide-react";
 import PageHeader from "../../components/PageHeader";
 import Button from "../../components/Button";
 import StatsCard from "../../components/StatsCard";
@@ -21,12 +21,13 @@ const MeetingsCounselling = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [selectedLead, setSelectedLead] = useState(null);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [showAssessmentModal, setShowAssessmentModal] = useState(false);
   const [meetingType, setMeetingType] = useState(null); // 'demo' or 'counseling'
+  const [openDropdownId, setOpenDropdownId] = useState(null);
 
   const isSalesAgent = currentUser?.role === 'sales_agent';
   const userEmail = currentUser?.email;
@@ -35,6 +36,13 @@ const MeetingsCounselling = () => {
   useEffect(() => {
     dispatch(fetchSalesTeam());
   }, [dispatch]);
+
+  // Close dropdown when modals open
+  useEffect(() => {
+    if (showReportModal || showRescheduleModal || showAssessmentModal) {
+      setOpenDropdownId(null);
+    }
+  }, [showReportModal, showRescheduleModal, showAssessmentModal]);
 
   // Fetch leads with booked meetings
   useEffect(() => {
@@ -83,10 +91,34 @@ const MeetingsCounselling = () => {
     );
   });
 
-  // Pagination
-  const totalPages = Math.ceil(filteredLeads.length / itemsPerPage);
+  // Generate all rows from leads (each lead can have multiple rows: demo, counseling, or no meeting)
+  const allRows = filteredLeads.flatMap((lead, idx) => {
+    const hasDemo = lead.demoBooked;
+    const hasCounseling = lead.counselingBooked;
+    const rows = [];
+
+    // Show leads without meetings if they're in demo stage but no meetings booked
+    if (!hasDemo && !hasCounseling && lead.pipelineStage === 'demo_and_mentor_screening') {
+      rows.push({ type: 'no-meeting', lead, idx: `${lead.id || idx}-no-meeting` });
+    }
+
+    // Demo meeting row
+    if (hasDemo) {
+      rows.push({ type: 'demo', lead, idx: `${lead.id || idx}-demo` });
+    }
+
+    // Counseling meeting row
+    if (hasCounseling) {
+      rows.push({ type: 'counseling', lead, idx: `${lead.id || idx}-counseling` });
+    }
+
+    return rows;
+  });
+
+  // Pagination - apply to rows, not leads
+  const totalPages = Math.ceil(allRows.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedLeads = filteredLeads.slice(startIndex, startIndex + itemsPerPage);
+  const paginatedRows = allRows.slice(startIndex, startIndex + itemsPerPage);
 
   // Stats
   const scheduledCount = leads.filter(l => {
@@ -144,6 +176,12 @@ const MeetingsCounselling = () => {
   const handleScheduleAssessment = (lead) => {
     setSelectedLead(lead);
     setShowAssessmentModal(true);
+  };
+
+  const handleAssessmentSuccess = () => {
+    // Refresh leads after assessment scheduling
+    // Lead should move to assessments stage, so it will be filtered out
+    handleRefresh();
   };
 
   const handleReportSuccess = () => {
@@ -241,55 +279,58 @@ const MeetingsCounselling = () => {
             <span className="ml-3 text-textMuted">Loading meetings...</span>
           </div>
         ) : (
-          <table className="w-full">
-            <thead className="bg-brintelli-baseAlt">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-textMuted">Lead</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-textMuted">Meeting Type</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-textMuted">Date & Time</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-textMuted">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-textMuted">Report</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-textMuted">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-brintelli-border">
-              {paginatedLeads.length === 0 ? (
+          <div>
+            <table className="w-full divide-y divide-brintelli-border">
+              <thead className="bg-brintelli-baseAlt/50">
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-textMuted">
-                    {searchTerm ? "No meetings match your search." : "No meetings scheduled."}
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Lead</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Meeting Type</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Date & Time</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Status</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Report</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-brintelli-card divide-y divide-brintelli-border/30">
+              {paginatedRows.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-16 text-center">
+                    <div className="flex flex-col items-center justify-center">
+                      <p className="text-sm font-medium text-textMuted">
+                        {searchTerm ? "No meetings match your search." : "No meetings scheduled."}
+                      </p>
+                    </div>
                   </td>
                 </tr>
               ) : (
                 <>
-                  {paginatedLeads.flatMap((lead, idx) => {
-                    const hasDemo = lead.demoBooked;
-                    const hasCounseling = lead.counselingBooked;
-                    const rows = [];
+                  {paginatedRows.map((row) => {
+                    const { lead, idx, type } = row;
 
-                    // Show leads without meetings if they're in demo stage but no meetings booked
-                    if (!hasDemo && !hasCounseling && lead.pipelineStage === 'demo_and_mentor_screening') {
-                      rows.push(
-                        <tr key={`${lead.id || idx}-no-meeting`} className="transition hover:bg-brintelli-baseAlt border-b-2 border-dashed border-yellow-300">
-                          <td className="px-4 py-3">
+                    // No Meeting Row
+                    if (type === 'no-meeting') {
+                      return (
+                        <tr key={idx} className="transition-colors duration-150 hover:bg-brintelli-baseAlt/40 border-b-2 border-dashed border-yellow-300">
+                          <td className="px-6 py-4 whitespace-nowrap">
                             <p className="font-semibold text-text">{lead.name}</p>
                             <p className="text-xs text-textMuted">{lead.email}</p>
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-6 py-4 whitespace-nowrap">
                             <span className="text-xs text-textMuted italic">No meeting booked</span>
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-6 py-4 whitespace-nowrap">
                             <span className="text-xs text-textMuted">-</span>
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-6 py-4 whitespace-nowrap">
                             <span className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold bg-yellow-100 text-yellow-700">
                               <Calendar className="h-3 w-3" />
                               Needs Booking
                             </span>
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-6 py-4 whitespace-nowrap">
                             <span className="text-xs text-textMuted italic">-</span>
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-6 py-4 whitespace-nowrap">
                             <BookingOptionsMenu 
                               lead={lead}
                               onSuccess={handleRefresh}
@@ -300,20 +341,20 @@ const MeetingsCounselling = () => {
                     }
                     
                     // Demo Meeting Row
-                    if (hasDemo) {
-                      rows.push(
-                        <tr key={`${lead.id || idx}-demo`} className="transition hover:bg-brintelli-baseAlt">
-                          <td className="px-4 py-3">
+                    if (type === 'demo') {
+                      return (
+                        <tr key={idx} className="transition-colors duration-150 hover:bg-brintelli-baseAlt/40">
+                          <td className="px-6 py-4 whitespace-nowrap">
                             <p className="font-semibold text-text">{lead.name}</p>
                             <p className="text-xs text-textMuted">{lead.email}</p>
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center gap-2">
                               <Video className="h-4 w-4 text-brand" />
                               <span className="text-sm text-text">Demo</span>
                             </div>
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center gap-2 text-sm">
                               <Calendar className="h-3.5 w-3.5 text-textMuted" />
                               <span className="text-text">{formatDate(lead.demoDate)}</span>
@@ -331,7 +372,7 @@ const MeetingsCounselling = () => {
                               </a>
                             )}
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-6 py-4 whitespace-nowrap">
                             {lead.demoReport?.submitted ? (
                               <span className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold bg-green-100 text-green-700">
                                 <CheckCircle className="h-3 w-3" />
@@ -349,7 +390,7 @@ const MeetingsCounselling = () => {
                               </span>
                             )}
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-6 py-4 whitespace-nowrap">
                             {lead.demoReport?.submitted ? (
                               <span className="text-xs text-textMuted">
                                 {new Date(lead.demoReport.submittedAt).toLocaleDateString()}
@@ -358,36 +399,70 @@ const MeetingsCounselling = () => {
                               <span className="text-xs text-textMuted italic">Not submitted</span>
                             )}
                           </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2 flex-wrap">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="relative">
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 className="gap-1"
-                                onClick={() => handleOpenReport(lead, 'demo')}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenDropdownId(openDropdownId === idx ? null : idx);
+                                }}
                               >
-                                <FileText className="h-3 w-3" />
-                                {lead.demoReport?.submitted ? "View Report" : "Submit Report"}
+                                <MoreVertical className="h-4 w-4" />
                               </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="gap-1"
-                                onClick={() => handleReschedule(lead, 'demo')}
-                              >
-                                <Edit2 className="h-3 w-3" />
-                                Reschedule
-                              </Button>
-                              {lead.demoReport?.submitted && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="gap-1"
-                                  onClick={() => handleScheduleAssessment(lead)}
-                                >
-                                  <ClipboardList className="h-3 w-3" />
-                                  Schedule Assessment
-                                </Button>
+                              {openDropdownId === idx && (
+                                <>
+                                  <div 
+                                    className="fixed inset-0 z-40" 
+                                    onClick={() => setOpenDropdownId(null)}
+                                  />
+                                  <div className="absolute right-0 top-full mt-1 w-56 bg-white rounded-lg shadow-lg border border-brintelli-border z-50">
+                                    <div className="py-1">
+                                      {/* Submit/View Report */}
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleOpenReport(lead, 'demo');
+                                          setOpenDropdownId(null);
+                                        }}
+                                        className="w-full px-4 py-2 text-left text-sm text-text hover:bg-brintelli-baseAlt transition-colors flex items-center gap-2"
+                                      >
+                                        <FileText className="h-4 w-4" />
+                                        {lead.demoReport?.submitted ? "View Report" : "Submit Report"}
+                                      </button>
+                                      
+                                      {/* Reschedule */}
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleReschedule(lead, 'demo');
+                                          setOpenDropdownId(null);
+                                        }}
+                                        className="w-full px-4 py-2 text-left text-sm text-text hover:bg-brintelli-baseAlt transition-colors flex items-center gap-2"
+                                      >
+                                        <Edit2 className="h-4 w-4" />
+                                        Reschedule
+                                      </button>
+                                      
+                                      {/* Schedule Assessment (only if report submitted) */}
+                                      {lead.demoReport?.submitted && (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleScheduleAssessment(lead);
+                                            setOpenDropdownId(null);
+                                          }}
+                                          className="w-full px-4 py-2 text-left text-sm text-text hover:bg-brintelli-baseAlt transition-colors flex items-center gap-2 border-t border-brintelli-border"
+                                        >
+                                          <ClipboardList className="h-4 w-4" />
+                                          Schedule Assessment
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </>
                               )}
                             </div>
                           </td>
@@ -396,20 +471,20 @@ const MeetingsCounselling = () => {
                     }
 
                     // Counseling Meeting Row
-                    if (hasCounseling) {
-                      rows.push(
-                        <tr key={`${lead.id || idx}-counseling`} className="transition hover:bg-brintelli-baseAlt">
-                          <td className="px-4 py-3">
+                    if (type === 'counseling') {
+                      return (
+                        <tr key={idx} className="transition-colors duration-150 hover:bg-brintelli-baseAlt/40">
+                          <td className="px-6 py-4 whitespace-nowrap">
                             <p className="font-semibold text-text">{lead.name}</p>
                             <p className="text-xs text-textMuted">{lead.email}</p>
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center gap-2">
                               <Phone className="h-4 w-4 text-brand" />
                               <span className="text-sm text-text">Counseling</span>
                             </div>
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center gap-2 text-sm">
                               <Calendar className="h-3.5 w-3.5 text-textMuted" />
                               <span className="text-text">{formatDate(lead.counselingDate)}</span>
@@ -427,7 +502,7 @@ const MeetingsCounselling = () => {
                               </a>
                             )}
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-6 py-4 whitespace-nowrap">
                             {lead.counselingReport?.submitted ? (
                               <span className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold bg-green-100 text-green-700">
                                 <CheckCircle className="h-3 w-3" />
@@ -445,7 +520,7 @@ const MeetingsCounselling = () => {
                               </span>
                             )}
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-6 py-4 whitespace-nowrap">
                             {lead.counselingReport?.submitted ? (
                               <span className="text-xs text-textMuted">
                                 {new Date(lead.counselingReport.submittedAt).toLocaleDateString()}
@@ -454,36 +529,70 @@ const MeetingsCounselling = () => {
                               <span className="text-xs text-textMuted italic">Not submitted</span>
                             )}
                           </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2 flex-wrap">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="relative">
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 className="gap-1"
-                                onClick={() => handleOpenReport(lead, 'counseling')}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenDropdownId(openDropdownId === idx ? null : idx);
+                                }}
                               >
-                                <FileText className="h-3 w-3" />
-                                {lead.counselingReport?.submitted ? "View Report" : "Submit Report"}
+                                <MoreVertical className="h-4 w-4" />
                               </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="gap-1"
-                                onClick={() => handleReschedule(lead, 'counseling')}
-                              >
-                                <Edit2 className="h-3 w-3" />
-                                Reschedule
-                              </Button>
-                              {lead.counselingReport?.submitted && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="gap-1"
-                                  onClick={() => handleScheduleAssessment(lead)}
-                                >
-                                  <ClipboardList className="h-3 w-3" />
-                                  Schedule Assessment
-                                </Button>
+                              {openDropdownId === idx && (
+                                <>
+                                  <div 
+                                    className="fixed inset-0 z-40" 
+                                    onClick={() => setOpenDropdownId(null)}
+                                  />
+                                  <div className="absolute right-0 top-full mt-1 w-56 bg-white rounded-lg shadow-lg border border-brintelli-border z-50">
+                                    <div className="py-1">
+                                      {/* Submit/View Report */}
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleOpenReport(lead, 'counseling');
+                                          setOpenDropdownId(null);
+                                        }}
+                                        className="w-full px-4 py-2 text-left text-sm text-text hover:bg-brintelli-baseAlt transition-colors flex items-center gap-2"
+                                      >
+                                        <FileText className="h-4 w-4" />
+                                        {lead.counselingReport?.submitted ? "View Report" : "Submit Report"}
+                                      </button>
+                                      
+                                      {/* Reschedule */}
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleReschedule(lead, 'counseling');
+                                          setOpenDropdownId(null);
+                                        }}
+                                        className="w-full px-4 py-2 text-left text-sm text-text hover:bg-brintelli-baseAlt transition-colors flex items-center gap-2"
+                                      >
+                                        <Edit2 className="h-4 w-4" />
+                                        Reschedule
+                                      </button>
+                                      
+                                      {/* Schedule Assessment (only if report submitted) */}
+                                      {lead.counselingReport?.submitted && (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleScheduleAssessment(lead);
+                                            setOpenDropdownId(null);
+                                          }}
+                                          className="w-full px-4 py-2 text-left text-sm text-text hover:bg-brintelli-baseAlt transition-colors flex items-center gap-2 border-t border-brintelli-border"
+                                        >
+                                          <ClipboardList className="h-4 w-4" />
+                                          Schedule Assessment
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </>
                               )}
                             </div>
                           </td>
@@ -491,22 +600,27 @@ const MeetingsCounselling = () => {
                       );
                     }
 
-                    return rows;
+                    return null;
                   })}
                 </>
               )}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          </div>
         )}
 
         {/* Pagination */}
-        {filteredLeads.length > 0 && (
+        {allRows.length > 0 && (
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
-            totalItems={filteredLeads.length}
+            totalItems={allRows.length}
             itemsPerPage={itemsPerPage}
             onPageChange={setCurrentPage}
+            onItemsPerPageChange={(newItemsPerPage) => {
+              setItemsPerPage(newItemsPerPage);
+              setCurrentPage(1);
+            }}
           />
         )}
       </div>

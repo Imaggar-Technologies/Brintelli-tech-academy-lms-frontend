@@ -3,6 +3,7 @@ import { DollarSign, BookOpen, TrendingUp } from "lucide-react";
 import Modal from "./Modal";
 import Button from "./Button";
 import { offerAPI } from "../api/offer";
+import { programAPI } from "../api/program";
 import toast from "react-hot-toast";
 
 const ReleaseOfferModal = ({ isOpen, onClose, lead, assessmentResult, scholarshipRequest, onSuccess }) => {
@@ -10,49 +11,85 @@ const ReleaseOfferModal = ({ isOpen, onClose, lead, assessmentResult, scholarshi
   const [courseId, setCourseId] = useState("");
   const [basePrice, setBasePrice] = useState("");
   const [offeredPrice, setOfferedPrice] = useState("");
-  const [courses, setCourses] = useState([]);
+  const [programs, setPrograms] = useState([]);
 
-  // Mock courses - in production, fetch from API
+  // Fetch programs from API
   useEffect(() => {
-    // TODO: Replace with actual course API call
-    const mockCourses = [
-      { id: "1", name: "Full Stack Web Development", basePrice: 50000, levels: ["BEGINNER", "INTERMEDIATE", "EXPERT"] },
-      { id: "2", name: "Data Science & Machine Learning", basePrice: 60000, levels: ["INTERMEDIATE", "EXPERT"] },
-      { id: "3", name: "Cloud Computing & DevOps", basePrice: 55000, levels: ["BEGINNER", "INTERMEDIATE", "EXPERT"] },
-      { id: "4", name: "Mobile App Development", basePrice: 52000, levels: ["BEGINNER", "INTERMEDIATE"] },
-      { id: "5", name: "Cybersecurity", basePrice: 65000, levels: ["INTERMEDIATE", "EXPERT"] },
-    ];
-    setCourses(mockCourses);
-  }, []);
-
-  useEffect(() => {
-    if (assessmentResult?.level && courses.length > 0) {
-      // Filter courses by level
-      const filteredCourses = courses.filter(course => 
-        course.levels.includes(assessmentResult.level)
-      );
-      if (filteredCourses.length > 0 && !courseId) {
-        setCourseId(filteredCourses[0].id);
-        setBasePrice(filteredCourses[0].basePrice.toString());
-        
-        // If scholarship is approved, use the final price from scholarship
-        // Otherwise, use base price
-        if (scholarshipRequest && scholarshipRequest.status === 'APPROVED' && scholarshipRequest.offer) {
-          setOfferedPrice(scholarshipRequest.offer.offeredPrice?.toString() || filteredCourses[0].basePrice.toString());
-        } else {
-          setOfferedPrice(filteredCourses[0].basePrice.toString());
+    const fetchPrograms = async () => {
+      try {
+        const response = await programAPI.getAllPrograms({ status: 'ACTIVE' });
+        if (response.success && response.data.programs) {
+          // Map programs to the expected format
+          const formattedPrograms = response.data.programs.map(program => ({
+            id: program.id || program._id,
+            name: program.name || program.title,
+            basePrice: program.price || program.basePrice || program.fee || 0,
+            levels: ["BEGINNER", "INTERMEDIATE", "EXPERT"]
+          }));
+          setPrograms(formattedPrograms);
         }
+      } catch (error) {
+        console.error('Error fetching programs:', error);
+        toast.error('Failed to load programs');
+      }
+    };
+    
+    if (isOpen) {
+      fetchPrograms();
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (programs.length > 0 && !courseId) {
+      // If scholarship is approved, calculate final price from scholarship amount
+      if (scholarshipRequest && scholarshipRequest.status === 'APPROVED') {
+        // Use the program from the offer if available, otherwise use first program
+        const offerProgramId = scholarshipRequest.offer?.courseId || scholarshipRequest.programId;
+        const selectedProgram = offerProgramId 
+          ? programs.find(p => p.id === offerProgramId || p._id === offerProgramId)
+          : programs[0];
+        
+        if (selectedProgram) {
+          setCourseId(selectedProgram.id);
+          const base = scholarshipRequest.offer?.basePrice || selectedProgram.basePrice || selectedProgram.price || selectedProgram.fee || 0;
+          setBasePrice(base.toString());
+          // Calculate final price: basePrice - requestedAmount (approved amount)
+          const requestedAmount = scholarshipRequest.requestedAmount || 0;
+          const finalPrice = Math.max(0, base - requestedAmount);
+          setOfferedPrice(finalPrice.toString());
+        } else {
+          // Fallback to first program
+          setCourseId(programs[0].id);
+          const base = scholarshipRequest.offer?.basePrice || programs[0].basePrice || programs[0].price || programs[0].fee || 0;
+          setBasePrice(base.toString());
+          const requestedAmount = scholarshipRequest.requestedAmount || 0;
+          const finalPrice = Math.max(0, base - requestedAmount);
+          setOfferedPrice(finalPrice.toString());
+        }
+      } else {
+        // No approved scholarship - use first program
+        setCourseId(programs[0].id);
+        setBasePrice((programs[0].basePrice || programs[0].price || programs[0].fee || 0).toString());
+        setOfferedPrice((programs[0].basePrice || programs[0].price || programs[0].fee || 0).toString());
       }
     }
-  }, [assessmentResult, courses, courseId, scholarshipRequest]);
+  }, [programs, courseId, scholarshipRequest]);
 
   const handleCourseChange = (e) => {
-    const selectedCourseId = e.target.value;
-    setCourseId(selectedCourseId);
-    const selectedCourse = courses.find(c => c.id === selectedCourseId);
-    if (selectedCourse) {
-      setBasePrice(selectedCourse.basePrice.toString());
-      setOfferedPrice(selectedCourse.basePrice.toString());
+    const selectedProgramId = e.target.value;
+    setCourseId(selectedProgramId);
+    const selectedProgram = programs.find(p => p.id === selectedProgramId);
+    if (selectedProgram) {
+      const base = selectedProgram.basePrice || selectedProgram.price || selectedProgram.fee || 0;
+      setBasePrice(base.toString());
+      // If scholarship is approved, calculate final price from scholarship amount
+      if (scholarshipRequest && scholarshipRequest.status === 'APPROVED') {
+        const requestedAmount = scholarshipRequest.requestedAmount || 0;
+        const finalPrice = Math.max(0, base - requestedAmount);
+        setOfferedPrice(finalPrice.toString());
+      } else {
+        setOfferedPrice(base.toString());
+      }
     }
   };
 
@@ -98,8 +135,8 @@ const ReleaseOfferModal = ({ isOpen, onClose, lead, assessmentResult, scholarshi
     }
   };
 
-  const selectedCourse = courses.find(c => c.id === courseId);
-  const discount = selectedCourse && basePrice && offeredPrice
+  const selectedProgram = programs.find(p => p.id === courseId);
+  const discount = selectedProgram && basePrice && offeredPrice
     ? ((parseFloat(basePrice) - parseFloat(offeredPrice)) / parseFloat(basePrice) * 100).toFixed(1)
     : 0;
 
@@ -143,11 +180,11 @@ const ReleaseOfferModal = ({ isOpen, onClose, lead, assessmentResult, scholarshi
           )}
         </div>
 
-        {/* Course Selection */}
+        {/* Program Selection */}
         <div>
           <label className="block text-sm font-semibold text-text mb-2">
             <BookOpen className="inline h-4 w-4 mr-1" />
-            Select Course
+            Select Program
           </label>
           <select
             value={courseId}
@@ -155,14 +192,12 @@ const ReleaseOfferModal = ({ isOpen, onClose, lead, assessmentResult, scholarshi
             className="w-full px-4 py-2 rounded-xl border border-brintelli-border bg-brintelli-baseAlt text-sm focus:border-brand-500 focus:outline-none"
             required
           >
-            <option value="">Select a course...</option>
-            {courses
-              .filter(course => !assessmentResult?.level || course.levels.includes(assessmentResult.level))
-              .map(course => (
-                <option key={course.id} value={course.id}>
-                  {course.name} - ₹{course.basePrice.toLocaleString()}
-                </option>
-              ))}
+            <option value="">Select a program...</option>
+            {programs.map(program => (
+              <option key={program.id} value={program.id}>
+                {program.name} - ₹{program.basePrice.toLocaleString()}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -193,14 +228,24 @@ const ReleaseOfferModal = ({ isOpen, onClose, lead, assessmentResult, scholarshi
           <input
             type="number"
             value={offeredPrice}
-            onChange={(e) => setOfferedPrice(e.target.value)}
-            className="w-full px-4 py-2 rounded-xl border border-brintelli-border bg-brintelli-baseAlt text-sm focus:border-brand-500 focus:outline-none"
+            onChange={(e) => {
+              // Only allow changes if scholarship is NOT approved
+              if (!(scholarshipRequest && scholarshipRequest.status === 'APPROVED' && scholarshipRequest.offer)) {
+                setOfferedPrice(e.target.value);
+              }
+            }}
+            className={`w-full px-4 py-2 rounded-xl border border-brintelli-border bg-brintelli-baseAlt text-sm focus:border-brand-500 focus:outline-none ${
+              scholarshipRequest && scholarshipRequest.status === 'APPROVED' && scholarshipRequest.offer
+                ? 'bg-gray-50 cursor-not-allowed'
+                : ''
+            }`}
             placeholder="Enter offered price"
             required
             min="0"
             step="0.01"
             max={basePrice}
             readOnly={scholarshipRequest && scholarshipRequest.status === 'APPROVED' && scholarshipRequest.offer}
+            disabled={scholarshipRequest && scholarshipRequest.status === 'APPROVED' && scholarshipRequest.offer}
           />
           {scholarshipRequest && scholarshipRequest.status === 'APPROVED' && (
             <p className="mt-1 text-xs text-green-600">

@@ -82,9 +82,11 @@ import PlacementDashboard from "../pages/placement/PlacementDashboard";
 import MentorDashboard from "../pages/mentor/Dashboard";
 
 // Program manager dashboard
-import ProgramManagerDashboard from "../pages/programManager/Dashboard";
+import ProgramManagerDashboard from "../pages/program-manager/Dashboard";
 import Programs from "../pages/program-manager/Programs";
 import Modules from "../pages/program-manager/Modules";
+import AddModules from "../pages/program-manager/AddModules";
+import CreateProgram from "../pages/program-manager/CreateProgram";
 import Assignments from "../pages/program-manager/Assignments";
 import Curriculum from "../pages/program-manager/Curriculum";
 import Batches from "../pages/program-manager/Batches";
@@ -100,7 +102,7 @@ import OutstandingDues from "../pages/finance/Dues";
 import SalesDashboard from "../pages/sales/SalesDashboard";
 import ExecutiveDashboard from "../pages/sales/ExecutiveDashboard";
 import SalesPipeline from "../pages/sales/Pipeline";
-import NewLeads from "../pages/sales/NewLeads";
+import NewLeadsWrapper from "../pages/sales/NewLeadsWrapper";
 import SalesLeads from "../pages/sales/Leads";
 import ActiveLeads from "../pages/sales/ActiveLeads";
 import LeadsOverview from "../pages/sales/LeadsOverview";
@@ -124,6 +126,7 @@ import BatchCourseMapping from "../pages/sales/BatchCourseMapping";
 import SalesProfile from "../pages/sales/Profile";
 import MeetingsCounselling from "../pages/sales/MeetingsCounselling";
 import Assessments from "../pages/sales/Assessments";
+import ScholarshipAndOffers from "../pages/sales/ScholarshipAndOffers";
 import SalesFinancialProcessing from "../pages/sales/FinancialProcessing";
 import LSMAllocation from "../pages/sales/LSMAllocation";
 import OfferPage from "../pages/candidate/OfferPage";
@@ -306,6 +309,9 @@ const AppRouter = () => {
           <Route path="program-manager">
             <Route path="dashboard" element={<ProgramManagerDashboard />} />
             <Route path="programs" element={<Programs />} />
+            <Route path="programs/create" element={<CreateProgram />} />
+            <Route path="programs/create/:programId" element={<CreateProgram />} />
+            <Route path="programs/:programId/add-modules" element={<AddModules />} />
             <Route path="modules/:programId" element={<Modules />} />
             <Route path="modules/:programId/assignments/:moduleId" element={<Assignments />} />
             <Route path="curriculum" element={<Curriculum />} />
@@ -328,12 +334,13 @@ const AppRouter = () => {
             <Route path="dashboard" element={<SalesDashboard />} />
             <Route path="executive-dashboard" element={<ExecutiveDashboard />} />
             <Route path="pipeline" element={<SalesPipeline />} />
-            <Route path="new-leads" element={<NewLeads />} />
+            <Route path="new-leads" element={<NewLeadsWrapper />} />
             <Route path="leads" element={<SalesLeads />} />
             <Route path="active-leads" element={<ActiveLeads />} />
             <Route path="leads-overview" element={<LeadsOverview />} />
             <Route path="meetings-counselling" element={<MeetingsCounselling />} />
             <Route path="assessments" element={<Assessments />} />
+            <Route path="scholarship-and-offers" element={<ScholarshipAndOffers />} />
             <Route path="deals" element={<SalesDeals />} />
             <Route path="negotiations" element={<Negotiations />} />
             <Route path="won-deals" element={<SalesWon />} />

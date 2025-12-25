@@ -38,6 +38,13 @@ export const leadAPI = {
     });
   },
 
+  bulkAssignLeads: async (leadIds, assignedTo) => {
+    return apiRequest('/api/leads/bulk-assign', {
+      method: 'POST',
+      body: JSON.stringify({ leadIds, assignedTo }),
+    });
+  },
+
   updatePreScreening: async (leadId, preScreeningData) => {
     return apiRequest(`/api/leads/${leadId}/pre-screening`, {
       method: 'PUT',

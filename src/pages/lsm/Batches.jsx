@@ -307,7 +307,7 @@ const LsmBatches = () => {
                 <p className="text-textMuted">No students enrolled in this batch yet.</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <div>
                 <table className="min-w-full divide-y divide-brintelli-border">
                   <thead className="bg-brintelli-baseAlt">
                     <tr>

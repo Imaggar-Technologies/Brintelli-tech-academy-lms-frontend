@@ -58,11 +58,12 @@ const SalesDeals = () => {
         ]);
         
         if (leadsResponse.success && leadsResponse.data.leads) {
-          // Filter for leads in offer stage with completed assessments
+          // Filter for leads with offers SENT (OFFER_SENT status) - these are the deals
           let filteredDeals = leadsResponse.data.leads.filter(lead => 
-            (lead.pipelineStage === 'offer' || lead.pipelineStage === 'deal_negotiation') &&
-            lead.assessmentCompleted &&
-            lead.assessmentScore !== null
+            lead.assessmentCompleted && 
+            (lead.offerId || lead.offerReleased || 
+             lead.pipelineStage === 'offer' || 
+             lead.pipelineStage === 'deal_negotiation')
           );
 
           // ABAC: Sales Agent - Only their assigned leads
@@ -70,18 +71,33 @@ const SalesDeals = () => {
             filteredDeals = filteredDeals.filter(deal => deal.assignedTo === userEmail);
           }
 
-          setDeals(filteredDeals);
-
-          // Map offers by leadId
+          // Map offers by leadId (handle both string and ObjectId formats)
           if (offersResponse.success && offersResponse.data.offers) {
             const offersMap = {};
             offersResponse.data.offers.forEach(offer => {
               if (offer.leadId) {
-                offersMap[offer.leadId] = offer;
+                // Normalize leadId to string for consistent matching
+                const leadId = String(offer.leadId);
+                offersMap[leadId] = offer;
+                // Also map by the offer's id in case we need it
+                if (offer.id) {
+                  offersMap[offer.id] = offer;
+                }
               }
             });
+            console.log('Deals - Offers mapped:', offersMap);
             setOffers(offersMap);
+            
+            // Filter to only include leads with offers that have OFFER_SENT status
+            filteredDeals = filteredDeals.filter(lead => {
+              const leadId = String(lead.id || lead._id || '');
+              const offer = offersMap[leadId] || offersMap[lead.id] || offersMap[lead._id];
+              // Only include if offer is sent (OFFER_SENT) or accepted
+              return offer && (offer.status === 'OFFER_SENT' || offer.status === 'ACCEPTED');
+            });
           }
+
+          setDeals(filteredDeals);
         }
       } catch (error) {
         console.error('Error fetching deals:', error);
@@ -133,25 +149,42 @@ const SalesDeals = () => {
       
       if (leadsResponse.success && leadsResponse.data.leads) {
         let filteredDeals = leadsResponse.data.leads.filter(lead => 
-          (lead.pipelineStage === 'offer' || lead.pipelineStage === 'deal_negotiation') &&
           lead.assessmentCompleted &&
-          lead.assessmentScore !== null
+          (lead.offerId || lead.offerReleased || 
+           lead.pipelineStage === 'offer' || 
+           lead.pipelineStage === 'deal_negotiation')
         );
         if (isSalesAgent && userEmail) {
           filteredDeals = filteredDeals.filter(deal => deal.assignedTo === userEmail);
         }
-        setDeals(filteredDeals);
 
-        // Map offers by leadId
+        // Map offers by leadId (handle both string and ObjectId formats)
         if (offersResponse.success && offersResponse.data.offers) {
           const offersMap = {};
           offersResponse.data.offers.forEach(offer => {
             if (offer.leadId) {
-              offersMap[offer.leadId] = offer;
+              // Normalize leadId to string for consistent matching
+              const leadId = String(offer.leadId);
+              offersMap[leadId] = offer;
+              // Also map by the offer's id in case we need it
+              if (offer.id) {
+                offersMap[offer.id] = offer;
+              }
             }
           });
+          console.log('Deals - Offers mapped (refresh):', offersMap);
           setOffers(offersMap);
+          
+          // Filter to only include leads with offers that have OFFER_SENT status
+          filteredDeals = filteredDeals.filter(lead => {
+            const leadId = String(lead.id || lead._id || '');
+            const offer = offersMap[leadId] || offersMap[lead.id] || offersMap[lead._id];
+            // Only include if offer is sent (OFFER_SENT) or accepted
+            return offer && (offer.status === 'OFFER_SENT' || offer.status === 'ACCEPTED');
+          });
         }
+        
+        setDeals(filteredDeals);
       }
     } catch (error) {
       console.error('Error refreshing deals:', error);
@@ -290,45 +323,56 @@ const SalesDeals = () => {
             <span className="ml-3 text-textMuted">Loading deals...</span>
           </div>
         ) : (
-          <table className="w-full">
-            <thead className="bg-brintelli-baseAlt">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-textMuted">Lead</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-textMuted">Assessment Score</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-textMuted">Level</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-textMuted">Scholarship</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-textMuted">Payment Status</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-textMuted">Stage</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-textMuted">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-brintelli-border">
+          <div>
+            <table className="w-full divide-y divide-brintelli-border">
+              <thead className="bg-brintelli-baseAlt/50">
+                <tr>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Lead</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Assessment Score</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Level</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Scholarship</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Payment Status</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Stage</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-brintelli-card divide-y divide-brintelli-border/30">
               {paginatedDeals.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-textMuted">
-                    {searchTerm ? "No deals match your search." : "No active deals found. Complete assessments to see deals here."}
+                  <td colSpan={7} className="px-6 py-12 text-center">
+                    <div className="flex flex-col items-center justify-center">
+                      <Handshake className="h-12 w-12 text-textMuted mb-4" />
+                      <p className="text-text font-medium mb-1">
+                        {searchTerm ? "No deals match your search" : "No active deals found"}
+                      </p>
+                      <p className="text-sm text-textMuted">
+                        {searchTerm ? "Try adjusting your search criteria" : "Complete assessments to see deals here"}
+                      </p>
+                    </div>
                   </td>
                 </tr>
               ) : (
                 paginatedDeals.map((deal) => {
-                  const offer = offers[deal.id];
+                  // Try multiple ways to match the offer
+                  const leadIdStr = String(deal.id || deal._id || '');
+                  const offer = offers[leadIdStr] || offers[deal.id] || offers[deal._id] || offers[deal.offerId];
                   const hasOffer = !!offer;
                   
                   return (
-                    <tr key={deal.id} className="transition hover:bg-brintelli-baseAlt">
-                      <td className="px-4 py-3">
+                    <tr key={deal.id} className="transition-colors duration-150 hover:bg-brintelli-baseAlt/40">
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <p className="font-semibold text-text">{deal.name}</p>
                         <p className="text-xs text-textMuted">{deal.email}</p>
                         {deal.company && (
                           <p className="text-xs text-textMuted">{deal.company}</p>
                         )}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-6 py-4 whitespace-nowrap">
                         {deal.assessmentScore !== null ? (
                           <div className="flex items-center gap-2">
-                            <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-semibold ${getScoreColor(deal.assessmentScore)}`}>
+                            <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-semibold ${getScoreColor(Math.round(deal.assessmentScore))}`}>
                               <FileCheck className="h-3.5 w-3.5" />
-                              {deal.assessmentScore}%
+                              {Math.round(deal.assessmentScore)}%
                             </span>
                             {deal.assessmentMarks && (
                               <span className="text-xs text-textMuted">
@@ -340,7 +384,7 @@ const SalesDeals = () => {
                           <span className="text-xs text-textMuted italic">No score</span>
                         )}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-6 py-4 whitespace-nowrap">
                         {deal.assessmentMarks?.level ? (
                           <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold capitalize ${getLevelBadge(deal.assessmentMarks.level)}`}>
                             <Star className="h-3 w-3" />
@@ -350,7 +394,7 @@ const SalesDeals = () => {
                           <span className="text-xs text-textMuted italic">-</span>
                         )}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-6 py-4 whitespace-nowrap">
                         {offer?.scholarshipApplied ? (
                           <span className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold bg-green-100 text-green-700">
                             <Award className="h-3 w-3" />
@@ -360,25 +404,25 @@ const SalesDeals = () => {
                           <span className="text-xs text-textMuted italic">No scholarship</span>
                         )}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-6 py-4 whitespace-nowrap">
                         {hasOffer && offer.paymentStatus ? (
                           <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold ${getPaymentStatusBadge(offer.paymentStatus)}`}>
                             <CreditCard className="h-3 w-3" />
                             {offer.paymentStatus}
                             {offer.paymentAmount > 0 && (
-                              <span className="ml-1">(₹{offer.paymentAmount.toLocaleString()})</span>
+                              <span className="ml-1">(₹{Math.round(offer.paymentAmount).toLocaleString('en-IN')})</span>
                             )}
                           </span>
                         ) : (
                           <span className="text-xs text-textMuted italic">Not set</span>
                         )}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <span className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-700 capitalize">
                           {deal.pipelineStage === 'deal_negotiation' ? 'Negotiation' : 'Offer'}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-2 flex-wrap">
                           {hasOffer && (
                             <Button
@@ -417,8 +461,9 @@ const SalesDeals = () => {
                   );
                 })
               )}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          </div>
         )}
 
         {/* Pagination */}

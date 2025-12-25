@@ -405,35 +405,43 @@ const FinanceDashboard = () => {
               View All <ArrowRight className="h-4 w-4 ml-1" />
             </Button>
           </div>
-          <div className="overflow-x-auto">
+          <div>
             <table className="w-full text-sm">
-              <thead className="bg-brintelli-baseAlt">
-                <tr>
-                  <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-textMuted">Student</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-textMuted">Amount</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-textMuted">Date</th>
+              <thead>
+                <tr className="border-b border-brintelli-border/50">
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Student</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Amount</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Date</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-brintelli-border">
+              <tbody className="divide-y divide-brintelli-border/30">
                 {loading ? (
                   <tr>
-                    <td colSpan={3} className="px-3 py-4 text-center text-textMuted">Loading...</td>
+                    <td colSpan={3} className="px-6 py-16 text-center">
+                      <div className="flex flex-col items-center justify-center">
+                        <p className="text-sm font-medium text-textMuted">Loading...</p>
+                      </div>
+                    </td>
                   </tr>
                 ) : latestPayments.length === 0 ? (
                   <tr>
-                    <td colSpan={3} className="px-3 py-4 text-center text-textMuted">No payments found</td>
+                    <td colSpan={3} className="px-6 py-16 text-center">
+                      <div className="flex flex-col items-center justify-center">
+                        <p className="text-sm font-medium text-textMuted">No payments found</p>
+                      </div>
+                    </td>
                   </tr>
                 ) : (
                   latestPayments.map((payment) => (
-                    <tr key={payment.id} className="hover:bg-brintelli-baseAlt">
-                      <td className="px-3 py-2">
+                    <tr key={payment.id} className="transition-colors duration-150 hover:bg-brintelli-baseAlt/30">
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <p className="font-semibold text-text">{payment.lead?.name || 'N/A'}</p>
                         <p className="text-xs text-textMuted">{payment.paymentMethod || 'N/A'}</p>
                       </td>
-                      <td className="px-3 py-2">
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <span className="font-semibold text-text">₹{payment.paymentAmount?.toLocaleString() || '0'}</span>
                       </td>
-                      <td className="px-3 py-2">
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-textMuted text-xs">
                           {payment.paymentDate ? new Date(payment.paymentDate).toLocaleDateString() : 'N/A'}
                         </span>
@@ -454,42 +462,50 @@ const FinanceDashboard = () => {
               View All <ArrowRight className="h-4 w-4 ml-1" />
             </Button>
           </div>
-          <div className="overflow-x-auto">
+          <div>
             <table className="w-full text-sm">
-              <thead className="bg-brintelli-baseAlt">
-                <tr>
-                  <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-textMuted">Student</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-textMuted">Due</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-textMuted">Days</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-textMuted">Risk</th>
+              <thead>
+                <tr className="border-b border-brintelli-border/50">
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Student</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Due</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Days</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Risk</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-brintelli-border">
+              <tbody className="divide-y divide-brintelli-border/30">
                 {loading ? (
                   <tr>
-                    <td colSpan={4} className="px-3 py-4 text-center text-textMuted">Loading...</td>
+                    <td colSpan={4} className="px-6 py-16 text-center">
+                      <div className="flex flex-col items-center justify-center">
+                        <p className="text-sm font-medium text-textMuted">Loading...</p>
+                      </div>
+                    </td>
                   </tr>
                 ) : topOverdue.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-3 py-4 text-center text-textMuted">No overdue found</td>
+                    <td colSpan={4} className="px-6 py-16 text-center">
+                      <div className="flex flex-col items-center justify-center">
+                        <p className="text-sm font-medium text-textMuted">No overdue found</p>
+                      </div>
+                    </td>
                   </tr>
                 ) : (
                   topOverdue.map((item) => {
                     const risk = getRiskLevel(item.daysOverdue);
                     return (
-                      <tr key={item.id} className="hover:bg-brintelli-baseAlt">
-                        <td className="px-3 py-2">
+                      <tr key={item.id} className="transition-colors duration-150 hover:bg-brintelli-baseAlt/30">
+                        <td className="px-6 py-4 whitespace-nowrap">
                           <p className="font-semibold text-text">{item.lead?.name || 'N/A'}</p>
                           <p className="text-xs text-textMuted">{item.lead?.email || 'N/A'}</p>
                         </td>
-                        <td className="px-3 py-2">
+                        <td className="px-6 py-4 whitespace-nowrap">
                           <span className="font-semibold text-text">₹{item.offeredPrice?.toLocaleString() || '0'}</span>
                         </td>
-                        <td className="px-3 py-2">
+                        <td className="px-6 py-4 whitespace-nowrap">
                           <span className="text-textMuted">{item.daysOverdue} days</span>
                         </td>
-                        <td className="px-3 py-2">
-                          <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold ${risk.color}`}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${risk.color}`}>
                             {risk.level}
                           </span>
                         </td>

@@ -131,7 +131,7 @@ const SalesTeam = () => {
             <div className="border-b border-brintelli-border p-4">
               <h3 className="text-lg font-semibold text-text">All Team Members ({salesTeam.length})</h3>
             </div>
-            <div className="overflow-x-auto">
+            <div>
               <table className="w-full">
                 <thead className="bg-brintelli-baseAlt">
                   <tr>

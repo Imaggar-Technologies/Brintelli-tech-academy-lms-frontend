@@ -50,7 +50,6 @@ const Scholarships = () => {
     setSelectedScholarship(scholarship);
     setDecisionData({
       decision: "",
-      finalPrice: scholarship.offer?.offeredPrice?.toString() || "",
       notes: "",
     });
     setShowDecisionModal(true);
@@ -62,17 +61,11 @@ const Scholarships = () => {
       return;
     }
 
-    if (decisionData.decision === "APPROVED" && !decisionData.finalPrice) {
-      toast.error("Please enter the final price");
-      return;
-    }
-
     try {
       const response = await scholarshipAPI.makeScholarshipDecision(
         selectedScholarship.id,
         {
           decision: decisionData.decision,
-          finalPrice: decisionData.decision === "APPROVED" ? parseFloat(decisionData.finalPrice) : null,
           notes: decisionData.notes,
         }
       );
@@ -173,9 +166,12 @@ const Scholarships = () => {
                 ₹{scholarships
                   .filter((s) => s.status === "APPROVED")
                   .reduce((sum, s) => {
-                    const revenueLoss = s.offer?.basePrice 
-                      ? (s.offer.basePrice - (s.offer.offeredPrice || s.offer.basePrice))
-                      : (s.requestedAmount || 0);
+                    const basePrice = s.offer?.basePrice || 0;
+                    // Calculate revenue loss: basePrice - finalPrice
+                    // Final price = basePrice - approvedAmount (or requestedAmount)
+                    const approvedAmount = s.approvedAmount || s.requestedAmount || 0;
+                    const finalPrice = Math.max(0, basePrice - approvedAmount);
+                    const revenueLoss = basePrice - finalPrice;
                     return sum + revenueLoss;
                   }, 0)
                   .toLocaleString()}
@@ -254,7 +250,17 @@ const Scholarships = () => {
               ) : (
                 paginatedScholarships.map((scholarship) => {
                   const basePrice = scholarship.offer?.basePrice || 0;
-                  const finalPrice = scholarship.offer?.offeredPrice || basePrice;
+                  // Calculate final price: if approved, use basePrice - approvedAmount (or requestedAmount)
+                  // Otherwise, use offer's offeredPrice if available, or basePrice
+                  let finalPrice = basePrice;
+                  if (scholarship.status === 'APPROVED') {
+                    // When approved, final price = basePrice - approvedAmount (or requestedAmount if approvedAmount not set)
+                    const approvedAmount = scholarship.approvedAmount || scholarship.requestedAmount || 0;
+                    finalPrice = Math.max(0, basePrice - approvedAmount);
+                  } else if (scholarship.offer?.offeredPrice) {
+                    // If offer has been sent with a price, use that
+                    finalPrice = scholarship.offer.offeredPrice;
+                  }
                   const revenueLoss = basePrice - finalPrice;
                   
                   return (
@@ -471,19 +477,30 @@ const Scholarships = () => {
               </select>
             </div>
 
-            {decisionData.decision === "APPROVED" && (
-              <div>
-                <label className="block text-sm font-semibold text-text mb-2">Final Price (₹)</label>
-                <input
-                  type="number"
-                  value={decisionData.finalPrice}
-                  onChange={(e) => setDecisionData({ ...decisionData, finalPrice: e.target.value })}
-                  className="w-full px-4 py-2 rounded-xl border border-brintelli-border bg-brintelli-baseAlt text-sm focus:border-brand-500 focus:outline-none"
-                  placeholder="Enter final price"
-                  required
-                  min="0"
-                  step="0.01"
-                />
+            {decisionData.decision === "APPROVED" && selectedScholarship && (
+              <div className="rounded-xl border border-brintelli-border bg-brintelli-baseAlt p-4">
+                <p className="text-sm font-semibold text-text mb-2">Approval Summary</p>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-textMuted">Base Price:</span>
+                    <span className="font-medium text-text">₹{selectedScholarship.offer?.basePrice?.toLocaleString() || 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-textMuted">Requested Amount:</span>
+                    <span className="font-medium text-text">₹{selectedScholarship.requestedAmount?.toLocaleString() || 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between pt-2 border-t border-brintelli-border">
+                    <span className="text-textMuted">Final Price (after approval):</span>
+                    <span className="font-semibold text-green-600">
+                      ₹{selectedScholarship.offer?.basePrice && selectedScholarship.requestedAmount 
+                        ? (selectedScholarship.offer.basePrice - selectedScholarship.requestedAmount).toLocaleString() 
+                        : 'N/A'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-textMuted mt-2">
+                    The scholarship will be approved with the requested amount. The final price will be calculated automatically.
+                  </p>
+                </div>
               </div>
             )}
 

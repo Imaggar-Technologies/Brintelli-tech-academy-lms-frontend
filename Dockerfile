@@ -1,31 +1,13 @@
-# ===== Build stage =====
-FROM node:20-alpine AS build
-
-WORKDIR /app
-
-# Copy dependency files
-COPY package*.json ./
-
-# Install dependencies
-RUN npm install
-
-# Install vite explicitly
-RUN npm install -g vite
-
-# Copy source
-COPY . .
-
-# Increase memory for large build
-ENV NODE_OPTIONS=--max-old-space-size=2048
-
-# Build
-RUN vite build
-
 # ===== Run stage =====
 FROM nginx:alpine
 
-RUN rm -rf /usr/share/nginx/html/*
+# Remove default nginx config
+RUN rm /etc/nginx/conf.d/default.conf
 
+# Copy custom nginx config
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Copy built frontend
 COPY --from=build /app/dist /usr/share/nginx/html
 
 EXPOSE 80

@@ -9,11 +9,14 @@ COPY package*.json ./
 # Install dependencies
 RUN npm install
 
-# FORCE install vite (guaranteed)
+# Install vite explicitly
 RUN npm install -g vite
 
 # Copy source
 COPY . .
+
+# Increase memory for large build
+ENV NODE_OPTIONS=--max-old-space-size=2048
 
 # Build
 RUN vite build

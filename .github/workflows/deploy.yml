@@ -1,4 +1,4 @@
-name: Frontend CI/CD Deploy to EC2
+name: Frontend CI/CD Deploy (Classic Docker)
 
 on:
   push:
@@ -7,39 +7,45 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Cache npm
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Build frontend
-        run: npm run build
-
-      - name: Deploy to EC2 using Docker
+      - name: Deploy to EC2 (Classic Docker)
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd /home/ec2-user/Brintelli-tech-academy-lms-frontend
-            git pull
-            docker compose down
-            docker compose up -d --build
+            set -e
+
+            APP_DIR="/home/ec2-user/Brintelli-tech-academy-lms-frontend"
+            IMAGE_NAME="brintelli-frontend"
+            CONTAINER_NAME="brintelli-frontend"
+
+            cd $APP_DIR
+
+            echo "📥 Pulling latest code"
+            git pull origin main
+
+            echo "🛑 Stopping old container"
+            docker stop $CONTAINER_NAME || true
+            docker rm $CONTAINER_NAME || true
+
+            echo "🧹 Removing old image"
+            docker rmi $IMAGE_NAME:latest || true
+
+            echo "🏗️ Building image (classic docker build)"
+            docker build -t $IMAGE_NAME .
+
+            echo "▶️ Running container"
+            docker run -d \
+              --name $CONTAINER_NAME \
+              -p 80:80 \
+              --restart always \
+              $IMAGE_NAME
+
+            echo "✅ Frontend deployed successfully"

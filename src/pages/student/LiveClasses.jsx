@@ -5,8 +5,10 @@ import PageHeader from "../../components/PageHeader";
 import Table from "../../components/Table";
 import Button from "../../components/Button";
 import studentAPI from '../../api/student';
+import { useNavigate } from "react-router-dom";
 
 const StudentLiveClasses = () => {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [sessions, setSessions] = useState([]);
   const [filter, setFilter] = useState('upcoming'); // 'all', 'upcoming', 'past', 'today'
@@ -69,13 +71,49 @@ const StudentLiveClasses = () => {
     }
   };
 
+  const StatusPill = ({ status, isLive, hasRecording }) => {
+    return (
+      <div className="flex items-center gap-2">
+        <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(status)}`}>
+          {status || 'N/A'}
+        </span>
+        {isLive && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700 ring-1 ring-rose-200/60">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-rose-500" />
+            LIVE
+          </span>
+        )}
+        {hasRecording && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-1 text-[11px] font-semibold text-violet-700 ring-1 ring-violet-200/60">
+            <span className="h-2 w-2 rounded-full bg-violet-500" />
+            REC
+          </span>
+        )}
+      </div>
+    );
+  };
+
   const columns = [
     {
       key: "name",
       title: "Session",
       render: (row) => (
         <div>
-          <div className="font-medium text-text">{row?.name || 'N/A'}</div>
+          <div className="flex items-center gap-2">
+            <div className="font-medium text-text">{row?.name || 'N/A'}</div>
+            {row?.status === 'ONGOING' && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700 ring-1 ring-rose-200/60">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-rose-500" />
+                LIVE
+              </span>
+            )}
+            {!!row?.recordingUrl && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-700 ring-1 ring-violet-200/60">
+                <span className="h-2 w-2 rounded-full bg-violet-500" />
+                REC
+              </span>
+            )}
+          </div>
           {row?.description && (
             <div className="text-xs text-textMuted mt-1 line-clamp-1">{row.description}</div>
           )}
@@ -105,9 +143,11 @@ const StudentLiveClasses = () => {
       key: "status",
       title: "Status",
       render: (row) => (
-        <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(row?.status)}`}>
-          {row?.status || 'N/A'}
-        </span>
+        <StatusPill
+          status={row?.status}
+          isLive={row?.status === 'ONGOING'}
+          hasRecording={!!row?.recordingUrl}
+        />
       ),
     },
     {
@@ -115,11 +155,11 @@ const StudentLiveClasses = () => {
       title: "Action",
       render: (row) => (
         <div className="flex gap-2">
-          {row?.meetingLink && row.status === 'SCHEDULED' && (
+          {row?.status === 'SCHEDULED' && (
             <Button
               size="sm"
               className="px-4 py-2 text-xs font-semibold"
-              onClick={() => window.open(row.meetingLink, '_blank')}
+              onClick={() => navigate(`/student/sessions/${row.id}/live`)}
             >
               Join Room
               <Video className="h-3.5 w-3.5 ml-1" />
@@ -136,7 +176,7 @@ const StudentLiveClasses = () => {
               <ExternalLink className="h-3.5 w-3.5 ml-1" />
             </Button>
           )}
-          {!row?.meetingLink && !row?.recordingUrl && (
+          {!row?.recordingUrl && row?.status !== 'SCHEDULED' && (
             <span className="text-xs text-textMuted">No link available</span>
           )}
         </div>

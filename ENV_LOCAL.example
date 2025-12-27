@@ -1,0 +1,10 @@
+## Local frontend env (Vite)
+## Copy this file to `.env.local` (do NOT commit `.env.local`) and adjust as needed.
+##
+## Local backend:
+VITE_API_BASE_URL=http://localhost:3000
+##
+## Remote backend example:
+# VITE_API_BASE_URL=http://16.112.146.20:3000
+
+

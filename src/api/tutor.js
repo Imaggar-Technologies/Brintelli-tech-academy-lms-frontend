@@ -1,4 +1,5 @@
 import { apiRequest } from './apiClient';
+import { apiUpload } from './apiUpload';
 
 // Tutor API
 export const tutorAPI = {
@@ -41,6 +42,13 @@ export const tutorAPI = {
       method: 'PUT',
       body: JSON.stringify(sessionData),
     });
+  },
+
+  // Upload session recording (video) and auto-save recordingUrl on the session
+  uploadSessionRecording: async (sessionId, file) => {
+    const form = new FormData();
+    form.append('file', file);
+    return apiUpload(`/api/tutors/sessions/${sessionId}/recording`, form);
   },
 
   // Get tutor's program modules with learning objectives

@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import { CalendarClock, Video, FileText, Calendar, Filter, ExternalLink, Clock, Users, BookOpen } from 'lucide-react';
+import { CalendarClock, Video, FileText, Calendar, Filter, ExternalLink, Clock, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
-import Table from '../../components/Table';
 import Button from '../../components/Button';
 import tutorAPI from '../../api/tutor';
+import { useNavigate } from 'react-router-dom';
 
 const TutorSchedule = () => {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [sessions, setSessions] = useState([]);
   const [filter, setFilter] = useState('all'); // 'all', 'upcoming', 'today', 'past'
   const [statusFilter, setStatusFilter] = useState(''); // '', 'SCHEDULED', 'ONGOING', 'COMPLETED', 'CANCELLED'
+  const [currentDate, setCurrentDate] = useState(new Date());
 
   useEffect(() => {
     fetchSessions();
@@ -101,92 +103,76 @@ const TutorSchedule = () => {
     }
   };
 
-  const columns = [
-    {
-      key: 'name',
-      title: 'Session',
-      render: (row) => (
-        <div className="flex items-center gap-3">
-          {getTypeIcon(row.type)}
-          <div className="flex-1">
-            <p className="font-semibold text-text">{row.name}</p>
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
-              {row.module && (
-                <span className="inline-flex items-center gap-1 rounded-lg bg-brand-100/50 px-2 py-0.5 text-brand-700 font-medium">
-                  <BookOpen className="h-3 w-3" />
-                  {row.module.name}
-                </span>
-              )}
-              {row.objective && (
-                <span className="inline-flex items-center gap-1 rounded-lg bg-purple-100/50 px-2 py-0.5 text-purple-700 font-medium">
-                  <BookOpen className="h-3 w-3" />
-                  {row.objective.title}
-                </span>
-              )}
-              {row.program && (
-                <span className="text-textMuted">{row.program.name}</span>
-              )}
-            </div>
-            {row.description && (
-              <p className="mt-1 text-xs text-textMuted line-clamp-1">{row.description}</p>
-            )}
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: 'batch',
-      title: 'Batch',
-      render: (row) => (
-        <div>
-          <p className="text-sm font-medium text-text">{row.batch?.name || 'N/A'}</p>
-          {row.batch?.code && (
-            <p className="text-xs text-textMuted">{row.batch.code}</p>
-          )}
-        </div>
-      ),
-    },
-    {
-      key: 'scheduledDate',
-      title: 'Schedule',
-      render: (row) => (
-        <div className="flex items-center gap-2">
-          <Clock className="h-4 w-4 text-textMuted" />
-          <span className="text-sm text-textSoft">
-            {formatSessionTime(row.scheduledDate, row.duration)}
-          </span>
-        </div>
-      ),
-    },
-    {
-      key: 'status',
-      title: 'Status',
-      render: (row) => (
-        <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(row.status)}`}>
-          {row.status || 'N/A'}
-        </span>
-      ),
-    },
-    {
-      key: 'meetingLink',
-      title: 'Meeting',
-      render: (row) => (
-        row.meetingLink ? (
-          <a 
-            href={row.meetingLink} 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:text-brand-700 transition-colors"
-          >
-            <ExternalLink className="h-3.5 w-3.5" />
-            Join
-          </a>
-        ) : (
-          <span className="text-xs text-textMuted">No link</span>
-        )
-      ),
-    },
-  ];
+  const getDaysInMonth = (date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay();
+
+    const days = [];
+    for (let i = 0; i < startingDayOfWeek; i++) days.push(null);
+    for (let day = 1; day <= daysInMonth; day++) days.push(new Date(year, month, day));
+    return days;
+  };
+
+  const getMonthName = (date) => date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  const navigateMonth = (direction) => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + direction, 1));
+
+  const formatTime = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '';
+    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const getStatusStyles = (status) => {
+    switch (status) {
+      case 'SCHEDULED':
+        return 'bg-blue-100/60 border-blue-200/70 text-blue-800';
+      case 'ONGOING':
+        return 'bg-emerald-100/60 border-emerald-200/70 text-emerald-800';
+      case 'COMPLETED':
+        return 'bg-gray-100/70 border-gray-200/70 text-gray-800';
+      case 'CANCELLED':
+        return 'bg-rose-100/60 border-rose-200/70 text-rose-800';
+      default:
+        return 'bg-brand-100/50 border-brand-200/60 text-brand-800';
+    }
+  };
+
+  const getSessionsForDate = (date) => {
+    if (!date) return [];
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+
+    return sessions.filter((session) => {
+      if (!session.scheduledDate) return false;
+      const d = new Date(session.scheduledDate);
+      if (isNaN(d.getTime())) return false;
+      const sy = d.getFullYear();
+      const sm = String(d.getMonth() + 1).padStart(2, '0');
+      const sd = String(d.getDate()).padStart(2, '0');
+      return `${sy}-${sm}-${sd}` === dateStr;
+    });
+  };
+
+  const openMeeting = (session) => {
+    if (session.meetingLink) {
+      window.open(session.meetingLink, '_blank', 'noopener,noreferrer');
+    } else {
+      toast('No meeting link for this session', { icon: 'ℹ️' });
+    }
+  };
+
+  const openLiveRoom = (session) => {
+    navigate(`/tutor/sessions/${session.id}/live`);
+  };
 
   const upcomingSessions = sessions.filter(s => {
     if (!s.scheduledDate) return false;
@@ -312,33 +298,142 @@ const TutorSchedule = () => {
         </select>
       </div>
 
-      {/* Sessions Table */}
-      <div className="rounded-2xl border border-brintelli-border/60 bg-white shadow-sm">
-        <div className="p-6 border-b border-brintelli-border/60">
+      {/* Calendar (Tutor-only sessions) */}
+      <div className="rounded-2xl border border-brintelli-border/60 bg-white shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-brintelli-border/60 bg-gradient-to-r from-brand-50/50 to-purple-50/50">
           <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-bold text-text">All Sessions</h3>
-              <p className="mt-1 text-sm text-textMuted">
-                {sessions.length} session{sessions.length !== 1 ? 's' : ''} found
-              </p>
+            <div className="flex items-center gap-3">
+              <div className="rounded-xl bg-brand-600 p-2 text-white">
+                <Calendar className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-text">{getMonthName(currentDate)}</h3>
+                <p className="text-sm text-textMuted">Your sessions only</p>
+              </div>
             </div>
-            <Button
-              variant="ghost"
-              className="gap-2 text-sm"
-              onClick={() => window.location.href = '/tutor/curriculum'}
-            >
-              <BookOpen className="h-4 w-4" />
-              View Program Modules
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={() => navigateMonth(-1)} className="gap-1.5">
+                <ChevronLeft className="h-4 w-4" />
+                Previous
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setCurrentDate(new Date())} className="gap-1.5">
+                Today
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => navigateMonth(1)} className="gap-1.5">
+                Next
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
-        <div className="overflow-x-auto">
-          <Table
-            columns={columns}
-            data={sessions}
-            emptyLabel="No sessions found. Sessions will appear here once you're assigned to batches."
-            minRows={10}
-          />
+
+        <div className="p-6">
+          <div className="grid grid-cols-7 gap-2 mb-2">
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
+              <div key={d} className="text-center text-xs font-semibold text-textMuted py-2">
+                {d}
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-7 gap-2">
+            {getDaysInMonth(currentDate).map((date, idx) => {
+              const daySessions = getSessionsForDate(date);
+              const isToday = date && date.toDateString() === new Date().toDateString();
+              return (
+                <div
+                  key={idx}
+                  className={`min-h-[120px] rounded-xl border p-2 ${
+                    date
+                      ? isToday
+                        ? 'border-brand-500 bg-brand-50/30'
+                        : 'border-brintelli-border/60 bg-white hover:border-brand-300/60'
+                      : 'border-transparent'
+                  }`}
+                >
+                  {date && (
+                    <>
+                      <div className={`text-sm font-semibold mb-1 ${isToday ? 'text-brand-700' : 'text-text'}`}>
+                        {date.getDate()}
+                      </div>
+                      <div className="space-y-1">
+                        {daySessions.length > 0 ? (
+                          <>
+                            {daySessions.slice(0, 3).map((session, sIdx) => {
+                              const key = session.id || session._id || `${idx}-${sIdx}`;
+                              return (
+                                <button
+                                  type="button"
+                                  key={key}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    openLiveRoom(session);
+                                  }}
+                                  className={`w-full text-left text-xs p-1.5 rounded border hover:shadow-sm cursor-pointer transition-colors ${getStatusStyles(session.status)}`}
+                                  title={`${session.name || 'Session'} - ${formatTime(session.scheduledDate)}`}
+                                >
+                                  <div className="flex items-center justify-between gap-2 mb-0.5">
+                                    <div className="flex items-center gap-1 min-w-0">
+                                      <Clock className="h-3 w-3 shrink-0" />
+                                      <span className="font-medium truncate">{formatTime(session.scheduledDate)}</span>
+                                    </div>
+                                    <ExternalLink className="h-3 w-3 shrink-0 opacity-80" />
+                                  </div>
+                                  <div className="truncate font-semibold">{session.name || 'Unnamed Session'}</div>
+                                  <div className="text-[10px] text-textMuted truncate">
+                                    {session.batch?.name || 'Unknown Batch'}
+                                  </div>
+                                  <div className="mt-1 flex flex-wrap gap-1">
+                                    {session.status === 'ONGOING' ? (
+                                      <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700 ring-1 ring-rose-200/60">
+                                        <span className="h-2 w-2 animate-pulse rounded-full bg-rose-500" />
+                                        LIVE
+                                      </span>
+                                    ) : null}
+                                    {session.recordingUrl ? (
+                                      <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-700 ring-1 ring-violet-200/60">
+                                        <span className="h-2 w-2 rounded-full bg-violet-500" />
+                                        REC
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                  {session.module?.name ? (
+                                    <div className="text-[10px] text-textMuted truncate">{session.module.name}</div>
+                                  ) : null}
+                                </button>
+                              );
+                            })}
+                            {daySessions.length > 3 ? (
+                              <div className="text-xs text-textMuted text-center py-1">
+                                +{daySessions.length - 3} more
+                              </div>
+                            ) : null}
+                          </>
+                        ) : (
+                          <div className="text-xs text-textMuted text-center py-1">No sessions</div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {!loading && sessions.length === 0 ? (
+            <div className="mt-6 rounded-2xl border border-brintelli-border/60 bg-white p-8 text-center">
+              <p className="text-sm text-textMuted">
+                No sessions found. Sessions will appear here once you're assigned to batches/modules.
+              </p>
+              <div className="mt-4">
+                <Button variant="ghost" className="gap-2 text-sm" onClick={() => (window.location.href = '/tutor/curriculum')}>
+                  <BookOpen className="h-4 w-4" />
+                  View Program Modules
+                </Button>
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
     </>

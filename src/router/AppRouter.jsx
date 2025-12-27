@@ -25,11 +25,27 @@ import StudentAssignments from "../pages/student/Assignments";
 import StudentTests from "../pages/student/Tests";
 import StudentMockInterviews from "../pages/student/MockInterviews";
 import StudentDoubts from "../pages/student/Doubts";
+import StudentDoubtHistory from "../pages/student/DoubtHistory";
 import StudentProfile from "../pages/student/Profile";
 import StudentMCQPractice from "../pages/student/MCQPractice";
 import StudentCertifications from "../pages/student/CertificationsMock";
 import StudentCodePlayground from "../pages/student/CodePlayground";
 import StudentPlacementAssistance from "../pages/student/PlacementAssistance";
+import StudentLiveSessionRoom from "../pages/student/LiveSessionRoom";
+import StudentJobs from "../pages/student/Jobs";
+import StudentInterviewPrep from "../pages/student/InterviewPrep";
+import StudentResume from "../pages/student/Resume";
+import StudentLearningPaths from "../pages/student/LearningPaths";
+import StudentProgress from "../pages/student/Progress";
+import StudentChallenges from "../pages/student/Challenges";
+import StudentPracticeSheets from "../pages/student/PracticeSheets";
+import StudentProjects from "../pages/student/Projects";
+import StudentProjectTemplates from "../pages/student/ProjectTemplates";
+import StudentPortfolio from "../pages/student/Portfolio";
+import StudentMentorSessions from "../pages/student/MentorSessions";
+import StudentPerformance from "../pages/student/Performance";
+import StudentAnalytics from "../pages/student/Analytics";
+import StudentAchievements from "../pages/student/Achievements";
 
 // Tutor pages
 import TutorDashboard from "../pages/tutor/Dashboard";
@@ -39,6 +55,28 @@ import TutorUploadMaterials from "../pages/tutor/UploadMaterials";
 import TutorLiveClassController from "../pages/tutor/LiveClassController";
 import TutorStudentsList from "../pages/tutor/StudentsList";
 import TutorStudentPerformance from "../pages/tutor/StudentPerformance";
+import TutorSchedule from "../pages/tutor/Schedule";
+import TutorCourses from "../pages/tutor/Courses";
+import TutorContent from "../pages/tutor/Content";
+import TutorCurriculum from "../pages/tutor/Curriculum";
+import TutorCreateLesson from "../pages/tutor/CreateLesson";
+import TutorPlanner from "../pages/tutor/Planner";
+import TutorApprovals from "../pages/tutor/Approvals";
+import TutorAttendance from "../pages/tutor/Attendance";
+import TutorClassAnalytics from "../pages/tutor/ClassAnalytics";
+import TutorPerformancePage from "../pages/tutor/Performance";
+import TutorReviews from "../pages/tutor/Reviews";
+import TutorDoubts from "../pages/tutor/Doubts";
+import TutorCreateAssessment from "../pages/tutor/CreateAssessment";
+import TutorGrading from "../pages/tutor/Grading";
+import TutorTestResults from "../pages/tutor/TestResults";
+import TutorProfile from "../pages/tutor/Profile";
+import TutorLiveController from "../pages/tutor/LiveController";
+import TutorUpskilling from "../pages/tutor/Upskilling";
+import TutorMentees from "../pages/tutor/Mentees";
+import TutorMenteeSessions from "../pages/tutor/MenteeSessions";
+import TutorMenteeCallHistory from "../pages/tutor/MenteeCallHistory";
+import TutorLiveSessionRoom from "../pages/tutor/LiveSessionRoom";
 
 // LSM pages
 import LsmDashboard from "../pages/lsm/Dashboard";
@@ -98,6 +136,11 @@ import Curriculum from "../pages/program-manager/Curriculum";
 import Batches from "../pages/program-manager/Batches";
 import BatchSessions from "../pages/program-manager/BatchSessions";
 import CreateBatch from "../pages/program-manager/CreateBatch";
+import Tutors from "../pages/program-manager/Tutors";
+import TutorAssign from "../pages/program-manager/TutorAssign";
+import TutorPerformance from "../pages/program-manager/TutorPerformance";
+import ProgramManagerTutorSchedule from "../pages/program-manager/TutorSchedule";
+import SessionDetails from "../pages/program-manager/SessionDetails";
 import FinanceDashboard from "../pages/finance/Dashboard";
 import FinanceDeals from "../pages/finance/Deals";
 import Scholarships from "../pages/finance/Scholarships";
@@ -254,28 +297,97 @@ const AppRouter = () => {
             <Route path="dashboard" element={<StudentDashboard />} />
             <Route path="my-courses" element={<StudentMyCourses />} />
             <Route path="course/:id" element={<StudentCourseDetail />} />
+            {/* Sessions */}
+            <Route path="sessions" element={<StudentLiveClasses />} />
+            <Route path="sessions/:sessionId/live" element={<StudentLiveSessionRoom />} />
             <Route path="live-classes" element={<StudentLiveClasses />} />
             <Route path="recordings" element={<StudentRecordings />} />
+
+            {/* Assessments & Assignments */}
             <Route path="assignments" element={<StudentAssignments />} />
             <Route path="tests" element={<StudentTests />} />
             <Route path="mock-interviews" element={<StudentMockInterviews />} />
+
+            {/* Doubts & Support */}
             <Route path="doubts" element={<StudentDoubts />} />
+            <Route path="doubt-history" element={<StudentDoubtHistory />} />
+            <Route path="mentor-sessions" element={<StudentMentorSessions />} />
+
+            {/* Practice & Coding */}
             <Route path="mcq-practice" element={<StudentMCQPractice />} />
             <Route path="certifications" element={<StudentCertifications />} />
             <Route path="code-playground" element={<StudentCodePlayground />} />
+            <Route path="challenges" element={<StudentChallenges />} />
+            <Route path="practice-sheets" element={<StudentPracticeSheets />} />
+
+            {/* Projects */}
+            <Route path="projects" element={<StudentProjects />} />
+            <Route path="project-templates" element={<StudentProjectTemplates />} />
+            <Route path="portfolio" element={<StudentPortfolio />} />
+
+            {/* Learning paths / analytics */}
+            <Route path="learning-paths" element={<StudentLearningPaths />} />
+            <Route path="progress" element={<StudentProgress />} />
+            <Route path="performance" element={<StudentPerformance />} />
+            <Route path="analytics" element={<StudentAnalytics />} />
+            <Route path="achievements" element={<StudentAchievements />} />
+
+            {/* Placement */}
             <Route path="placement-assistance" element={<StudentPlacementAssistance />} />
+            <Route path="jobs" element={<StudentJobs />} />
+            <Route path="interview-prep" element={<StudentInterviewPrep />} />
+            <Route path="resume" element={<StudentResume />} />
             <Route path="profile" element={<StudentProfile />} />
           </Route>
 
           <Route path="tutor">
             <Route path="dashboard" element={<TutorDashboard />} />
-            <Route path="manage-courses" element={<TutorManageCourses />} />
-            <Route path="lessons" element={<TutorLessons />} />
-            <Route path="upload-materials" element={<TutorUploadMaterials />} />
+            {/* Sessions */}
+            <Route path="schedule" element={<TutorSchedule />} />
             <Route path="live" element={<TutorLiveClassController />} />
             <Route path="live-class-controller" element={<TutorLiveClassController />} />
+            <Route path="live-controller" element={<TutorLiveController />} />
+            <Route path="sessions/:sessionId/live" element={<TutorLiveSessionRoom />} />
+
+            {/* Courses / Content */}
+            <Route path="courses" element={<TutorCourses />} />
+            <Route path="manage-courses" element={<TutorManageCourses />} />
+            <Route path="content" element={<TutorContent />} />
+            <Route path="curriculum" element={<TutorCurriculum />} />
+            <Route path="upload-materials" element={<TutorUploadMaterials />} />
+
+            {/* Preparations / Lesson planning */}
+            <Route path="lessons" element={<TutorLessons />} />
+            <Route path="create-lesson" element={<TutorCreateLesson />} />
+            <Route path="planner" element={<TutorPlanner />} />
+            <Route path="approvals" element={<TutorApprovals />} />
+
+            {/* Students */}
             <Route path="students" element={<TutorStudentsList />} />
+            <Route path="performance" element={<TutorPerformancePage />} />
             <Route path="student-performance" element={<TutorStudentPerformance />} />
+            <Route path="attendance" element={<TutorAttendance />} />
+            <Route path="class-analytics" element={<TutorClassAnalytics />} />
+
+            {/* Doubts */}
+            <Route path="doubts" element={<TutorDoubts />} />
+
+            {/* Assessments & Assignments */}
+            <Route path="create-assessment" element={<TutorCreateAssessment />} />
+            <Route path="grading" element={<TutorGrading />} />
+            <Route path="test-results" element={<TutorTestResults />} />
+            <Route path="reviews" element={<TutorReviews />} />
+
+            {/* Mentor / mentees (tutor can act as mentor) */}
+            <Route path="mentees" element={<TutorMentees />} />
+            <Route path="mentees/sessions" element={<TutorMenteeSessions />} />
+            <Route path="mentees/call-history" element={<TutorMenteeCallHistory />} />
+
+            {/* Upskilling */}
+            <Route path="upskilling" element={<TutorUpskilling />} />
+
+            {/* Profile */}
+            <Route path="profile" element={<TutorProfile />} />
           </Route>
 
           <Route path="lsm">
@@ -334,6 +446,11 @@ const AppRouter = () => {
             <Route path="batches/:batchId/sessions" element={<BatchSessions />} />
             <Route path="batches/create" element={<CreateBatch />} />
             <Route path="batches/create/:programId" element={<CreateBatch />} />
+            <Route path="tutors" element={<Tutors />} />
+            <Route path="tutors/assign" element={<TutorAssign />} />
+            <Route path="tutor-performance" element={<TutorPerformance />} />
+            <Route path="tutor-schedule" element={<ProgramManagerTutorSchedule />} />
+            <Route path="sessions/:sessionId" element={<SessionDetails />} />
           </Route>
 
           <Route path="finance">

@@ -62,25 +62,11 @@ const programManagerNav = [
         permissions: ["programs:read"],
       },
       {
-        label: "Course Catalog",
-        icon: BookOpen,
-        path: "/program-manager/courses",
-        pageId: "pm-courses",
-        permissions: ["courses:read"],
-      },
-      {
         label: "Create Program",
         icon: Layers3,
         path: "/program-manager/programs/create",
         pageId: "pm-programs-create",
         permissions: ["programs:create"],
-      },
-      {
-        label: "Module Management",
-        icon: FileText,
-        path: "/program-manager/modules",
-        pageId: "pm-modules",
-        permissions: ["modules:read"],
       },
       {
         label: "Curriculum Builder",

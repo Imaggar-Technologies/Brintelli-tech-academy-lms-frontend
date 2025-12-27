@@ -152,6 +152,42 @@ export const uploadAPI = {
       body: JSON.stringify({ key }),
     });
   },
+
+  /**
+   * Get upload service status (S3 or local)
+   * @returns {Promise<{success: boolean, data: {storageType: string, s3Configured: boolean}}>}
+   */
+  getStatus: async () => {
+    return apiRequest('/api/upload/status');
+  },
+
+  /**
+   * Test S3 connection and permissions
+   * @returns {Promise<{success: boolean, message: string}>}
+   */
+  testConnection: async () => {
+    return apiRequest('/api/upload/test', {
+      method: 'POST',
+    });
+  },
+
+  /**
+   * Get presigned URL for S3 file (bypasses CORS)
+   * @param {string} key - S3 object key
+   * @returns {Promise<{success: boolean, data: {url: string, expiresIn: number}}>}
+   */
+  getPresignedUrl: async (key) => {
+    return apiRequest(`/api/upload/presigned-url?key=${encodeURIComponent(key)}`);
+  },
+
+  /**
+   * Get proxy URL for S3 file (bypasses CORS completely)
+   * @param {string} key - S3 object key
+   * @returns {string} Proxy URL
+   */
+  getProxyUrl: (key) => {
+    return `${API_BASE_URL}/api/upload/proxy/${encodeURIComponent(key)}`;
+  },
 };
 
 export default uploadAPI;

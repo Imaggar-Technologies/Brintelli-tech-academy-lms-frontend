@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { Plus, ChevronLeft, ChevronRight, X, FileText, Code, BookOpen, Edit3, CheckSquare, Link, File, Database, ListChecks } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, X, FileText, Code, BookOpen, Edit3, CheckSquare, Link, File, Database, ListChecks, Upload, Loader2 } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
 import Table from '../../components/Table';
 import programAPI from '../../api/program';
+import uploadAPI from '../../api/upload';
 
 const Assignments = () => {
   const { programId, moduleId } = useParams();
@@ -28,8 +29,9 @@ const Assignments = () => {
   const [scoringRubric, setScoringRubric] = useState([]);
   const [newTestCase, setNewTestCase] = useState({ input: '', expectedOutput: '', marks: 0, description: '' });
   const [newQuestion, setNewQuestion] = useState({ question: '', options: ['', '', '', ''], correctAnswer: 0, marks: 0 });
-  const [newResource, setNewResource] = useState({ type: 'URL', title: '', url: '', description: '', fileUrl: '' });
+  const [newResource, setNewResource] = useState({ type: 'URL', title: '', url: '', description: '', fileUrl: '', file: null });
   const [newRubricItem, setNewRubricItem] = useState({ criterion: '', description: '', marks: 0, required: false });
+  const [uploadingFiles, setUploadingFiles] = useState({}); // Track upload progress per resource
 
   useEffect(() => {
     if (moduleId) {
@@ -121,8 +123,9 @@ const Assignments = () => {
     setScoringRubric([]);
     setNewTestCase({ input: '', expectedOutput: '', marks: 0, description: '' });
     setNewQuestion({ question: '', options: ['', '', '', ''], correctAnswer: 0, marks: 0 });
-    setNewResource({ type: 'URL', title: '', url: '', description: '', fileUrl: '' });
+    setNewResource({ type: 'URL', title: '', url: '', description: '', fileUrl: '', file: null });
     setNewRubricItem({ criterion: '', description: '', marks: 0, required: false });
+    setUploadingFiles({});
   };
 
   const addTestCase = () => {
@@ -153,10 +156,117 @@ const Assignments = () => {
     setQuestions(updated);
   };
 
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setNewResource({ ...newResource, file, fileUrl: file.name });
+    }
+  };
+
+  const handleUploadFile = async (resourceIndex = null) => {
+    const resource = resourceIndex !== null ? resources[resourceIndex] : newResource;
+    const file = resource.file;
+
+    if (!file) {
+      toast.error('Please select a file first');
+      return;
+    }
+
+    const uploadKey = resourceIndex !== null ? `existing-${resourceIndex}` : 'new';
+    setUploadingFiles(prev => ({ ...prev, [uploadKey]: true }));
+
+    try {
+      const folder = 'assignment-resources';
+      const response = await uploadAPI.uploadFile(file, folder);
+
+        if (response.success) {
+          const uploadedResource = {
+            ...resource,
+            type: resource.type,
+            title: resource.title,
+            description: resource.description,
+            url: response.data.url,
+            fileUrl: response.data.url,
+            fileKey: response.data.key,
+            fileName: response.data.originalName || file.name,
+            fileSize: response.data.size || file.size,
+            mimeType: response.data.mimeType || file.type,
+            file: null, // Clear file object
+          };
+
+          if (resourceIndex !== null) {
+            // Update existing resource
+            const updated = [...resources];
+            updated[resourceIndex] = uploadedResource;
+            setResources(updated);
+            toast.success('File uploaded successfully');
+          } else {
+            // Update newResource with uploaded file info (don't add to resources yet)
+            setNewResource(uploadedResource);
+            toast.success('File uploaded successfully. Click "Add Resource" to add it.');
+          }
+        }
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      toast.error(error.message || 'Failed to upload file');
+    } finally {
+      setUploadingFiles(prev => {
+        const updated = { ...prev };
+        delete updated[uploadKey];
+        return updated;
+      });
+    }
+  };
+
+  const handleDeleteUploadedFile = async (resourceIndex) => {
+    const resource = resources[resourceIndex];
+    if (resource.fileKey) {
+      try {
+        await uploadAPI.deleteFile(resource.fileKey);
+        const updated = [...resources];
+        updated[resourceIndex] = {
+          ...updated[resourceIndex],
+          url: '',
+          fileUrl: '',
+          fileKey: '',
+          fileName: '',
+          fileSize: '',
+          mimeType: '',
+        };
+        setResources(updated);
+        toast.success('File deleted successfully');
+      } catch (error) {
+        console.error('Error deleting file:', error);
+        toast.error('Failed to delete file');
+      }
+    }
+  };
+
   const addResource = () => {
-    if (newResource.title && (newResource.url || newResource.fileUrl)) {
+    if (!newResource.title) {
+      toast.error('Please enter a resource title');
+      return;
+    }
+
+    if (newResource.type === 'URL') {
+      if (!newResource.url) {
+        toast.error('Please enter a URL');
+        return;
+      }
+      setResources([...resources, { ...newResource, fileUrl: newResource.url }]);
+      setNewResource({ type: 'URL', title: '', url: '', description: '', fileUrl: '', file: null });
+    } else if (newResource.type === 'DOCUMENT' || newResource.type === 'DATA') {
+      if (!newResource.file) {
+        toast.error('Please select a file first');
+        return;
+      }
+      if (!newResource.fileUrl || !newResource.fileKey) {
+        toast.error('Please upload the file to S3 first');
+        return;
+      }
+      // File already uploaded, just add to resources
       setResources([...resources, { ...newResource }]);
-      setNewResource({ type: 'URL', title: '', url: '', description: '', fileUrl: '' });
+      setNewResource({ type: 'URL', title: '', url: '', description: '', fileUrl: '', file: null });
     }
   };
 
@@ -734,26 +844,77 @@ const Assignments = () => {
                           <span className="font-medium text-text">{resource.title}</span>
                           <span className="text-xs text-textMuted">({resource.type})</span>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => removeResource(index)}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          {(resource.type === 'DOCUMENT' || resource.type === 'DATA') && !resource.fileKey && (
+                            <button
+                              type="button"
+                              onClick={() => handleUploadFile(index)}
+                              disabled={uploadingFiles[`existing-${index}`] || !resource.file}
+                              className="text-brand-500 hover:text-brand-700 disabled:opacity-50"
+                              title="Upload file to S3"
+                            >
+                              {uploadingFiles[`existing-${index}`] ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Upload className="h-4 w-4" />
+                              )}
+                            </button>
+                          )}
+                          {(resource.type === 'DOCUMENT' || resource.type === 'DATA') && resource.fileKey && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteUploadedFile(index)}
+                              className="text-red-500 hover:text-red-700"
+                              title="Delete file from S3"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => removeResource(index)}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
                       </div>
                       {resource.description && (
                         <p className="text-sm text-textMuted">{resource.description}</p>
                       )}
                       {resource.url && (
-                        <a href={resource.url} target="_blank" rel="noopener noreferrer" className="text-sm text-brand-500 hover:underline">
+                        <a href={resource.url} target="_blank" rel="noopener noreferrer" className="text-sm text-brand-500 hover:underline flex items-center gap-1">
+                          <Link className="h-3 w-3" />
                           {resource.url}
                         </a>
                       )}
-                      {resource.fileUrl && (
-                        <a href={resource.fileUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-brand-500 hover:underline">
-                          {resource.fileUrl}
-                        </a>
+                      {resource.fileUrl && resource.fileKey && (
+                        <div className="flex items-center gap-2">
+                          <a href={resource.fileUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-brand-500 hover:underline flex items-center gap-1">
+                            <File className="h-3 w-3" />
+                            {resource.fileName || resource.fileUrl}
+                          </a>
+                          {resource.fileSize && (
+                            <span className="text-xs text-textMuted">({(resource.fileSize / 1024).toFixed(2)} KB)</span>
+                          )}
+                        </div>
+                      )}
+                      {(resource.type === 'DOCUMENT' || resource.type === 'DATA') && !resource.fileKey && (
+                        <div>
+                          <label className="block text-xs text-textMuted mb-1">Select File</label>
+                          <input
+                            type="file"
+                            onChange={(e) => {
+                              const file = e.target.files[0];
+                              if (file) {
+                                const updated = [...resources];
+                                updated[index] = { ...updated[index], file, fileUrl: file.name };
+                                setResources(updated);
+                              }
+                            }}
+                            className="w-full px-3 py-1 border border-brintelli-border rounded bg-brintelli-card text-text text-sm"
+                          />
+                        </div>
                       )}
                     </div>
                   ))}
@@ -794,15 +955,57 @@ const Assignments = () => {
                         />
                       </div>
                     ) : (
-                      <div>
-                        <label className="block text-xs text-textMuted mb-1">File URL <span className="text-red-500">*</span></label>
-                        <input
-                          type="url"
-                          value={newResource.fileUrl}
-                          onChange={(e) => setNewResource({ ...newResource, fileUrl: e.target.value })}
-                          placeholder="https://example.com/file.pdf or /uploads/file.pdf"
-                          className="w-full px-3 py-1 border border-brintelli-border rounded bg-brintelli-card text-text text-sm"
-                        />
+                      <div className="space-y-2">
+                        <div>
+                          <label className="block text-xs text-textMuted mb-1">Upload File to S3 <span className="text-red-500">*</span></label>
+                          <input
+                            type="file"
+                            onChange={handleFileSelect}
+                            className="w-full px-3 py-1 border border-brintelli-border rounded bg-brintelli-card text-text text-sm"
+                            accept={newResource.type === 'DOCUMENT' ? '.pdf,.doc,.docx,.txt,.xls,.xlsx,.ppt,.pptx' : '.csv,.json,.xml,.xlsx'}
+                          />
+                          {newResource.file && (
+                            <p className="text-xs text-textMuted mt-1">
+                              Selected: {newResource.file.name} ({(newResource.file.size / 1024).toFixed(2)} KB)
+                            </p>
+                          )}
+                        </div>
+                        {newResource.file && (
+                          <div className="flex items-center gap-2">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleUploadFile()}
+                              disabled={uploadingFiles.new}
+                              className="flex-1"
+                            >
+                              {uploadingFiles.new ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Uploading...
+                                </>
+                              ) : (
+                                <>
+                                  <Upload className="h-4 w-4 mr-2" />
+                                  Upload to S3
+                                </>
+                              )}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setNewResource({ ...newResource, file: null, fileUrl: '' })}
+                              className="text-red-500"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        )}
+                        <p className="text-xs text-textMuted italic">
+                          Files will be uploaded to S3 bucket: assignment-resources/
+                        </p>
                       </div>
                     )}
                     <div>
@@ -815,9 +1018,22 @@ const Assignments = () => {
                         rows={2}
                       />
                     </div>
-                    <Button type="button" variant="ghost" size="sm" onClick={addResource} className="w-full">
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={addResource} 
+                      className="w-full"
+                      disabled={
+                        (newResource.type === 'DOCUMENT' || newResource.type === 'DATA') 
+                        ? (!newResource.fileKey || uploadingFiles.new)
+                        : false
+                      }
+                    >
                       <Plus className="h-4 w-4 mr-2" />
-                      Add Resource
+                      {(newResource.type === 'DOCUMENT' || newResource.type === 'DATA') && !newResource.fileKey
+                        ? 'Upload File First'
+                        : 'Add Resource'}
                     </Button>
                   </div>
                 </div>

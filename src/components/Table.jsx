@@ -11,6 +11,8 @@ const Table = ({
   defaultSort = null,
   expandable = false,
   renderExpandedRow = null,
+  onRowClick = null,
+  rowClassName = '',
 }) => {
   const [sortConfig, setSortConfig] = useState(defaultSort || { key: null, direction: 'asc' });
   const [expandedRows, setExpandedRows] = useState(new Set());
@@ -55,9 +57,9 @@ const Table = ({
   };
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-brintelli-border bg-brintelli-card">
-      <table className="min-w-full divide-y divide-brintelli-border">
-        <thead className="bg-brintelli-baseAlt/50">
+    <div className="overflow-x-auto rounded-xl border border-brintelli-border/60 bg-white">
+      <table className="min-w-full divide-y divide-brintelli-border/40">
+        <thead className="bg-gradient-to-b from-brand-50/50 to-transparent">
           <tr>
             {expandable && (
               <th className="w-12 px-4 py-4">
@@ -68,9 +70,9 @@ const Table = ({
               <th
                 key={column.key}
                 className={`
-                  px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-textMuted
+                  px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-textMuted
                   first:pl-6 last:pr-6
-                  ${sortable && column.sortable !== false ? 'cursor-pointer select-none hover:text-text hover:bg-brintelli-baseAlt transition-colors' : ''}
+                  ${sortable && column.sortable !== false ? 'cursor-pointer select-none hover:text-text hover:bg-brand-50/70 transition-colors' : ''}
                 `}
                 onClick={() => sortable && column.sortable !== false && handleSort(column.key)}
               >
@@ -86,7 +88,7 @@ const Table = ({
             ))}
           </tr>
         </thead>
-        <tbody className="bg-brintelli-card divide-y divide-brintelli-border/30">
+        <tbody className="bg-white divide-y divide-brintelli-border/30">
           {data.length === 0 && emptyRowsCount === 0 && (
             <tr>
               <td
@@ -109,11 +111,18 @@ const Table = ({
                 <tr
                   key={rowId}
                   className={`
-                    transition-all duration-150
-                    ${isExpanded ? 'bg-brintelli-baseAlt/50 border-l-2 border-l-brand-500' : 'hover:bg-brintelli-baseAlt/40 border-l-2 border-l-transparent'}
-                    ${hasExpandedContent ? 'cursor-pointer' : ''}
+                    transition-all duration-200
+                    ${isExpanded ? 'bg-brand-50/50 border-l-4 border-l-brand-500' : 'hover:bg-brand-50/30 border-l-4 border-l-transparent'}
+                    ${hasExpandedContent || onRowClick ? 'cursor-pointer' : ''}
+                    ${rowClassName}
                   `}
-                  onClick={() => hasExpandedContent && toggleRowExpansion(rowId)}
+                  onClick={(e) => {
+                    if (hasExpandedContent) {
+                      toggleRowExpansion(rowId);
+                    } else if (onRowClick) {
+                      onRowClick(row, rowIndex, e);
+                    }
+                  }}
                 >
                   {expandable && (
                     <td className="px-4 py-4">

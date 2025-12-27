@@ -76,6 +76,47 @@ export const lsmAPI = {
     });
   },
 
+  // Update session
+  updateSession: async (sessionId, sessionData) => {
+    return apiRequest(`/api/lsm/sessions/${sessionId}`, {
+      method: 'PUT',
+      body: JSON.stringify(sessionData),
+    });
+  },
+
+  // Delete session
+  deleteSession: async (sessionId) => {
+    return apiRequest(`/api/lsm/sessions/${sessionId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // ==================== MODULE OFFERINGS ====================
+  // Assign tutor to a module for a batch (Create/Update Module Offering)
+  assignTutorToModule: async (batchId, moduleId, tutorId) => {
+    return apiRequest(`/api/lsm/batches/${batchId}/module-offerings`, {
+      method: 'POST',
+      body: JSON.stringify({ moduleId, tutorId }),
+    });
+  },
+
+  // Get all module offerings for a batch
+  getBatchModuleOfferings: async (batchId) => {
+    return apiRequest(`/api/lsm/batches/${batchId}/module-offerings`);
+  },
+
+  // Get a specific module offering
+  getModuleOffering: async (batchId, moduleId) => {
+    return apiRequest(`/api/lsm/batches/${batchId}/module-offerings/${moduleId}`);
+  },
+
+  // Remove tutor assignment from a module
+  removeTutorFromModule: async (batchId, moduleId) => {
+    return apiRequest(`/api/lsm/batches/${batchId}/module-offerings/${moduleId}`, {
+      method: 'DELETE',
+    });
+  },
+
   // ==================== STUDENT PROFILES ====================
   getStudents: async (filters = {}) => {
     const params = new URLSearchParams();

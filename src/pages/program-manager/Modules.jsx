@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { Plus, ChevronLeft, ChevronRight, X, FileText, Layers3 } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, X, FileText, Layers3, BookOpen, ArrowRight, Eye, Edit } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
 import Table from '../../components/Table';
@@ -43,7 +43,23 @@ const Modules = () => {
       setLoading(true);
       const response = await programAPI.getModulesByProgram(programId);
       if (response.success) {
-        setModules(response.data.modules || []);
+        const modulesData = response.data.modules || [];
+        // Fetch objectives count for each module
+        const modulesWithCounts = await Promise.all(
+          modulesData.map(async (module) => {
+            try {
+              const objectivesResponse = await programAPI.getObjectivesByModule(module.id || module._id);
+              const objectivesCount = objectivesResponse.success && objectivesResponse.data.objectives 
+                ? objectivesResponse.data.objectives.length 
+                : 0;
+              return { ...module, objectivesCount };
+            } catch (error) {
+              console.error(`Error fetching objectives for module ${module.id}:`, error);
+              return { ...module, objectivesCount: 0 };
+            }
+          })
+        );
+        setModules(modulesWithCounts);
       }
     } catch (error) {
       console.error('Error fetching modules:', error);
@@ -133,11 +149,29 @@ const Modules = () => {
       key: 'name', 
       title: 'Module Name',
       render: (_, row) => (
-        <div>
-          <div className="font-semibold text-text">{row.name || '—'}</div>
-          {row.description && (
-            <div className="text-xs text-textMuted mt-0.5 line-clamp-1">{row.description}</div>
-          )}
+        <div className="flex items-center gap-3">
+          <div className="flex-shrink-0">
+            <div className="w-10 h-10 rounded-lg bg-brand-100 flex items-center justify-center">
+              <Layers3 className="h-5 w-5 text-brand-600" />
+            </div>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold text-text">{row.name || '—'}</div>
+            {row.description && (
+              <div className="text-xs text-textMuted mt-0.5 line-clamp-1">{row.description}</div>
+            )}
+          </div>
+        </div>
+      )
+    },
+    { 
+      key: 'objectives', 
+      title: 'Learning Objectives',
+      render: (_, row) => (
+        <div className="flex items-center gap-2">
+          <BookOpen className="h-4 w-4 text-blue-600" />
+          <span className="font-semibold text-text">{row.objectivesCount || 0}</span>
+          <span className="text-xs text-textMuted">objectives</span>
         </div>
       )
     },
@@ -145,7 +179,7 @@ const Modules = () => {
       key: 'order', 
       title: 'Order',
       render: (_, row) => (
-        <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-brand-100 text-brand-700 font-semibold text-sm">
+        <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 text-gray-700 font-semibold text-sm">
           {row.order ?? '—'}
         </span>
       )
@@ -154,7 +188,7 @@ const Modules = () => {
       key: 'duration', 
       title: 'Duration',
       render: (_, row) => (
-        <span className="text-text">{row.duration ? `${row.duration} hours` : '—'}</span>
+        <span className="text-text font-medium">{row.duration ? `${row.duration}h` : '—'}</span>
       )
     },
     { 
@@ -165,22 +199,39 @@ const Modules = () => {
     {
       key: 'actions',
       title: 'Actions',
-      render: (_, row) => (
-        <div className="flex gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate(`/program-manager/modules/${programId}/assignments/${row.id || row._id}`);
-            }}
-            className="hover:bg-brand-50 hover:text-brand-600"
-          >
-            <FileText className="h-4 w-4 mr-1" />
-            Assignments
-          </Button>
-        </div>
-      ),
+      render: (_, row) => {
+        const moduleId = row.id || row._id;
+        return (
+          <div className="flex gap-2">
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                navigate(`/program-manager/programs/${programId}/modules/${moduleId}/objectives`);
+              }}
+              className="hover:bg-brand-600"
+            >
+              <BookOpen className="h-4 w-4 mr-1" />
+              Objectives
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                navigate(`/program-manager/programs/${programId}/modules/${moduleId}`);
+              }}
+              className="hover:bg-gray-100"
+            >
+              <Edit className="h-4 w-4 mr-1" />
+              Edit
+            </Button>
+          </div>
+        );
+      },
     },
   ];
 
@@ -213,31 +264,118 @@ const Modules = () => {
         }
       />
 
+      {/* Navigation Breadcrumb */}
+      <div className="mb-4 flex items-center gap-2 text-sm text-textMuted">
+        <button 
+          onClick={() => navigate('/program-manager/programs')}
+          className="hover:text-brand-600 transition-colors"
+        >
+          Programs
+        </button>
+        <ChevronRight className="h-4 w-4" />
+        <span className="text-text font-medium">{program?.name || 'Modules'}</span>
+      </div>
+
+      {/* Modules Overview Cards */}
+      {!loading && modules.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-blue-700 mb-1">Total Modules</p>
+                <p className="text-2xl font-bold text-blue-900">{modules.length}</p>
+              </div>
+              <Layers3 className="h-8 w-8 text-blue-600" />
+            </div>
+          </div>
+          <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-green-700 mb-1">Total Objectives</p>
+                <p className="text-2xl font-bold text-green-900">
+                  {modules.reduce((sum, m) => sum + (m.objectivesCount || 0), 0)}
+                </p>
+              </div>
+              <BookOpen className="h-8 w-8 text-green-600" />
+            </div>
+          </div>
+          <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-purple-700 mb-1">Active Modules</p>
+                <p className="text-2xl font-bold text-purple-900">
+                  {modules.filter(m => m.status === 'ACTIVE').length}
+                </p>
+              </div>
+              <Eye className="h-8 w-8 text-purple-600" />
+            </div>
+          </div>
+          <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-4 border border-orange-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-orange-700 mb-1">Total Duration</p>
+                <p className="text-2xl font-bold text-orange-900">
+                  {modules.reduce((sum, m) => sum + (m.duration || 0), 0)}h
+                </p>
+              </div>
+              <FileText className="h-8 w-8 text-orange-600" />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modules Table */}
-      <div className="rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft p-6 mb-6">
+      <div className="rounded-2xl border border-gray-200 bg-white shadow-lg p-6 mb-6">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h3 className="text-xl font-semibold text-text">All Modules</h3>
-            <p className="text-sm text-textMuted mt-1">
-              {program ? `Modules for ${program.name}` : 'Manage modules for this program'}
+            <h3 className="text-2xl font-bold text-gray-900">All Modules</h3>
+            <p className="text-sm text-gray-600 mt-1">
+              {program ? `Manage modules and their learning objectives for ${program.name}` : 'Manage modules for this program'}
             </p>
+            <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
+              <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded">Modules</span>
+              <ArrowRight className="h-3 w-3" />
+              <span className="px-2 py-1 bg-green-50 text-green-700 rounded">Objectives</span>
+              <ArrowRight className="h-3 w-3" />
+              <span className="px-2 py-1 bg-purple-50 text-purple-700 rounded">Content</span>
+            </div>
           </div>
         </div>
         {loading ? (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-500 mx-auto mb-4"></div>
-            <p className="text-textMuted">Loading...</p>
+            <p className="text-textMuted">Loading modules...</p>
           </div>
         ) : modules.length === 0 ? (
-          <div className="text-center py-12">
-            <Layers3 className="h-12 w-12 text-textMuted mx-auto mb-4" />
-            <p className="text-textMuted mb-2">No modules found</p>
-            <p className="text-sm text-textMuted">Create your first module to get started!</p>
+          <div className="text-center py-16 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50">
+            <Layers3 className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+            <p className="text-lg font-semibold text-gray-700 mb-2">No modules found</p>
+            <p className="text-sm text-gray-500 mb-6">Create your first module to get started!</p>
+            <Button
+              variant="primary"
+              onClick={() => {
+                setFormData({ order: modules.length });
+                setObjectives([]);
+                setShowModuleModal(true);
+              }}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Create First Module
+            </Button>
           </div>
         ) : (
           <>
             <div className="overflow-hidden">
-              <Table columns={moduleColumns} data={paginatedModules} minRows={10} />
+              <Table 
+                columns={moduleColumns} 
+                data={paginatedModules} 
+                minRows={10}
+                onRowClick={(row) => {
+                  const moduleId = row.id || row._id;
+                  navigate(`/program-manager/programs/${programId}/modules/${moduleId}/objectives`);
+                }}
+                rowClassName="cursor-pointer hover:bg-gray-50"
+              />
             </div>
             {/* Pagination */}
             {totalPages > 1 && (

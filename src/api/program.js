@@ -92,6 +92,115 @@ export const programAPI = {
       body: JSON.stringify(updates),
     });
   },
+
+  // Objectives
+  createObjective: async (moduleId, objectiveData) => {
+    return apiRequest(`/api/programs/modules/${moduleId}/objectives`, {
+      method: 'POST',
+      body: JSON.stringify(objectiveData),
+    });
+  },
+
+  getObjectivesByModule: async (moduleId) => {
+    return apiRequest(`/api/programs/modules/${moduleId}/objectives`);
+  },
+
+  updateObjective: async (objectiveId, updates) => {
+    return apiRequest(`/api/programs/objectives/${objectiveId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+  },
+
+  deleteObjective: async (objectiveId) => {
+    return apiRequest(`/api/programs/objectives/${objectiveId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Resources
+  createResource: async (objectiveId, resourceData) => {
+    return apiRequest(`/api/programs/objectives/${objectiveId}/resources`, {
+      method: 'POST',
+      body: JSON.stringify(resourceData),
+    });
+  },
+
+  updateResource: async (resourceId, resourceData) => {
+    return apiRequest(`/api/programs/resources/${resourceId}`, {
+      method: 'PUT',
+      body: JSON.stringify(resourceData),
+    });
+  },
+
+  deleteResource: async (resourceId) => {
+    return apiRequest(`/api/programs/resources/${resourceId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Objective Assignments
+  createObjectiveAssignment: async (objectiveId, assignmentData) => {
+    return apiRequest(`/api/programs/objectives/${objectiveId}/assignments`, {
+      method: 'POST',
+      body: JSON.stringify(assignmentData),
+    });
+  },
+
+  updateObjectiveAssignment: async (assignmentId, assignmentData) => {
+    return apiRequest(`/api/programs/objective-assignments/${assignmentId}`, {
+      method: 'PUT',
+      body: JSON.stringify(assignmentData),
+    });
+  },
+
+  deleteObjectiveAssignment: async (assignmentId) => {
+    return apiRequest(`/api/programs/objective-assignments/${assignmentId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Practice Codes
+  createPracticeCode: async (objectiveId, practiceCodeData) => {
+    return apiRequest(`/api/programs/objectives/${objectiveId}/practice-codes`, {
+      method: 'POST',
+      body: JSON.stringify(practiceCodeData),
+    });
+  },
+
+  updatePracticeCode: async (practiceCodeId, practiceCodeData) => {
+    return apiRequest(`/api/programs/practice-codes/${practiceCodeId}`, {
+      method: 'PUT',
+      body: JSON.stringify(practiceCodeData),
+    });
+  },
+
+  deletePracticeCode: async (practiceCodeId) => {
+    return apiRequest(`/api/programs/practice-codes/${practiceCodeId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // MCQs
+  createMCQ: async (objectiveId, mcqData) => {
+    return apiRequest(`/api/programs/objectives/${objectiveId}/mcqs`, {
+      method: 'POST',
+      body: JSON.stringify(mcqData),
+    });
+  },
+
+  updateMCQ: async (mcqId, mcqData) => {
+    return apiRequest(`/api/programs/mcqs/${mcqId}`, {
+      method: 'PUT',
+      body: JSON.stringify(mcqData),
+    });
+  },
+
+  deleteMCQ: async (mcqId) => {
+    return apiRequest(`/api/programs/mcqs/${mcqId}`, {
+      method: 'DELETE',
+    });
+  },
 };
 
 export default programAPI;

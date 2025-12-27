@@ -259,7 +259,7 @@ const Programs = () => {
             }}
           >
             <Plus className="h-4 w-4 mr-2" />
-            Create Program with Modules
+            Create Program
           </Button>
         }
       />

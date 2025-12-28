@@ -2,7 +2,7 @@
 // Recommended: set VITE_API_BASE_URL in an env file (e.g. `.env.local`) to avoid surprises.
 // In local dev (Vite), default to localhost; in prod builds, default to the deployed API.
 // Backend dev server defaults to 3001 (see backend `server.js`)
-const DEFAULT_DEV_API_BASE_URL = 'http://localhost:3002';
+const DEFAULT_DEV_API_BASE_URL = 'http://localhost:3000';
 const DEFAULT_PROD_API_BASE_URL = 'http://16.112.146.20:3000';
 
 export const API_BASE_URL =

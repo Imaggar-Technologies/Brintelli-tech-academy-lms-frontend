@@ -264,6 +264,14 @@ export default function SessionRoom({ sessionId, session }) {
       toast.error("Start the session first");
       return;
     }
+    if (!window.isSecureContext) {
+      toast.error("Screen share requires HTTPS (or localhost). Open the site over https://");
+      return;
+    }
+    if (!navigator?.mediaDevices?.getDisplayMedia) {
+      toast.error("Screen sharing is not supported in this browser/environment.");
+      return;
+    }
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: true,
@@ -274,6 +282,10 @@ export default function SessionRoom({ sessionId, session }) {
       // If camera isn't started, capture mic audio and attach to the screen stream so students can hear.
       if (!cameraStreamRef.current) {
         try {
+          if (!navigator?.mediaDevices?.getUserMedia) {
+            // can't capture mic in this environment
+            throw new Error("getUserMedia is not available");
+          }
           const micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
           const micTrack = micStream.getAudioTracks?.()?.[0] || null;
           if (micTrack) {
@@ -312,6 +324,14 @@ export default function SessionRoom({ sessionId, session }) {
     if (!socket) return;
     if (isTutor && !controlsEnabled) {
       toast.error("Start the session first");
+      return;
+    }
+    if (!window.isSecureContext) {
+      toast.error("Camera/mic requires HTTPS (or localhost). Open the site over https://");
+      return;
+    }
+    if (!navigator?.mediaDevices?.getUserMedia) {
+      toast.error("Camera/microphone is not supported in this browser/environment.");
       return;
     }
     try {

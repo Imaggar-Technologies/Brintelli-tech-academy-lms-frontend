@@ -60,11 +60,16 @@ export default function SessionRoom({ sessionId, session }) {
   const remoteCameraRef = useRef(null);
   const screenStreamRef = useRef(null);
   const cameraStreamRef = useRef(null);
+  // When tutor screen-shares without camera, we attach a mic track to the screen stream so students can hear.
+  const screenMicStreamRef = useRef(null);
+  const screenMicTrackRef = useRef(null);
   const pcsRef = useRef(new Map()); // socketId -> RTCPeerConnection
   const [broadcastMode, setBroadcastMode] = useState(null); // legacy indicator: "camera" | "screen" | null
   const [micMuted, setMicMuted] = useState(false);
   const [speakerMuted, setSpeakerMuted] = useState(false);
   const [streamMeta, setStreamMeta] = useState({ screenStreamId: null, cameraStreamId: null });
+  const streamMetaRef = useRef({ screenStreamId: null, cameraStreamId: null });
+  const [sessionStatus, setSessionStatus] = useState(session?.status || "SCHEDULED");
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef(null);
   const recordingChunksRef = useRef([]);
@@ -77,6 +82,11 @@ export default function SessionRoom({ sessionId, session }) {
   const myJoinLink = `${window.location.origin}${isTutor ? "/tutor" : "/student"}/sessions/${sessionId}/live`;
   const isLive = !!screenStreamRef.current || !!cameraStreamRef.current || session?.status === "ONGOING";
   const hasRecordingPublished = !!recordingUrlLocal || !!session?.recordingUrl;
+  const controlsEnabled = isTutor ? sessionStatus === "ONGOING" : true;
+
+  useEffect(() => {
+    if (session?.status) setSessionStatus(session.status);
+  }, [session?.status]);
 
   const teardownPeers = () => {
     pcsRef.current.forEach((pc) => {
@@ -141,6 +151,15 @@ export default function SessionRoom({ sessionId, session }) {
       screenStreamRef.current.getTracks().forEach((t) => t.stop());
       screenStreamRef.current = null;
     }
+    if (screenMicStreamRef.current) {
+      try {
+        screenMicStreamRef.current.getTracks().forEach((t) => t.stop());
+      } catch {
+        // ignore
+      }
+      screenMicStreamRef.current = null;
+      screenMicTrackRef.current = null;
+    }
     if (screenPreviewRef.current) screenPreviewRef.current.srcObject = null;
     setBroadcastMode(cameraStreamRef.current ? "camera" : null);
     emitStreamMeta();
@@ -151,6 +170,28 @@ export default function SessionRoom({ sessionId, session }) {
     stopCamera();
     teardownPeers();
     toast.success("Broadcast stopped");
+  };
+
+  const toggleCamera = async () => {
+    if (!isTutor) return;
+    if (cameraStreamRef.current) {
+      stopCamera();
+      await rebuildPeersForAllViewers();
+      toast.success("Camera stopped");
+      return;
+    }
+    await startCamera();
+  };
+
+  const toggleScreenShare = async () => {
+    if (!isTutor) return;
+    if (screenStreamRef.current) {
+      stopScreenShare();
+      await rebuildPeersForAllViewers();
+      toast.success("Screen share stopped");
+      return;
+    }
+    await startScreenShare();
   };
 
   const ensurePeerForViewer = async (viewerSocketId) => {
@@ -219,12 +260,32 @@ export default function SessionRoom({ sessionId, session }) {
 
   const startScreenShare = async () => {
     if (!socket) return;
+    if (isTutor && !controlsEnabled) {
+      toast.error("Start the session first");
+      return;
+    }
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: true,
         audio: false, // mic audio comes from camera stream to avoid echo
       });
       screenStreamRef.current = stream;
+
+      // If camera isn't started, capture mic audio and attach to the screen stream so students can hear.
+      if (!cameraStreamRef.current) {
+        try {
+          const micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+          const micTrack = micStream.getAudioTracks?.()?.[0] || null;
+          if (micTrack) {
+            stream.addTrack(micTrack);
+            screenMicStreamRef.current = micStream;
+            screenMicTrackRef.current = micTrack;
+            setMicMuted(false);
+          }
+        } catch {
+          // non-fatal: screen share can still work without mic audio
+        }
+      }
       if (screenPreviewRef.current) {
         screenPreviewRef.current.srcObject = stream;
       }
@@ -249,6 +310,10 @@ export default function SessionRoom({ sessionId, session }) {
 
   const startCamera = async () => {
     if (!socket) return;
+    if (isTutor && !controlsEnabled) {
+      toast.error("Start the session first");
+      return;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: true,
@@ -302,10 +367,17 @@ export default function SessionRoom({ sessionId, session }) {
 
     const onStreamMeta = (payload) => {
       if (payload?.sessionId !== sessionId) return;
-      setStreamMeta({
+      const next = {
         screenStreamId: payload.screenStreamId || null,
         cameraStreamId: payload.cameraStreamId || null,
-      });
+      };
+      streamMetaRef.current = next;
+      setStreamMeta(next);
+    };
+
+    const onSessionStatus = (payload) => {
+      if (payload?.sessionId !== sessionId) return;
+      if (payload?.status) setSessionStatus(payload.status);
     };
 
     // WebRTC signaling receiver
@@ -336,11 +408,12 @@ export default function SessionRoom({ sessionId, session }) {
             const stream = evt.streams?.[0] || null;
             if (!stream) return;
             // Route streams by meta if available; otherwise fill screen then camera
-            if (streamMeta.screenStreamId && stream.id === streamMeta.screenStreamId) {
+            const meta = streamMetaRef.current || {};
+            if (meta.screenStreamId && stream.id === meta.screenStreamId) {
               if (remoteScreenRef.current) remoteScreenRef.current.srcObject = stream;
               return;
             }
-            if (streamMeta.cameraStreamId && stream.id === streamMeta.cameraStreamId) {
+            if (meta.cameraStreamId && stream.id === meta.cameraStreamId) {
               if (remoteCameraRef.current) remoteCameraRef.current.srcObject = stream;
               return;
             }
@@ -397,6 +470,7 @@ export default function SessionRoom({ sessionId, session }) {
     socket.on("poll:update", onPollUpdate);
     socket.on("stream:meta", onStreamMeta);
     socket.on("webrtc:signal", onWebrtcSignal);
+    socket.on("session:status", onSessionStatus);
 
     return () => {
       socket.emit("session:leave", { sessionId });
@@ -408,10 +482,11 @@ export default function SessionRoom({ sessionId, session }) {
       socket.off("poll:update", onPollUpdate);
       socket.off("stream:meta", onStreamMeta);
       socket.off("webrtc:signal", onWebrtcSignal);
+      socket.off("session:status", onSessionStatus);
       stopAllBroadcast();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [socket, sessionId, streamMeta.screenStreamId, streamMeta.cameraStreamId]);
+  }, [socket, sessionId, isTutor]);
 
   // If tutor is sharing and new participants join, create peer for them
   useEffect(() => {
@@ -427,11 +502,13 @@ export default function SessionRoom({ sessionId, session }) {
   }, [participants, socket, isTutor]);
 
   const toggleMic = () => {
-    if (!cameraStreamRef.current) {
-      toast.error("Start camera or screen share first");
+    if (isTutor && !controlsEnabled) {
+      toast.error("Start the session first");
       return;
     }
-    const audioTracks = cameraStreamRef.current.getAudioTracks();
+    const audioTracks =
+      cameraStreamRef.current?.getAudioTracks?.() ||
+      (screenMicTrackRef.current ? [screenMicTrackRef.current] : []);
     if (!audioTracks || audioTracks.length === 0) {
       toast.error("No microphone/audio track available");
       return;
@@ -515,12 +592,14 @@ export default function SessionRoom({ sessionId, session }) {
   const startSession = () => {
     if (!socket) return;
     socket.emit("session:start", { sessionId });
+    setSessionStatus("ONGOING");
     toast.success("Session started");
   };
 
   const endSession = () => {
     if (!socket) return;
     socket.emit("session:end", { sessionId });
+    setSessionStatus("COMPLETED");
     toast.success("Session ended");
   };
 
@@ -547,6 +626,10 @@ export default function SessionRoom({ sessionId, session }) {
   const startRecording = async () => {
     if (!isTutor) return;
     if (isRecording) return;
+    if (!controlsEnabled) {
+      toast.error("Start the session first");
+      return;
+    }
     if (!screenStreamRef.current && !cameraStreamRef.current) {
       toast.error("Start camera and/or screen share first");
       return;
@@ -591,7 +674,10 @@ export default function SessionRoom({ sessionId, session }) {
       draw();
 
       const outStream = canvas.captureStream(30);
-      const audioTrack = cameraStreamRef.current?.getAudioTracks?.()?.[0];
+      const audioTrack =
+        cameraStreamRef.current?.getAudioTracks?.()?.[0] ||
+        screenMicTrackRef.current ||
+        null;
       if (audioTrack) outStream.addTrack(audioTrack);
 
       const mimeCandidates = [
@@ -716,18 +802,31 @@ export default function SessionRoom({ sessionId, session }) {
               <div className="flex flex-wrap gap-2">
                 {isTutor ? (
                   <>
-                    <Button className="gap-2" onClick={startCamera}>
+                    <Button
+                      className="gap-2"
+                      variant={cameraStreamRef.current ? "primary" : "secondary"}
+                      onClick={toggleCamera}
+                      disabled={!controlsEnabled}
+                      title={cameraStreamRef.current ? "Stop camera" : "Start camera"}
+                    >
                       <Camera className="h-4 w-4" />
-                      Camera
+                      {cameraStreamRef.current ? "Stop Camera" : "Camera"}
                     </Button>
-                    <Button variant="secondary" className="gap-2" onClick={startScreenShare}>
+                    <Button
+                      variant={screenStreamRef.current ? "primary" : "secondary"}
+                      className="gap-2"
+                      onClick={toggleScreenShare}
+                      disabled={!controlsEnabled}
+                      title={screenStreamRef.current ? "Stop screen sharing" : "Start screen sharing"}
+                    >
                       <Monitor className="h-4 w-4" />
-                      Share Screen
+                      {screenStreamRef.current ? "Stop Share" : "Share Screen"}
                     </Button>
                     <Button
                       variant="secondary"
                       className="gap-2"
                       onClick={toggleMic}
+                      disabled={!controlsEnabled}
                       title={micMuted ? "Unmute microphone" : "Mute microphone"}
                     >
                       {micMuted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
@@ -758,7 +857,7 @@ export default function SessionRoom({ sessionId, session }) {
                 ref={isTutor ? screenPreviewRef : remoteScreenRef}
                 autoPlay
                 playsInline
-                muted={isTutor}
+                muted={isTutor || speakerMuted}
                 className="h-[420px] w-full object-contain bg-black"
               />
 
@@ -768,7 +867,7 @@ export default function SessionRoom({ sessionId, session }) {
                   ref={isTutor ? cameraPreviewRef : remoteCameraRef}
                   autoPlay
                   playsInline
-                  muted={isTutor}
+                  muted={isTutor || speakerMuted}
                   className="h-[135px] w-full object-cover bg-black"
                 />
               </div>

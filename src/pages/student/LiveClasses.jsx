@@ -97,7 +97,7 @@ const StudentLiveClasses = () => {
     {
       key: "name",
       title: "Session",
-      render: (row) => (
+      render: (_value, row) => (
         <div>
           <div className="flex items-center gap-2">
             <div className="font-medium text-text">{row?.name || 'N/A'}</div>
@@ -123,14 +123,14 @@ const StudentLiveClasses = () => {
     {
       key: "type",
       title: "Type",
-      render: (row) => (
+      render: (_value, row) => (
         <span className="text-sm text-textSoft">{row?.type || 'N/A'}</span>
       ),
     },
     {
       key: "scheduledDate",
       title: "Time",
-      render: (row) => (
+      render: (_value, row) => (
         <div>
           <div className="text-sm text-text">{formatSessionTime(row?.scheduledDate, row?.duration)}</div>
           {row?.duration && (
@@ -142,7 +142,7 @@ const StudentLiveClasses = () => {
     {
       key: "status",
       title: "Status",
-      render: (row) => (
+      render: (_value, row) => (
         <StatusPill
           status={row?.status}
           isLive={row?.status === 'ONGOING'}
@@ -153,9 +153,9 @@ const StudentLiveClasses = () => {
     {
       key: "action",
       title: "Action",
-      render: (row) => (
+      render: (_value, row) => (
         <div className="flex gap-2">
-          {row?.status === 'SCHEDULED' && (
+          {(row?.status === 'SCHEDULED' || row?.status === 'ONGOING') && (
             <Button
               size="sm"
               className="px-4 py-2 text-xs font-semibold"
@@ -165,7 +165,7 @@ const StudentLiveClasses = () => {
               <Video className="h-3.5 w-3.5 ml-1" />
             </Button>
           )}
-          {row?.recordingUrl && row.status === 'COMPLETED' && (
+          {!!row?.recordingUrl && (
             <Button
               variant="secondary"
               size="sm"
@@ -195,7 +195,9 @@ const StudentLiveClasses = () => {
     let filtered = sessions;
     switch (filter) {
       case 'upcoming':
+        // Upcoming should also include ONGOING sessions so learners can join instantly.
         filtered = sessions.filter(s => {
+          if (s.status === 'ONGOING') return true;
           if (!s.scheduledDate) return false;
           return new Date(s.scheduledDate) > now && s.status === 'SCHEDULED';
         });
@@ -218,6 +220,9 @@ const StudentLiveClasses = () => {
     }
 
     return filtered.sort((a, b) => {
+      // Always keep ONGOING sessions at the top
+      if (a.status === 'ONGOING' && b.status !== 'ONGOING') return -1;
+      if (b.status === 'ONGOING' && a.status !== 'ONGOING') return 1;
       if (!a.scheduledDate) return 1;
       if (!b.scheduledDate) return -1;
       return new Date(a.scheduledDate) - new Date(b.scheduledDate);

@@ -27,19 +27,22 @@ jobs:
 
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           command_timeout: 10m
+          envs: DOCKERHUB_USERNAME
           script: |
             docker stop brintelli-lms-frontend || true
             docker rm brintelli-lms-frontend || true
 
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/brintelli-lms-frontend:latest
+            docker pull $DOCKERHUB_USERNAME/brintelli-lms-frontend:latest
 
             docker run -d \
               --name brintelli-lms-frontend \
-              -p 80:80 \
+              -p 127.0.0.1:3001:80 \
               --restart always \
-              ${{ secrets.DOCKERHUB_USERNAME }}/brintelli-lms-frontend:latest
+              $DOCKERHUB_USERNAME/brintelli-lms-frontend:latest

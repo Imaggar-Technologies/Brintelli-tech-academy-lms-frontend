@@ -22,9 +22,10 @@ const TutorLiveSessionRoom = () => {
     load();
   }, [sessionId]);
 
-  return <SessionRoom sessionId={sessionId} session={session} />;
+  return <SessionRoom sessionId={sessionId} session={session} uiVariant="meeting" />;
 };
 
 export default TutorLiveSessionRoom;
+
 
 

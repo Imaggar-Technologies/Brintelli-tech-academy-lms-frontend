@@ -51,7 +51,7 @@ const refreshAuthToken = async () => {
     console.error('Token refresh error:', error);
     // Logout user if refresh fails
     store.dispatch(logout());
-    window.location.href = '/switch-user';
+    window.location.href = '/auth/signin';
     throw error;
   }
 };

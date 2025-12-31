@@ -11,6 +11,7 @@ import programAPI from '../../api/program';
 const LsmBatches = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [loadingPrograms, setLoadingPrograms] = useState(true);
   const [batches, setBatches] = useState([]);
   const [programs, setPrograms] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -26,18 +27,35 @@ const LsmBatches = () => {
   const [loadingStudents, setLoadingStudents] = useState(false);
 
   useEffect(() => {
-    fetchBatches();
-    fetchPrograms();
+    // Fetch programs first, then batches
+    const loadData = async () => {
+      await fetchPrograms();
+      await fetchBatches();
+    };
+    loadData();
   }, [filters]);
 
   const fetchPrograms = async () => {
     try {
+      setLoadingPrograms(true);
       const response = await programAPI.getAllPrograms();
       if (response.success) {
-        setPrograms(response.data.programs || []);
+        const programsData = response.data.programs || [];
+        console.log('Loaded programs:', programsData.length);
+        console.log('Program IDs:', programsData.map(p => ({ name: p.name, id: p.id || p._id })));
+        setPrograms(programsData);
+        return programsData;
+      } else {
+        console.error('Failed to load programs:', response);
+        toast.error(response.message || 'Failed to load programs');
+        return [];
       }
     } catch (error) {
       console.error('Error fetching programs:', error);
+      toast.error('Failed to load programs');
+      return [];
+    } finally {
+      setLoadingPrograms(false);
     }
   };
 
@@ -46,7 +64,15 @@ const LsmBatches = () => {
       setLoading(true);
       const response = await lsmAPI.getAllBatches(filters);
       if (response.success) {
-        setBatches(response.data.batches || []);
+        const batchesData = (response.data.batches || []).map(batch => ({
+          ...batch,
+          // Normalize ID to ensure it's always a string
+          id: (batch.id || batch._id)?.toString(),
+          _id: (batch._id || batch.id)?.toString(),
+        }));
+        console.log('Loaded batches:', batchesData.length);
+        console.log('Batch IDs:', batchesData.map(b => ({ name: b.name, id: b.id, courseId: b.courseId?.toString() || b.courseId })));
+        setBatches(batchesData);
       } else {
         toast.error(response.message || 'Failed to load batches');
       }
@@ -59,18 +85,73 @@ const LsmBatches = () => {
   };
 
   const getProgramName = (courseId) => {
-    if (!courseId) return 'N/A';
-    const program = programs.find(p => (p.id || p._id) === courseId);
-    return program ? program.name : courseId;
+    try {
+      if (!courseId) {
+        return 'N/A';
+      }
+      
+      // Ensure programs array is available and is an array
+      if (!programs || !Array.isArray(programs)) {
+        return loadingPrograms ? 'Loading...' : 'N/A';
+      }
+      
+      if (programs.length === 0) {
+        return 'No programs';
+      }
+      
+      // Normalize courseId for comparison (handle both string and ObjectId formats)
+      const normalizedCourseId = String(courseId).trim();
+      
+      // Find matching program - try multiple matching strategies
+      let program = programs.find(p => {
+        if (!p) return false;
+        const programId = String(p.id || p._id || '').trim();
+        return programId === normalizedCourseId;
+      });
+      
+      // If no exact match, try case-insensitive comparison
+      if (!program) {
+        program = programs.find(p => {
+          if (!p) return false;
+          const programId = String(p.id || p._id || '').trim().toLowerCase();
+          return programId === normalizedCourseId.toLowerCase();
+        });
+      }
+      
+      if (program) {
+        return program.name || 'N/A';
+      }
+      
+      // Debug logging for mismatches
+      console.warn('Program not found for courseId:', normalizedCourseId, {
+        availableIds: programs.map(p => String(p.id || p._id || '').trim()),
+        courseIdType: typeof courseId,
+      });
+      
+      return 'N/A';
+    } catch (error) {
+      console.error('Error in getProgramName:', error, { 
+        courseId, 
+        programsLength: programs?.length,
+        programsType: typeof programs,
+      });
+      return 'N/A';
+    }
   };
 
   const formatDate = (date) => {
     if (!date) return 'N/A';
-    return new Date(date).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
+    try {
+      const dateObj = new Date(date);
+      if (isNaN(dateObj.getTime())) return 'N/A';
+      return dateObj.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+    } catch (e) {
+      return 'N/A';
+    }
   };
 
   const getStatusColor = (status) => {
@@ -152,26 +233,37 @@ const LsmBatches = () => {
     {
       key: 'actions',
       title: 'Actions',
-      render: (row) => (
-        <div className="flex gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleViewStudents(row)}
-          >
-            <Users className="h-4 w-4 mr-1" />
-            Students ({row?.students?.length || row?.enrolled || 0})
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate(`/lsm/batches/${row?.id || row?._id}/sessions`)}
-          >
-            <Calendar className="h-4 w-4 mr-1" />
-            Sessions
-          </Button>
-        </div>
-      ),
+      render: (row) => {
+        const batchId = (row?.id || row?._id)?.toString();
+        return (
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleViewStudents(row)}
+            >
+              <Users className="h-4 w-4 mr-1" />
+              Students ({row?.students?.length || row?.enrolled || 0})
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                if (!batchId || batchId === 'undefined') {
+                  toast.error('Invalid batch ID. Cannot navigate to sessions.');
+                  console.error('Invalid batch ID:', row);
+                  return;
+                }
+                navigate(`/lsm/batches/${batchId}/sessions`);
+              }}
+              disabled={!batchId || batchId === 'undefined'}
+            >
+              <Calendar className="h-4 w-4 mr-1" />
+              Sessions
+            </Button>
+          </div>
+        );
+      },
     },
   ];
 
@@ -203,16 +295,35 @@ const LsmBatches = () => {
             <label className="block text-sm font-medium text-text mb-2">Program</label>
             <select
               value={filters.courseId}
-              onChange={(e) => setFilters({ ...filters, courseId: e.target.value })}
+              onChange={(e) => {
+                console.log('Program filter changed to:', e.target.value);
+                setFilters({ ...filters, courseId: e.target.value });
+                setCurrentPage(1); // Reset to first page when filter changes
+              }}
               className="w-full px-4 py-2 border border-brintelli-border rounded-lg bg-brintelli-card text-text"
+              disabled={loadingPrograms}
             >
               <option value="">All Programs</option>
-              {programs.map((program) => (
-                <option key={program.id || program._id} value={program.id || program._id}>
-                  {program.name}
-                </option>
-              ))}
+              {loadingPrograms ? (
+                <option value="" disabled>Loading programs...</option>
+              ) : programs.length === 0 ? (
+                <option value="" disabled>No programs found</option>
+              ) : (
+                programs.map((program) => {
+                  const programId = (program.id || program._id)?.toString();
+                  return (
+                    <option key={programId} value={programId}>
+                      {program.name || 'Unnamed Program'}
+                    </option>
+                  );
+                })
+              )}
             </select>
+            {!loadingPrograms && programs.length > 0 && (
+              <p className="text-xs text-textMuted mt-1">
+                {programs.length} program{programs.length !== 1 ? 's' : ''} available
+              </p>
+            )}
           </div>
           <div className="flex items-end">
             <Button

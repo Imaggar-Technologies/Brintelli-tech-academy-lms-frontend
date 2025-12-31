@@ -1,7 +1,9 @@
 import { useNavigate, Link } from "react-router-dom";
 import { useState } from "react";
 import { useDispatch } from "react-redux";
+import { Mail, ExternalLink } from "lucide-react";
 import Button from "../../components/Button";
+import PasswordInput from "../../components/PasswordInput";
 import { setCredentials } from "../../store/slices/authSlice";
 import { getRoleDashboard } from "../../utils/roleRoutes";
 
@@ -49,80 +51,105 @@ const SignIn = () => {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-brintelli-baseAlt px-4 py-10">
-      <div className="w-full max-w-md overflow-hidden rounded-2xl border border-brintelli-border bg-brintelli-card shadow-card backdrop-blur-glass">
-        <div className="bg-gradient-brintelli-alt px-6 py-5 text-white">
-          <p className="text-textMuted text-xs font-semibold uppercase tracking-[0.35em] text-white/80">
-            Brintelli Tech Academy
-          </p>
-          <h1 className="text-2xl font-semibold">Sign in to your portal</h1>
+    <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/50 to-indigo-50/50">
+      <div className="flex w-full">
+        {/* Left Side - Form */}
+        <div className="flex w-full flex-col lg:w-1/2">
+          <div className="flex min-h-screen flex-col items-center justify-center px-6 py-12 lg:px-12">
+            <div className="w-full max-w-md">
+              {/* Logo */}
+              <div className="mb-8 flex items-center justify-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-600 text-white shadow-lg">
+                  <span className="text-2xl font-bold">BT</span>
+                </div>
+                <div className="ml-4">
+                  <h1 className="text-2xl font-bold text-text">Brintelli</h1>
+                  <p className="text-sm text-textMuted">Tech Academy</p>
+                </div>
+              </div>
+
+              {/* Form Card */}
+              <div className="rounded-2xl border border-brintelli-border bg-white p-8 shadow-xl">
+                <div className="mb-6">
+                  <h2 className="text-2xl font-bold text-text">Welcome Back!</h2>
+                  <p className="mt-2 text-sm text-textMuted">Sign in to continue your learning journey</p>
+                </div>
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  <div className="space-y-2">
+                    <label htmlFor="email" className="text-sm font-semibold text-text">
+                      Email address
+                    </label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-textMuted" />
+                      <input
+                        id="email"
+                        name="email"
+                        type="email"
+                        required
+                        value={formData.email}
+                        onChange={handleChange}
+                        placeholder="you@brintelli.com"
+                        className="w-full rounded-xl border border-brintelli-border px-4 py-3 pl-11 text-sm text-textSoft outline-none transition duration-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 hover:border-brand-400"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label htmlFor="password" className="text-sm font-semibold text-text">
+                        Password
+                      </label>
+                      <Link
+                        to="/auth/forgot-password"
+                        className="text-xs font-medium text-brand-500 hover:text-brand-600 transition-colors"
+                      >
+                        Forgot password?
+                      </Link>
+                    </div>
+                    <PasswordInput
+                      id="password"
+                      name="password"
+                      required
+                      value={formData.password}
+                      onChange={handleChange}
+                      placeholder="Enter your password"
+                    />
+                  </div>
+                  <Button type="submit" className="w-full mt-6" disabled={isLoading}>
+                    {isLoading ? "Signing in..." : "Sign In"}
+                  </Button>
+                </form>
+              </div>
+              <div className="mt-6 text-center text-textMuted text-xs">
+                <span>© {new Date().getFullYear()} Brintelli Academy</span>
+              </div>
+            </div>
+          </div>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-4 px-6 py-6">
-          <div className="space-y-2">
-            <label htmlFor="email" className="text-sm font-medium text-text">
-              Email address
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              required
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="you@brintelli.com"
-              className="w-full rounded-xl border border-brintelli-border px-4 py-2.5 text-sm text-textSoft outline-none transition duration-160 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
-            />
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label htmlFor="password" className="text-sm font-medium text-text">
-                Password
-              </label>
-              <Link
-                to="/auth/forgot-password"
-                className="text-xs font-medium text-brand-500 hover:text-brand-600 transition"
-              >
-                Forgot password?
-              </Link>
+
+        {/* Right Side - Image */}
+        <div className="hidden lg:flex lg:w-1/2 items-center justify-center bg-gradient-to-br from-blue-100 via-indigo-100 to-purple-100 p-12">
+          <a
+            href="https://brintellitechacademy.in"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group relative flex h-full w-full items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-blue-200/80 via-indigo-200/80 to-purple-200/80 transition-all hover:scale-[1.02] hover:shadow-2xl"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-400/20 via-indigo-400/20 to-purple-400/20" />
+            <div className="relative z-10 text-center p-8">
+              <div className="mb-6 flex justify-center">
+                <div className="flex h-24 w-24 items-center justify-center rounded-3xl bg-white/90 shadow-xl backdrop-blur-sm">
+                  <span className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">BT</span>
+                </div>
+              </div>
+              <h3 className="mb-4 text-3xl font-bold text-slate-800">Brintelli Tech Academy</h3>
+              <p className="mb-6 text-lg text-slate-700">Transforming Careers Through Technology</p>
+              <div className="inline-flex items-center gap-2 rounded-full bg-white/90 px-6 py-3 text-sm font-semibold text-slate-800 shadow-lg transition-all group-hover:gap-3">
+                <span>Visit Our Website</span>
+                <ExternalLink className="h-4 w-4" />
+              </div>
             </div>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              required
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="••••••••"
-              className="w-full rounded-xl border border-brintelli-border px-4 py-2.5 text-sm text-textSoft outline-none transition duration-160 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
-            />
-          </div>
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Signing in..." : "Sign In"}
-          </Button>
-          <div className="space-y-2 text-center text-sm text-textMuted">
-            <div>
-              <span>New student? </span>
-              <Link
-                to="/auth/register/student"
-                className="font-semibold text-brand-500 hover:text-brand-600 transition"
-              >
-                Register as Student
-              </Link>
-            </div>
-            <div>
-              <span>Staff member? </span>
-              <Link
-                to="/auth/register/staff"
-                className="font-semibold text-brand-500 hover:text-brand-600 transition"
-              >
-                Register as Staff
-              </Link>
-            </div>
-          </div>
-          <div className="text-center text-textMuted text-xs pt-2">
-            <span>© {new Date().getFullYear()} Brintelli Academy</span>
-          </div>
-        </form>
+          </a>
+        </div>
       </div>
     </div>
   );

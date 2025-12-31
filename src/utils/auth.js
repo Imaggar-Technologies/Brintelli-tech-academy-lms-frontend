@@ -9,7 +9,7 @@ import toast from "react-hot-toast";
  * 2. Dispatching logout action to clear Redux state
  * 3. Purging persisted storage
  * 4. Showing toast notification
- * 5. Navigating to home/switch-user page
+ * 5. Navigating to login page
  */
 export const handleLogout = async (dispatch, navigate = null, getState = null) => {
   try {
@@ -64,7 +64,7 @@ export const handleLogout = async (dispatch, navigate = null, getState = null) =
   
   // Small delay to show toast before navigation
   setTimeout(() => {
-    // Navigate to home/switch-user page if navigate function provided
+    // Navigate to login page if navigate function provided
     if (navigate) {
       navigate("/");
     } else {

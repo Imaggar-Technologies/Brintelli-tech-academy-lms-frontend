@@ -122,7 +122,7 @@ const UserMenu = ({ role = "student", roleLabel = "Student LMS", userId }) => {
     }
 
     if (action === "switch") {
-      navigate("/switch-user");
+      navigate("/auth/signin");
       return;
     }
 

@@ -64,11 +64,16 @@ export async function apiUpload(endpoint, formData, options = {}) {
     // If refresh failed, logout
     if (String(error?.message || "").toLowerCase().includes("authentication")) {
       store.dispatch(logout());
-      window.location.href = "/switch-user";
+      window.location.href = "/auth/signin";
     }
     throw error;
   }
 }
+
+
+
+
+
 
 
 

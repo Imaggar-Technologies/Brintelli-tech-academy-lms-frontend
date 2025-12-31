@@ -566,7 +566,7 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
 
   const rebuildPeersForAllViewers = async () => {
     if (!socket) return;
-    // Close existing PCs and recreate (simplest + reliable when adding/removing tracks)
+    // Close existing PCs and recreate (most reliable when adding/removing tracks)
     const viewerSocketIds = participants
       .map((p) => p.socketId)
       .filter((sid) => sid && sid !== socket.id);
@@ -699,7 +699,37 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
 
     const onParticipants = (payload) => {
       if (payload?.sessionId !== sessionId) return;
-      setParticipants(payload.participants || []);
+      const rawParticipants = payload.participants || [];
+      // Deduplicate by userId/id and email, keeping the most recent socketId
+      const seen = new Map();
+      const deduplicated = [];
+      for (const p of rawParticipants) {
+        const key = p.id || p.userId || p.email || p.socketId;
+        if (!key) {
+          // If no unique identifier, keep by socketId
+          if (!seen.has(p.socketId)) {
+            seen.set(p.socketId, p);
+            deduplicated.push(p);
+          }
+          continue;
+        }
+        if (!seen.has(key)) {
+          seen.set(key, p);
+          deduplicated.push(p);
+        } else {
+          // Update with most recent socketId if different
+          const existing = seen.get(key);
+          if (p.socketId && p.socketId !== existing.socketId) {
+            const updated = { ...existing, socketId: p.socketId };
+            const idx = deduplicated.findIndex((dp) => (dp.id || dp.userId || dp.email || dp.socketId) === key);
+            if (idx >= 0) {
+              deduplicated[idx] = updated;
+              seen.set(key, updated);
+            }
+          }
+        }
+      }
+      setParticipants(deduplicated);
     };
     const onChat = (payload) => {
       if (payload?.sessionId !== sessionId) return;
@@ -992,14 +1022,37 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
           pc.ontrack = (evt) => {
             const stream = evt.streams?.[0] || null;
             if (!stream) return;
-            setTutorUplinks((prev) => {
-              const exists = (prev || []).some((u) => u.socketId === from);
-              const userInfo = participants.find((p) => p.socketId === from) || { name: "Student", role: "student" };
-              if (exists) {
-                return (prev || []).map((u) => (u.socketId === from ? { ...u, stream, user: userInfo } : u));
-              }
-              return [{ socketId: from, stream, user: userInfo }, ...(prev || [])].slice(0, 8);
+            const userInfo = participants.find((p) => p.socketId === from) || { name: "Student", role: "student" };
+            
+            // Handle track updates
+            const handleTrackUpdate = () => {
+              setTutorUplinks((prev) => {
+                const exists = (prev || []).some((u) => u.socketId === from);
+                if (exists) {
+                  return (prev || []).map((u) => (u.socketId === from ? { ...u, stream, user: userInfo } : u));
+                }
+                return [{ socketId: from, stream, user: userInfo }, ...(prev || [])].slice(0, 8);
+              });
+            };
+            
+            // Listen for track changes
+            stream.getTracks().forEach((track) => {
+              track.onended = () => {
+                // Track ended, update state
+                handleTrackUpdate();
+              };
+              track.onmute = () => handleTrackUpdate();
+              track.onunmute = () => handleTrackUpdate();
             });
+            
+            handleTrackUpdate();
+          };
+          
+          // Handle connection state changes
+          pc.onconnectionstatechange = () => {
+            if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+              setTutorUplinks((prev) => prev.filter((u) => u.socketId !== from));
+            }
           };
         }
 
@@ -1255,24 +1308,59 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
       return;
     }
     const tutorSocketId = await startStudentUplinkIfNeeded();
-    if (!tutorSocketId) {
+    if (!tutorSocketId || !uplinkPcRef.current) {
       toast.error("Tutor not connected");
       return;
     }
     const next = !studentMicOn;
-    if (next) {
-      const stream = studentStreamRef.current || (await navigator.mediaDevices.getUserMedia({ audio: true, video: false }));
-      studentStreamRef.current = stream;
-      const audioTrack = stream.getAudioTracks?.()?.[0];
-      const pc = uplinkPcRef.current;
-      const sender = pc.getSenders().find((s) => s.track?.kind === "audio") || pc.getSenders().find((s) => s.track == null);
-      if (audioTrack) await sender.replaceTrack(audioTrack);
-    } else {
-      const pc = uplinkPcRef.current;
-      const sender = pc.getSenders().find((s) => s.track?.kind === "audio");
-      if (sender) await sender.replaceTrack(null);
+    const pc = uplinkPcRef.current;
+    
+    try {
+      if (next) {
+        // Get or create audio stream
+        let audioStream;
+        if (studentStreamRef.current) {
+          const existingAudio = studentStreamRef.current.getAudioTracks();
+          if (existingAudio.length > 0) {
+            // Reuse existing track
+            audioStream = studentStreamRef.current;
+          } else {
+            // Add audio to existing stream
+            audioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+            const audioTrack = audioStream.getAudioTracks()[0];
+            if (audioTrack) {
+              studentStreamRef.current.addTrack(audioTrack);
+              audioStream.getTracks().forEach(t => t.stop()); // Stop the temporary stream
+            }
+            audioStream = studentStreamRef.current;
+          }
+        } else {
+          audioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+          studentStreamRef.current = audioStream;
+        }
+        
+        const audioTrack = audioStream.getAudioTracks()?.[0];
+        if (audioTrack) {
+          const sender = pc.getSenders().find((s) => s.track?.kind === "audio");
+          if (sender) {
+            await sender.replaceTrack(audioTrack);
+          } else {
+            // Add new sender if none exists
+            pc.addTrack(audioTrack, audioStream);
+          }
+        }
+      } else {
+        // Mute: replace with null track
+        const sender = pc.getSenders().find((s) => s.track?.kind === "audio");
+        if (sender && sender.track) {
+          await sender.replaceTrack(null);
+        }
+      }
+      setStudentMicOn(next);
+    } catch (e) {
+      console.error("toggleStudentMic error:", e);
+      toast.error(e?.message || "Failed to toggle microphone");
     }
-    setStudentMicOn(next);
   };
 
   const toggleStudentCam = async () => {
@@ -1287,30 +1375,59 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
       return;
     }
     const tutorSocketId = await startStudentUplinkIfNeeded();
-    if (!tutorSocketId) {
+    if (!tutorSocketId || !uplinkPcRef.current) {
       toast.error("Tutor not connected");
       return;
     }
     const next = !studentCamOn;
-    if (next) {
-      const stream = studentStreamRef.current || (await navigator.mediaDevices.getUserMedia({ audio: false, video: true }));
-      // If existing stream has no video, merge
-      if (studentStreamRef.current && studentStreamRef.current.getVideoTracks?.()?.length === 0) {
-        const v = stream.getVideoTracks?.()?.[0];
-        if (v) studentStreamRef.current.addTrack(v);
+    const pc = uplinkPcRef.current;
+    
+    try {
+      if (next) {
+        // Get or create video stream
+        let videoStream;
+        if (studentStreamRef.current) {
+          const existingVideo = studentStreamRef.current.getVideoTracks();
+          if (existingVideo.length > 0) {
+            // Reuse existing track
+            videoStream = studentStreamRef.current;
+          } else {
+            // Add video to existing stream
+            videoStream = await navigator.mediaDevices.getUserMedia({ audio: false, video: true });
+            const videoTrack = videoStream.getVideoTracks()[0];
+            if (videoTrack) {
+              studentStreamRef.current.addTrack(videoTrack);
+              videoStream.getTracks().forEach(t => t.stop()); // Stop the temporary stream
+            }
+            videoStream = studentStreamRef.current;
+          }
+        } else {
+          videoStream = await navigator.mediaDevices.getUserMedia({ audio: false, video: true });
+          studentStreamRef.current = videoStream;
+        }
+        
+        const videoTrack = videoStream.getVideoTracks()?.[0];
+        if (videoTrack) {
+          const sender = pc.getSenders().find((s) => s.track?.kind === "video");
+          if (sender) {
+            await sender.replaceTrack(videoTrack);
+          } else {
+            // Add new sender if none exists
+            pc.addTrack(videoTrack, videoStream);
+          }
+        }
       } else {
-        studentStreamRef.current = stream;
+        // Turn off: replace with null track
+        const sender = pc.getSenders().find((s) => s.track?.kind === "video");
+        if (sender && sender.track) {
+          await sender.replaceTrack(null);
+        }
       }
-      const videoTrack = studentStreamRef.current.getVideoTracks?.()?.[0];
-      const pc = uplinkPcRef.current;
-      const sender = pc.getSenders().find((s) => s.track?.kind === "video") || pc.getSenders().find((s) => s.track == null);
-      if (videoTrack) await sender.replaceTrack(videoTrack);
-    } else {
-      const pc = uplinkPcRef.current;
-      const sender = pc.getSenders().find((s) => s.track?.kind === "video");
-      if (sender) await sender.replaceTrack(null);
+      setStudentCamOn(next);
+    } catch (e) {
+      console.error("toggleStudentCam error:", e);
+      toast.error(e?.message || "Failed to toggle camera");
     }
-    setStudentCamOn(next);
   };
 
   // If tutor is sharing and new participants join, create peer for them
@@ -2338,31 +2455,56 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
               {isTutor && tutorUplinks.length > 0 && (
                 <div className="absolute left-4 bottom-4 max-w-[70%]">
                   <div className="flex gap-2 overflow-auto rounded-xl bg-black/30 p-2 backdrop-blur border border-white/10">
-                    {tutorUplinks.map((u) => (
-                      <div key={u.socketId} className="relative w-[160px] overflow-hidden rounded-lg border border-white/10 bg-black">
-                        <video
-                          autoPlay
-                          playsInline
-                          muted
-                          ref={(el) => {
-                            if (!el) return;
-                            if (u.stream && el.srcObject !== u.stream) el.srcObject = u.stream;
-                          }}
-                          className="h-[96px] w-full object-cover bg-black"
-                        />
-                        {/* Ensure audio plays too */}
-                        <audio
-                          autoPlay
-                          ref={(el) => {
-                            if (!el) return;
-                            if (u.stream && el.srcObject !== u.stream) el.srcObject = u.stream;
-                          }}
-                        />
-                        <div className="absolute bottom-1 left-1 rounded-md bg-black/60 px-2 py-0.5 text-[11px] font-semibold text-white/90">
-                          {u.user?.name || "Student"}
+                    {tutorUplinks.map((u) => {
+                      const hasVideo = u.stream?.getVideoTracks()?.some(t => t.readyState === 'live');
+                      const hasAudio = u.stream?.getAudioTracks()?.some(t => t.readyState === 'live');
+                      return (
+                        <div key={u.socketId} className="relative w-[160px] overflow-hidden rounded-lg border border-white/10 bg-black">
+                          {hasVideo ? (
+                            <video
+                              autoPlay
+                              playsInline
+                              muted={false}
+                              ref={(el) => {
+                                if (!el || !u.stream) return;
+                                if (el.srcObject !== u.stream) {
+                                  el.srcObject = u.stream;
+                                  el.play().catch(() => {});
+                                }
+                              }}
+                              className="h-[96px] w-full object-cover bg-black"
+                              onLoadedMetadata={(e) => {
+                                e.target.play().catch(() => {});
+                              }}
+                            />
+                          ) : (
+                            <div className="h-[96px] w-full flex items-center justify-center bg-black/50">
+                              <div className="text-white/40 text-xs">No video</div>
+                            </div>
+                          )}
+                          {/* Audio element for audio-only or audio+video */}
+                          {hasAudio && (
+                            <audio
+                              autoPlay
+                              ref={(el) => {
+                                if (!el || !u.stream) return;
+                                if (el.srcObject !== u.stream) {
+                                  el.srcObject = u.stream;
+                                  el.play().catch(() => {});
+                                }
+                              }}
+                            />
+                          )}
+                          <div className="absolute bottom-1 left-1 rounded-md bg-black/60 px-2 py-0.5 text-[11px] font-semibold text-white/90">
+                            {u.user?.name || "Student"}
+                          </div>
+                          <div className="absolute top-1 right-1 flex gap-1">
+                            {hasVideo && <div className="w-2 h-2 rounded-full bg-green-500" title="Video on" />}
+                            {hasAudio && <div className="w-2 h-2 rounded-full bg-blue-500" title="Audio on" />}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}

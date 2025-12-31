@@ -26,7 +26,7 @@ const ProtectedRoute = ({ children, requiredPermission, requiredRole, requiredAn
 
   // Check authentication
   if (!isAuthenticated) {
-    return <Navigate to="/switch-user" replace state={{ from: location }} />;
+    return <Navigate to="/auth/signin" replace state={{ from: location }} />;
   }
 
   // Check role-based access

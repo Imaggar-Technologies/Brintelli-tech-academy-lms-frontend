@@ -27,7 +27,23 @@ export const lsmAPI = {
     return apiRequest(`/api/lsm/mentors${queryString ? `?${queryString}` : ''}`);
   },
 
-  // Allocate student (batch, course, mentor)
+  // Allocate batch to student
+  allocateBatch: async (enrollmentId, batchData) => {
+    return apiRequest(`/api/lsm/enrollments/${enrollmentId}/allocate-batch`, {
+      method: 'POST',
+      body: JSON.stringify(batchData),
+    });
+  },
+
+  // Suggest mentors to student
+  suggestMentors: async (enrollmentId, mentorData) => {
+    return apiRequest(`/api/lsm/enrollments/${enrollmentId}/suggest-mentors`, {
+      method: 'POST',
+      body: JSON.stringify(mentorData),
+    });
+  },
+
+  // Allocate student (batch, course, mentor) - kept for backward compatibility
   allocateStudent: async (enrollmentId, allocationData) => {
     return apiRequest(`/api/lsm/enrollments/${enrollmentId}/allocate`, {
       method: 'POST',

@@ -8,16 +8,16 @@ import PublicRoute from "../components/PublicRoute";
 
 // Auth pages
 import SignIn from "../pages/auth/SignIn";
+import ForgotPassword from "../pages/auth/ForgotPassword";
+import ChooseRole from "../pages/auth/ChooseRole";
 import Register from "../pages/auth/Register";
 import RegisterStudent from "../pages/auth/RegisterStudent";
 import RegisterStaff from "../pages/auth/RegisterStaff";
-import ForgotPassword from "../pages/auth/ForgotPassword";
-import ChooseRole from "../pages/auth/ChooseRole";
-import SwitchUser from "../pages/auth/SwitchUser";
 
 // Student pages
 import StudentDashboard from "../pages/student/Dashboard";
 import StudentMyCourses from "../pages/student/MyCourses";
+import StudentProgramDetail from "../pages/student/ProgramDetail";
 import StudentCourseDetail from "../pages/student/CourseDetail";
 import StudentLiveClasses from "../pages/student/LiveClasses";
 import StudentRecordings from "../pages/student/Recordings";
@@ -38,6 +38,8 @@ import StudentResume from "../pages/student/Resume";
 import StudentLearningPaths from "../pages/student/LearningPaths";
 import StudentProgress from "../pages/student/Progress";
 import StudentChallenges from "../pages/student/Challenges";
+import StudentChallengesList from "../pages/student/ChallengesList";
+import StudentChallengeDetail from "../pages/student/ChallengeDetail";
 import StudentPracticeSheets from "../pages/student/PracticeSheets";
 import StudentProjects from "../pages/student/Projects";
 import StudentProjectTemplates from "../pages/student/ProjectTemplates";
@@ -46,6 +48,9 @@ import StudentMentorSessions from "../pages/student/MentorSessions";
 import StudentPerformance from "../pages/student/Performance";
 import StudentAnalytics from "../pages/student/Analytics";
 import StudentAchievements from "../pages/student/Achievements";
+import StudentForum from "../pages/student/Forum";
+import StudentSupport from "../pages/student/Support";
+import StudentOnboarding from "../pages/student/Onboarding";
 
 // Tutor pages
 import TutorDashboard from "../pages/tutor/Dashboard";
@@ -235,9 +240,9 @@ const AppRouter = () => {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Root route - SwitchUser page (public, handles auth check internally) */}
-        <Route path="/" element={<SwitchUser />} />
-        <Route path="switch-user" element={<SwitchUser />} />
+        {/* Root route - Redirect to login */}
+        <Route path="/" element={<Navigate to="/auth/signin" replace />} />
+        <Route path="switch-user" element={<Navigate to="/auth/signin" replace />} />
         
         {/* Auth routes - only accessible when NOT logged in */}
         <Route path="/auth">
@@ -294,8 +299,10 @@ const AppRouter = () => {
           <Route index element={<Navigate to="/student/dashboard" replace />} />
 
           <Route path="student">
+            <Route path="onboarding" element={<StudentOnboarding />} />
             <Route path="dashboard" element={<StudentDashboard />} />
             <Route path="my-courses" element={<StudentMyCourses />} />
+            <Route path="program/:enrollmentId" element={<StudentProgramDetail />} />
             <Route path="course/:id" element={<StudentCourseDetail />} />
             {/* Sessions */}
             <Route path="sessions" element={<StudentLiveClasses />} />
@@ -308,16 +315,22 @@ const AppRouter = () => {
             <Route path="tests" element={<StudentTests />} />
             <Route path="mock-interviews" element={<StudentMockInterviews />} />
 
-            {/* Doubts & Support */}
-            <Route path="doubts" element={<StudentDoubts />} />
-            <Route path="doubt-history" element={<StudentDoubtHistory />} />
-            <Route path="mentor-sessions" element={<StudentMentorSessions />} />
+            {/* Mentors */}
+            <Route path="mentors" element={<StudentMentorSessions />} />
+            <Route path="mentors/book" element={<StudentMentorSessions />} />
+
+            {/* Community */}
+            <Route path="forum" element={<StudentForum />} />
+
+            {/* Support */}
+            <Route path="support" element={<StudentSupport />} />
 
             {/* Practice & Coding */}
             <Route path="mcq-practice" element={<StudentMCQPractice />} />
             <Route path="certifications" element={<StudentCertifications />} />
             <Route path="code-playground" element={<StudentCodePlayground />} />
-            <Route path="challenges" element={<StudentChallenges />} />
+            <Route path="challenges" element={<StudentChallengesList />} />
+            <Route path="challenges/:challengeId" element={<StudentChallengeDetail />} />
             <Route path="practice-sheets" element={<StudentPracticeSheets />} />
 
             {/* Projects */}

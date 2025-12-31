@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, Fragment } from "react";
 import { ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, ChevronRight } from "lucide-react";
 
 const Table = ({ 
@@ -107,9 +107,8 @@ const Table = ({
             const hasExpandedContent = expandable && renderExpandedRow;
 
             return (
-              <>
+              <Fragment key={rowId}>
                 <tr
-                  key={rowId}
                   className={`
                     transition-all duration-200
                     ${isExpanded ? 'bg-brand-50/50 border-l-4 border-l-brand-500' : 'hover:bg-brand-50/30 border-l-4 border-l-transparent'}
@@ -157,13 +156,26 @@ const Table = ({
                           ${column.nowrap !== false ? 'whitespace-nowrap' : ''}
                         `}
                       >
-                        {column.render ? column.render(value, row, rowIndex) : (value ?? <span className="text-textMuted">—</span>)}
+                        {column.render 
+                          ? (() => {
+                              try {
+                                // Standard signature: (value, row, rowIndex)
+                                // Also supports: (row) for backward compatibility
+                                const renderResult = column.render(value, row, rowIndex);
+                                return renderResult ?? <span className="text-textMuted">—</span>;
+                              } catch (error) {
+                                console.error(`Error rendering column ${column.key}:`, error);
+                                return <span className="text-textMuted">Error</span>;
+                              }
+                            })()
+                          : (value ?? <span className="text-textMuted">—</span>)
+                        }
                       </td>
                     );
                   })}
                 </tr>
                 {isExpanded && hasExpandedContent && (
-                  <tr className="bg-brintelli-baseAlt/30">
+                  <tr key={`${rowId}-expanded`} className="bg-brintelli-baseAlt/30">
                     <td
                       colSpan={columns.length + (expandable ? 1 : 0)}
                       className="px-6 py-4 border-b border-brintelli-border/30"
@@ -172,7 +184,7 @@ const Table = ({
                     </td>
                   </tr>
                 )}
-              </>
+              </Fragment>
             );
           })}
           {/* Add empty rows to reach minimum */}

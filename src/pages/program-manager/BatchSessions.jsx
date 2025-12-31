@@ -382,7 +382,6 @@ const BatchSessions = () => {
       const response = await apiRequest(`/api/lsm/batches/${batchId}/sessions`);
       if (response.success) {
         const sessionsData = response.data.sessions || [];
-        console.log('Fetched sessions (raw):', sessionsData);
         // Ensure all IDs are properly formatted and preserve all fields
         const normalizedSessions = sessionsData.map(s => {
           const normalized = {
@@ -402,10 +401,8 @@ const BatchSessions = () => {
             recordingUrl: s.recordingUrl || null,
             materials: s.materials || [],
           };
-          console.log('Normalized session:', normalized);
           return normalized;
         });
-        console.log('All normalized sessions:', normalizedSessions);
         setSessions(normalizedSessions);
       } else {
         toast.error(response.message || 'Failed to load sessions');

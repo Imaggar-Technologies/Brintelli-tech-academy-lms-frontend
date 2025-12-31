@@ -100,9 +100,6 @@ const getPageTitle = (pathname) => {
     return "Dashboard";
   }
 
-  if (segments[0] === "switch-user") {
-    return "Switch User";
-  }
 
   const viewSegments = segments.slice(1);
   if (!viewSegments.length) {

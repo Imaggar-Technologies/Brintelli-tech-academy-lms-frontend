@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { Plus, ChevronLeft, ChevronRight, X, Calendar, Video, FileText } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, X, Calendar, Video, FileText, AlertCircle } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
 import Table from '../../components/Table';
@@ -26,10 +26,15 @@ const LsmBatchSessions = () => {
   const [newMaterial, setNewMaterial] = useState({ type: '', url: '', title: '' });
 
   useEffect(() => {
-    if (batchId) {
+    // Validate batchId before making API calls
+    if (batchId && batchId !== 'undefined' && batchId !== 'null') {
       fetchBatchDetails();
       fetchSessions();
       fetchTutors();
+    } else {
+      console.error('Invalid batchId:', batchId);
+      toast.error('Invalid batch ID. Please select a valid batch.');
+      setLoading(false);
     }
   }, [batchId]);
 
@@ -48,6 +53,14 @@ const LsmBatchSessions = () => {
   };
 
   const fetchSessions = async () => {
+    // Validate batchId before making API call
+    if (!batchId || batchId === 'undefined' || batchId === 'null') {
+      console.error('Cannot fetch sessions: invalid batchId', batchId);
+      toast.error('Invalid batch ID');
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       const response = await apiRequest(`/api/lsm/batches/${batchId}/sessions`);
@@ -215,6 +228,23 @@ const LsmBatchSessions = () => {
       ),
     },
   ];
+
+  // Show error if batchId is invalid
+  if (!batchId || batchId === 'undefined' || batchId === 'null') {
+    return (
+      <div className="text-center py-12">
+        <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+        <h3 className="text-xl font-semibold text-text mb-2">Invalid Batch ID</h3>
+        <p className="text-textMuted mb-4">
+          The batch ID is missing or invalid. Please go back and select a valid batch.
+        </p>
+        <Button onClick={() => navigate('/lsm/batches')}>
+          <ChevronLeft className="h-4 w-4 mr-2" />
+          Back to Batches
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <>

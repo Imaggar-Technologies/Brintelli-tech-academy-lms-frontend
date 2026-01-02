@@ -53,6 +53,14 @@ export const studentAPI = {
     });
   },
 
+  // Revoke/remove current mentor
+  revokeMentor: async (mentorId) => {
+    return apiRequest('/api/students/revoke-mentor', {
+      method: 'POST',
+      body: JSON.stringify({ mentorId }),
+    });
+  },
+
   // Get available batches for student's program
   getAvailableBatches: async () => {
     return apiRequest('/api/students/available-batches');

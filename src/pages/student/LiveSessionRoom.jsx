@@ -23,7 +23,8 @@ const StudentLiveSessionRoom = () => {
     load();
   }, [sessionId]);
 
-  return <SessionRoom sessionId={sessionId} session={session} uiVariant="meeting" />;
+  // Room mode for learners/students
+  return <SessionRoom sessionId={sessionId} session={session} uiVariant="meeting" mode="room" />;
 };
 
 export default StudentLiveSessionRoom;

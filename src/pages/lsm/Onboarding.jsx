@@ -923,7 +923,7 @@ const Onboarding = () => {
                   Course is automatically set based on the student's enrollment
                 </p>
               </div>
-            </div>
+              </div>
 
             <div className="flex gap-3 mt-6">
               <Button

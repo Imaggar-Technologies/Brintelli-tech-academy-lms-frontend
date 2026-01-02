@@ -11,7 +11,7 @@ const TutorLiveClassController = () => {
     <>
       <PageHeader
         title="Live Class Controller"
-        description="Manage your live session, interact with participants, and trigger polls seamlessly."
+        description="Manage your live session, interact with participants, and trigger quizzes seamlessly."
         actions={
           <>
             <Button variant="secondary" className="gap-2">
@@ -73,12 +73,12 @@ const TutorLiveClassController = () => {
             <div className="group rounded-2xl border border-brintelli-border/60 bg-gradient-to-br from-brand-50/30 to-white p-5 shadow-sm transition-all duration-200 hover:border-brand-300/60 hover:shadow-md">
               <div className="mb-3 flex items-center gap-2">
                 <BarChart3 className="h-5 w-5 text-brand-600" />
-                <h4 className="text-base font-bold text-text">Polls & Engagement</h4>
+                <h4 className="text-base font-bold text-text">Quizzes & Engagement</h4>
               </div>
               <p className="mb-4 text-xs font-medium text-textMuted">Launch quick questions to check understanding.</p>
               <div className="flex flex-col gap-2.5">
                 <button className="group/btn flex items-center justify-between rounded-xl border border-brintelli-border/60 bg-white px-4 py-3 text-left text-sm font-medium text-textSoft transition-all duration-200 hover:border-brand-300/60 hover:bg-brand-50/50 hover:text-brand-700">
-                  <span>Launch prior knowledge poll</span>
+                  <span>Launch prior knowledge quiz</span>
                   <MessageSquare className="h-4 w-4 text-textMuted transition-colors group-hover/btn:text-brand-600" />
                 </button>
                 <button className="group/btn flex items-center justify-between rounded-xl border border-brintelli-border/60 bg-white px-4 py-3 text-left text-sm font-medium text-textSoft transition-all duration-200 hover:border-brand-300/60 hover:bg-brand-50/50 hover:text-brand-700">

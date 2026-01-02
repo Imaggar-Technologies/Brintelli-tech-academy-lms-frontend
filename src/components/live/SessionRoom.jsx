@@ -16,25 +16,40 @@ import {
   Mic,
   MicOff,
   Hand,
+  Trophy,
+  Settings,
+  ArrowLeft,
+  ChevronLeft,
+  Bookmark,
+  FileText,
+  Bell,
+  X,
+  Plus,
+  Image as ImageIcon,
+  File,
+  Upload,
 } from "lucide-react";
 import PageHeader from "../PageHeader";
 import Button from "../Button";
 import { getSocket } from "../../utils/socketClient";
 import { selectCurrentUser, selectToken } from "../../store/slices/authSlice";
 import tutorAPI from "../../api/tutor";
+import sessionAPI from "../../api/session";
+import { uploadAPI } from "../../api/upload";
 
 const RTC_CONFIG = {
   iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
 };
 
-export default function SessionRoom({ sessionId, session, uiVariant = "classic" }) {
+export default function SessionRoom({ sessionId, session, uiVariant = "classic", mode = "studio" }) {
   const navigate = useNavigate();
   const user = useSelector(selectCurrentUser);
   const token = useSelector(selectToken);
 
   const role = user?.role;
   const isTutor = role === "tutor";
-  const canModerate = ["tutor", "admin", "programManager", "program-manager"].includes(role);
+  const canModerate = ["tutor", "admin", "lsm", "programManager", "program-manager"].includes(role);
+  const canCreateContent = ["tutor", "admin", "lsm", "programManager", "program-manager"].includes(role);
 
   const socket = useMemo(() => (token ? getSocket(token) : null), [token]);
 
@@ -42,16 +57,21 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
   const [participantMediaPerms, setParticipantMediaPerms] = useState({}); // { userId: { camAllowed, micAllowed } }
   const [messages, setMessages] = useState([]);
   const [resources, setResources] = useState([]);
-  const [polls, setPolls] = useState([]);
+  const [quizzes, setQuizzes] = useState([]);
+  
+  // Debug: Log quizzes when they change
+  useEffect(() => {
+    console.log('[SessionRoom] Quizzes state updated:', quizzes.length, quizzes);
+  }, [quizzes]);
   const [sessionRecordings, setSessionRecordings] = useState([]);
   const [mentionAlerts, setMentionAlerts] = useState(0);
   const [showParticipantsPanel, setShowParticipantsPanel] = useState(false);
   const [handRaised, setHandRaised] = useState(false);
-  const [pollPopupOpen, setPollPopupOpen] = useState(false);
-  const [activePoll, setActivePoll] = useState(null);
+  const [quizPopupOpen, setQuizPopupOpen] = useState(false);
+  const [activeQuiz, setActiveQuiz] = useState(null);
   const [chatDrawerOpen, setChatDrawerOpen] = useState(false);
-  const pollDialogTitleId = useMemo(() => `poll_dialog_title_${sessionId}`, [sessionId]);
-  const firstPollOptionRef = useRef(null);
+  const quizDialogTitleId = useMemo(() => `quiz_dialog_title_${sessionId}`, [sessionId]);
+  const firstQuizOptionRef = useRef(null);
   const [chatTo, setChatTo] = useState("everyone"); // "everyone" | "tutors"
 
   // Student mic/cam gating (tutor grants)
@@ -71,13 +91,47 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
   const [resourceUrl, setResourceUrl] = useState("");
   const [resourceTitle, setResourceTitle] = useState("");
 
-  const [pollQuestion, setPollQuestion] = useState("");
-  const [pollOptions, setPollOptions] = useState(["", ""]);
-  const [pollCorrectAnswer, setPollCorrectAnswer] = useState(null); // index of correct answer
-  const [pollDraft, setPollDraft] = useState(null); // draft poll before publishing
+  const [quizQuestion, setQuizQuestion] = useState("");
+  const [quizOptions, setQuizOptions] = useState(["", ""]);
+  const [quizCorrectAnswer, setQuizCorrectAnswer] = useState(null); // index of correct answer (single)
+  const [quizCorrectAnswers, setQuizCorrectAnswers] = useState([]); // array of correct answer indices (multiple)
+  const [quizIsMultipleChoice, setQuizIsMultipleChoice] = useState(false); // allow multiple answers
+  const [quizIsScored, setQuizIsScored] = useState(true); // true = scored quiz, false = poll (no score)
+  const [quizDraft, setQuizDraft] = useState(null); // draft quiz before publishing
   const [leaderboard, setLeaderboard] = useState([]); // [{userId, name, score}]
   const [showLeftSidebar, setShowLeftSidebar] = useState(true); // for tutors
-  const [leftSidebarTab, setLeftSidebarTab] = useState("students"); // "students" | "polls" | "leaderboard"
+  const [leftSidebarTab, setLeftSidebarTab] = useState("students"); // "students" | "quizzes" | "leaderboard"
+  
+  // New state for Scaler-style UI
+  const [rightSidebarTab, setRightSidebarTab] = useState("chat"); // "chat" | "bookmarks" | "notes" | "notice" | "quizzes" | "leaderboard"
+  const [bookmarks, setBookmarks] = useState([]);
+  const [bookmarkTitle, setBookmarkTitle] = useState("");
+  const [bookmarkNotes, setBookmarkNotes] = useState("");
+  const [notices, setNotices] = useState([]);
+  const [sessionResources, setSessionResources] = useState([]);
+  const [lectureNotes, setLectureNotes] = useState([]);
+  
+  // Notice board form state
+  const [noticeTitle, setNoticeTitle] = useState("");
+  const [noticeDescription, setNoticeDescription] = useState("");
+  const [noticeUrl, setNoticeUrl] = useState("");
+  const [noticeFile, setNoticeFile] = useState(null);
+  const [noticeUploading, setNoticeUploading] = useState(false);
+  
+  // Lecture notes form state
+  const [noteTitle, setNoteTitle] = useState("");
+  const [noteDescription, setNoteDescription] = useState("");
+  const [noteUrl, setNoteUrl] = useState("");
+  const [noteFile, setNoteFile] = useState(null);
+  const [noteUploading, setNoteUploading] = useState(false);
+  const [selectedQuizTab, setSelectedQuizTab] = useState("all"); // "all" | quizId
+  const [showQuizLaunchModal, setShowQuizLaunchModal] = useState(false);
+  const [quizToLaunch, setQuizToLaunch] = useState(null);
+  
+  // Quiz creation state
+  const [showQuizCreator, setShowQuizCreator] = useState(false);
+  const [newQuizTitle, setNewQuizTitle] = useState("");
+  const [newQuizTimestamp, setNewQuizTimestamp] = useState("");
 
   const [recordingUrl, setRecordingUrl] = useState("");
   const [savingRecording, setSavingRecording] = useState(false);
@@ -122,7 +176,7 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
   const mediaRecorderRef = useRef(null);
   const recordingChunksRef = useRef([]);
   const recordingAnimRef = useRef(null);
-  const [showPollComposer, setShowPollComposer] = useState(false);
+  const [showQuizComposer, setShowQuizComposer] = useState(false);
   const [showResourceComposer, setShowResourceComposer] = useState(false);
   const [enrolledStudents, setEnrolledStudents] = useState([]);
   const [enrolledBatch, setEnrolledBatch] = useState(null);
@@ -187,19 +241,19 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
     chatBottomRef.current?.scrollIntoView?.({ behavior: "smooth", block: "end" });
   }, [messages.length]);
 
-  // Better accessibility for poll popup (focus + escape)
+  // Better accessibility for quiz popup (focus + escape)
   useEffect(() => {
-    if (!pollPopupOpen) return;
-    const t = setTimeout(() => firstPollOptionRef.current?.focus?.(), 0);
+    if (!quizPopupOpen) return;
+    const t = setTimeout(() => firstQuizOptionRef.current?.focus?.(), 0);
     const onKey = (e) => {
-      if (e.key === "Escape") setPollPopupOpen(false);
+      if (e.key === "Escape") setQuizPopupOpen(false);
     };
     window.addEventListener("keydown", onKey);
     return () => {
       clearTimeout(t);
       window.removeEventListener("keydown", onKey);
     };
-  }, [pollPopupOpen]);
+  }, [quizPopupOpen]);
 
   const formatChatTime = (ts) => {
     try {
@@ -215,9 +269,9 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
     const t = m.type || "comment";
     if (t !== "comment") return { ...m, type: t };
     if (msg.startsWith("[RESOURCE]")) return { ...m, type: "resource" };
-    if (msg.startsWith("[POLL RESULT]")) return { ...m, type: "poll-results" };
-    if (msg.startsWith("[POLL ANSWER]")) return { ...m, type: "poll-answer" };
-    if (msg.startsWith("[POLL]")) return { ...m, type: "poll" };
+    if (msg.startsWith("[QUIZ RESULT]")) return { ...m, type: "quiz-results" };
+    if (msg.startsWith("[QUIZ ANSWER]")) return { ...m, type: "quiz-answer" };
+    if (msg.startsWith("[QUIZ]")) return { ...m, type: "quiz" };
     return { ...m, type: "comment" };
   };
 
@@ -277,9 +331,9 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
       );
     }
 
-    if (m.type === "poll") {
-      const p = polls.find((x) => x?.id === m.pollId) || m.poll || null;
-      const question = p?.question || (m.message || "").replace("[POLL]", "").trim() || "Poll";
+    if (m.type === "quiz") {
+      const q = quizzes.find((x) => x?.id === m.quizId) || m.quiz || null;
+      const question = q?.question || (m.message || "").replace("[QUIZ]", "").trim() || "Quiz";
       return (
         <div className="space-y-1">
           <div className={`text-xs ${mutedTextColor}`}>
@@ -288,7 +342,7 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
           <div className={`rounded-xl border ${cardBorder} p-3`}>
             <div className={`flex items-center gap-2 text-sm font-semibold ${variant === "meeting" ? "text-white/90" : "text-text"}`}>
               <BarChart3 className="h-4 w-4" />
-              Poll
+              Quiz
             </div>
             <div className={`mt-2 text-sm font-semibold ${baseTextColor}`}>{question}</div>
             {!isTutor && (
@@ -296,9 +350,9 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
                 <Button
                   variant="secondary"
                   onClick={() => {
-                    if (p) {
-                      setActivePoll(p);
-                      setPollPopupOpen(true);
+                    if (q) {
+                      setActiveQuiz(q);
+                      setQuizPopupOpen(true);
                     }
                   }}
                 >
@@ -311,17 +365,17 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
       );
     }
 
-    if (m.type === "poll-answer") {
+    if (m.type === "quiz-answer") {
       const optionText = m.optionText || String(m.message || "").trim();
-      const p = polls.find((x) => x?.id === m.pollId) || m.poll || null;
-      const question = p?.question || "";
+      const q = quizzes.find((x) => x?.id === m.quizId) || m.quiz || null;
+      const question = q?.question || "";
       return (
         <div className="space-y-1">
           <div className={`text-xs ${mutedTextColor}`}>
             <span className="font-semibold">{name}</span> {roleLabel} {time ? `• ${time}` : ""}
           </div>
           <div className={`rounded-xl border ${cardBorder} p-3`}>
-            {question ? <div className={`text-xs ${mutedTextColor}`}>Poll: {question}</div> : null}
+            {question ? <div className={`text-xs ${mutedTextColor}`}>Quiz: {question}</div> : null}
             <div className={`mt-1 text-sm ${baseTextColor}`}>
               <span className="font-semibold">Answered:</span> {optionText}
             </div>
@@ -330,11 +384,11 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
       );
     }
 
-    if (m.type === "poll-results") {
-      const p = polls.find((x) => x?.id === m.pollId) || m.poll || null;
-      const question = p?.question || (m.message || "").replace("[POLL RESULT]", "").split("—")[0].trim();
-      const options = p?.options || [];
-      const counts = p?.counts || [];
+    if (m.type === "quiz-results") {
+      const q = quizzes.find((x) => x?.id === m.quizId) || m.quiz || null;
+      const question = q?.question || (m.message || "").replace("[QUIZ RESULT]", "").split("—")[0].trim();
+      const options = q?.options || [];
+      const counts = q?.counts || [];
       const max = Math.max(1, ...(counts || [0]));
       return (
         <div className="space-y-1">
@@ -700,6 +754,24 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
     const onParticipants = (payload) => {
       if (payload?.sessionId !== sessionId) return;
       const rawParticipants = payload.participants || [];
+      
+      // Update leaderboard with participant names
+      setLeaderboard((prev) => {
+        return prev.map((entry) => {
+          const participant = rawParticipants.find(
+            (p) => String(p?.id || p?._id || p?.userId || "") === String(entry.userId)
+          );
+          if (participant) {
+            return {
+              ...entry,
+              name: participant.name || entry.name,
+              email: participant.email || entry.email,
+            };
+          }
+          return entry;
+        });
+      });
+      
       // Deduplicate by userId/id and email, keeping the most recent socketId
       const seen = new Map();
       const deduplicated = [];
@@ -739,22 +811,50 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
     const onSessionSnapshot = (payload) => {
       if (payload?.sessionId !== sessionId) return;
       const timeline = payload?.timeline || [];
-      const snapshotPolls = payload?.polls || [];
+      const snapshotQuizzes = payload?.quizzes || [];
       const snapshotRecs = payload?.recordings || [];
       const snapshotLeaderboard = payload?.leaderboard || {};
       
-      // Convert leaderboard object to array
-      if (snapshotLeaderboard && typeof snapshotLeaderboard === 'object') {
-        const leaderboardArray = Object.entries(snapshotLeaderboard).map(([userId, score]) => ({
-          userId,
-          name: "Unknown", // Will be updated from participants
-          email: "",
-          score: Number(score) || 0,
-        }));
+      // Prefer enrichedLeaderboard if available (has user names)
+      if (payload?.enrichedLeaderboard && typeof payload.enrichedLeaderboard === 'object' && Object.keys(payload.enrichedLeaderboard).length > 0) {
+        const leaderboardArray = Object.entries(payload.enrichedLeaderboard)
+          .filter(([userId, data]) => userId && (Number(data?.score) || 0) > 0)
+          .map(([userId, data]) => ({
+            userId,
+            name: data.name || "Unknown",
+            email: data.email || "",
+            score: Number(data.score) || 0,
+          }))
+          .sort((a, b) => (b.score || 0) - (a.score || 0));
+        console.log('[SessionRoom] Session snapshot - leaderboard (enriched):', leaderboardArray.length, 'entries', leaderboardArray);
         setLeaderboard(leaderboardArray);
+      } else if (snapshotLeaderboard && typeof snapshotLeaderboard === 'object' && Object.keys(snapshotLeaderboard).length > 0) {
+        // Fallback to simple leaderboard format
+        const leaderboardArray = Object.entries(snapshotLeaderboard)
+          .filter(([userId, score]) => userId && (Number(score) || 0) > 0) // Only include entries with valid userId and score > 0
+          .map(([userId, score]) => {
+            // Try to find participant info
+            const participant = (payload?.participants || []).find(
+              (p) => String(p?.id || p?._id || p?.userId || "") === String(userId)
+            );
+            return {
+              userId,
+              name: participant?.name || "Unknown",
+              email: participant?.email || "",
+              score: Number(score) || 0,
+            };
+          });
+        // Sort by score descending
+        leaderboardArray.sort((a, b) => (b.score || 0) - (a.score || 0));
+        console.log('[SessionRoom] Session snapshot - leaderboard:', leaderboardArray.length, 'entries', leaderboardArray);
+        setLeaderboard(leaderboardArray);
+      } else {
+        // Initialize empty leaderboard if none exists
+        console.log('[SessionRoom] No leaderboard data in snapshot, initializing empty');
+        setLeaderboard([]);
       }
 
-      // Render timeline into the Comments feed so students see resources/polls history too.
+      // Render timeline into the Comments feed so students see resources/quizzes history too.
       const timelineAsMessages = (timeline || []).map((ev) => {
         if (ev?.type === "resource") {
           return {
@@ -766,15 +866,15 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
             type: "resource",
           };
         }
-        if (ev?.type === "poll") {
-          const poll = (snapshotPolls || []).find((p) => p?.id === ev.pollId);
+        if (ev?.type === "quiz") {
+          const quiz = (snapshotQuizzes || []).find((q) => q?.id === ev.quizId);
           return {
             sessionId,
             ts: ev.ts,
             user: ev.user,
-            message: `[POLL] ${poll?.question || "Poll created"}`,
-            pollId: ev.pollId,
-            type: "poll",
+            message: `[QUIZ] ${quiz?.question || "Quiz created"}`,
+            quizId: ev.quizId,
+            type: "quiz",
           };
         }
         return {
@@ -788,17 +888,20 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
       });
 
       setMessages(timelineAsMessages.slice(-200));
-      setPolls(snapshotPolls);
+      const quizList = Array.isArray(snapshotQuizzes) ? snapshotQuizzes.filter(q => q && q.id) : [];
+      console.log('[SessionRoom] Session snapshot - quizzes:', quizList.length, quizList);
+      // Set all quizzes from snapshot (including drafts)
+      setQuizzes(quizList);
       setSessionRecordings(snapshotRecs);
 
-      // Learner: show latest unanswered poll as a popup
-      if (!isTutor && snapshotPolls.length > 0) {
+      // Learner: show latest unanswered quiz as a popup
+      if (!isTutor && snapshotQuizzes.length > 0) {
         const uid = String(user?.id || user?._id || "");
-        const latest = snapshotPolls[snapshotPolls.length - 1];
+        const latest = snapshotQuizzes[snapshotQuizzes.length - 1];
         const answered = !!(uid && latest?.votes && latest.votes[uid] !== undefined);
         if (!answered) {
-          setActivePoll(latest);
-          setPollPopupOpen(true);
+          setActiveQuiz(latest);
+          setQuizPopupOpen(true);
         }
       }
     };
@@ -822,62 +925,65 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
         );
       }
     };
-    const onPollSnapshot = (payload) => {
+    const onQuizSnapshot = (payload) => {
       if (payload?.sessionId !== sessionId) return;
-      setPolls(payload.polls || []);
+      const quizList = Array.isArray(payload.quizzes) ? payload.quizzes.filter(q => q && q.id) : [];
+      console.log('[SessionRoom] Quiz snapshot received:', quizList.length, 'quizzes', quizList);
+      // Set all quizzes (including drafts)
+      setQuizzes(quizList);
     };
-    const onPollNew = (payload) => {
+    const onQuizNew = (payload) => {
       if (payload?.sessionId !== sessionId) return;
-      if (payload?.poll) {
-        setPolls((prev) => [payload.poll, ...prev]);
+      if (payload?.quiz) {
+        setQuizzes((prev) => [payload.quiz, ...prev]);
         // Also show in Comments feed
         setMessages((prev) =>
           [
             ...prev,
             {
               sessionId,
-              ts: payload.poll.ts,
-              user: payload.poll.createdBy,
-              message: `[POLL] ${payload.poll.question}`,
-              pollId: payload.poll.id,
-              type: "poll",
+              ts: payload.quiz.ts,
+              user: payload.quiz.createdBy,
+              message: `[QUIZ] ${payload.quiz.question}`,
+              quizId: payload.quiz.id,
+              type: "quiz",
             },
           ].slice(-200)
         );
 
-        // Learner: pop up poll immediately
+        // Learner: pop up quiz immediately
         if (!isTutor) {
-          setActivePoll(payload.poll);
-          setPollPopupOpen(true);
+          setActiveQuiz(payload.quiz);
+          setQuizPopupOpen(true);
         }
       }
     };
-    const onPollUpdate = (payload) => {
+    const onQuizUpdate = (payload) => {
       if (payload?.sessionId !== sessionId) return;
-      if (!payload?.poll) return;
-      setPolls((prev) => prev.map((p) => (p.id === payload.poll.id ? payload.poll : p)));
-      if (activePoll?.id === payload.poll.id) setActivePoll(payload.poll);
+      if (!payload?.quiz) return;
+      setQuizzes((prev) => prev.map((q) => (q.id === payload.quiz.id ? payload.quiz : q)));
+      if (activeQuiz?.id === payload.quiz.id) setActiveQuiz(payload.quiz);
 
       // Upsert a "results" line into Comments
-      const poll = payload.poll;
+      const quiz = payload.quiz;
       setMessages((prev) => {
-        const next = (prev || []).filter((m) => !(m?.type === "poll-results" && m?.pollId === poll.id));
+        const next = (prev || []).filter((m) => !(m?.type === "quiz-results" && m?.quizId === quiz.id));
         return [
           ...next,
           {
             sessionId,
             ts: new Date().toISOString(),
             user: { name: "System", role: "system" },
-            message: poll.question,
-            pollId: poll.id,
-            type: "poll-results",
-            poll,
+            message: quiz.question,
+            quizId: quiz.id,
+            type: "quiz-results",
+            quiz,
           },
         ].slice(-200);
       });
     };
 
-    const onPollAnswer = (payload) => {
+    const onQuizAnswer = (payload) => {
       if (payload?.sessionId !== sessionId) return;
       setMessages((prev) =>
         [
@@ -887,37 +993,43 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
             ts: payload?.ts || new Date().toISOString(),
             user: payload?.user,
             message: payload?.optionText || `Option ${Number(payload?.optionIndex ?? 0) + 1}`,
-            pollId: payload?.pollId,
-            type: "poll-answer",
+            quizId: payload?.quizId,
+            type: "quiz-answer",
             optionIndex: payload?.optionIndex,
             optionText: payload?.optionText,
-            poll: payload?.poll
+            quiz: payload?.quiz
           },
         ].slice(-200)
       );
     };
 
-    const onPollDraft = (payload) => {
+    const onQuizDraft = (payload) => {
       if (payload?.sessionId !== sessionId) return;
-      if (payload?.poll) {
-        setPolls((prev) => {
-          const existing = prev.find((p) => p.id === payload.poll.id);
+      if (payload?.quiz && payload.quiz.id) {
+        console.log('[SessionRoom] Quiz draft received:', payload.quiz);
+        setQuizzes((prev) => {
+          const existing = prev.find((q) => q && q.id === payload.quiz.id);
           if (existing) {
-            return prev.map((p) => (p.id === payload.poll.id ? payload.poll : p));
+            const updated = prev.map((q) => (q && q.id === payload.quiz.id ? payload.quiz : q)).filter(Boolean);
+            console.log('[SessionRoom] Updated existing quiz, total:', updated.length);
+            return updated;
           }
-          return [payload.poll, ...prev];
+          // Add new quiz to the list
+          const updated = [payload.quiz, ...prev].filter(Boolean);
+          console.log('[SessionRoom] Added new quiz, total:', updated.length);
+          return updated;
         });
       }
     };
 
-    const onPollPublished = (payload) => {
+    const onQuizPublished = (payload) => {
       if (payload?.sessionId !== sessionId) return;
-      if (payload?.poll) {
-        setPolls((prev) => prev.map((p) => (p.id === payload.poll.id ? payload.poll : p)));
-        // Show poll to students
+      if (payload?.quiz) {
+        setQuizzes((prev) => prev.map((q) => (q.id === payload.quiz.id ? payload.quiz : q)));
+        // Show quiz to students
         if (!isTutor) {
-          setActivePoll(payload.poll);
-          setPollPopupOpen(true);
+          setActiveQuiz(payload.quiz);
+          setQuizPopupOpen(true);
           playNotificationSound();
         }
         // Add to timeline
@@ -926,47 +1038,102 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
             ...prev,
             {
               sessionId,
-              ts: payload.poll.publishedAt || new Date().toISOString(),
-              user: payload.poll.createdBy,
-              message: `[POLL] ${payload.poll.question}`,
-              pollId: payload.poll.id,
-              type: "poll",
+              ts: payload.quiz.publishedAt || new Date().toISOString(),
+              user: payload.quiz.createdBy,
+              message: `[QUIZ] ${payload.quiz.question}`,
+              quizId: payload.quiz.id,
+              type: "quiz",
             },
           ].slice(-200)
         );
       }
     };
 
-    const onPollCorrectAnswer = (payload) => {
+    const onQuizCorrectAnswer = (payload) => {
       if (payload?.sessionId !== sessionId) return;
-      if (payload?.poll) {
-        setPolls((prev) => prev.map((p) => (p.id === payload.poll.id ? payload.poll : p)));
+      if (payload?.quiz) {
+        setQuizzes((prev) => prev.map((q) => (q.id === payload.quiz.id ? payload.quiz : q)));
       }
       if (payload?.scores) {
         // Update leaderboard from scores
-        setLeaderboard((prev) => {
-          const updated = prev.map((e) => ({ ...e })); // Create new array with new objects
-          Object.entries(payload.scores).forEach(([userId, points]) => {
-            const existingIdx = updated.findIndex((e) => String(e.userId) === String(userId));
-            if (existingIdx >= 0) {
-              // Update existing entry
-              updated[existingIdx] = {
-                ...updated[existingIdx],
-                score: (updated[existingIdx].score || 0) + points,
-              };
-            } else {
-              // Need to get user info from participants
-              const participant = participants.find((p) => String(p.id || p._id) === String(userId));
-              updated.push({
-                userId,
-                name: participant?.name || "Unknown",
-                email: participant?.email || "",
-                score: points,
-              });
-            }
+        console.log('[SessionRoom] Quiz correct answer - scores:', payload.scores);
+        console.log('[SessionRoom] Quiz correct answer - enrichedScores:', payload.enrichedScores);
+        
+        // Prefer enrichedScores if available (has user names from vote data)
+        if (payload?.enrichedScores && typeof payload.enrichedScores === 'object') {
+          setLeaderboard((prev) => {
+            const updated = [...prev]; // Create new array
+            Object.entries(payload.enrichedScores).forEach(([userId, data]) => {
+              const points = Number(data.points || data || 0);
+              const existingIdx = updated.findIndex((e) => String(e.userId) === String(userId));
+              if (existingIdx >= 0) {
+                // Update existing entry
+                updated[existingIdx] = {
+                  ...updated[existingIdx],
+                  score: (updated[existingIdx].score || 0) + points,
+                  // Update name if we have better info
+                  name: data.name || updated[existingIdx].name || "Unknown",
+                  email: data.email || updated[existingIdx].email || "",
+                };
+              } else {
+                // Add new entry with user info from enriched data
+                updated.push({
+                  userId,
+                  name: data.name || "Unknown",
+                  email: data.email || "",
+                  score: points,
+                });
+              }
+            });
+            // Sort by score descending
+            updated.sort((a, b) => (b.score || 0) - (a.score || 0));
+            console.log('[SessionRoom] Updated leaderboard (enriched):', updated.length, 'entries', updated);
+            return updated;
           });
-          return updated;
-        });
+        } else {
+          // Fallback to simple scores format
+          setLeaderboard((prev) => {
+            const updated = [...prev]; // Create new array
+            Object.entries(payload.scores).forEach(([userId, points]) => {
+              const existingIdx = updated.findIndex((e) => String(e.userId) === String(userId));
+              if (existingIdx >= 0) {
+                // Update existing entry
+                updated[existingIdx] = {
+                  ...updated[existingIdx],
+                  score: (updated[existingIdx].score || 0) + Number(points),
+                };
+              } else {
+                // Try to get user info from participants first, then fallback to "Unknown"
+                const participant = participants.find((p) => String(p?.id || p?._id || p?.userId || "") === String(userId));
+                updated.push({
+                  userId,
+                  name: participant?.name || "Unknown",
+                  email: participant?.email || "",
+                  score: Number(points) || 0,
+                });
+              }
+            });
+            // Sort by score descending
+            updated.sort((a, b) => (b.score || 0) - (a.score || 0));
+            console.log('[SessionRoom] Updated leaderboard:', updated.length, 'entries', updated);
+            return updated;
+          });
+        }
+      }
+      
+      // Also check if enrichedLeaderboard is provided in the payload (from session:leaderboard event)
+      if (payload?.enrichedLeaderboard) {
+        console.log('[SessionRoom] Quiz correct answer - enriched leaderboard:', payload.enrichedLeaderboard);
+        const leaderboardArray = Object.entries(payload.enrichedLeaderboard)
+          .map(([userId, data]) => ({
+            userId,
+            name: data.name || "Unknown",
+            email: data.email || "",
+            score: Number(data.score) || 0,
+          }))
+          .sort((a, b) => (b.score || 0) - (a.score || 0));
+        console.log('[SessionRoom] Setting leaderboard from enriched data:', leaderboardArray);
+        setLeaderboard(leaderboardArray);
       }
     };
 
@@ -1157,14 +1324,85 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
     socket.on("session:participants", onParticipants);
     socket.on("chat:message", onChat);
     socket.on("resource:new", onResource);
-    socket.on("poll:snapshot", onPollSnapshot);
-    socket.on("poll:new", onPollNew);
-    socket.on("poll:draft", onPollDraft);
-    socket.on("poll:published", onPollPublished);
-    socket.on("poll:update", onPollUpdate);
-    socket.on("poll:answer", onPollAnswer);
-    socket.on("poll:correctAnswer", onPollCorrectAnswer);
+    socket.on("quiz:snapshot", onQuizSnapshot);
+    socket.on("quiz:new", onQuizNew);
+    socket.on("quiz:draft", onQuizDraft);
+    socket.on("quiz:published", onQuizPublished);
+    socket.on("quiz:update", onQuizUpdate);
+    socket.on("quiz:answer", onQuizAnswer);
+    socket.on("quiz:correctAnswer", onQuizCorrectAnswer);
     socket.on("session:snapshot", onSessionSnapshot);
+    
+    // Listen for leaderboard updates
+    // Listen for leaderboard updates
+    const onLeaderboardUpdate = (payload) => {
+      if (payload?.sessionId !== sessionId) return;
+      
+      // Prefer enrichedLeaderboard if available (has user names)
+      if (payload?.enrichedLeaderboard && typeof payload.enrichedLeaderboard === 'object') {
+        const leaderboardArray = Object.entries(payload.enrichedLeaderboard)
+          .filter(([userId, data]) => userId && (Number(data?.score) || 0) > 0)
+          .map(([userId, data]) => ({
+            userId,
+            name: data.name || "Unknown",
+            email: data.email || "",
+            score: Number(data.score) || 0,
+          }))
+          .sort((a, b) => (b.score || 0) - (a.score || 0));
+        console.log('[SessionRoom] Leaderboard updated via socket (enriched):', leaderboardArray.length, 'entries', leaderboardArray);
+        setLeaderboard(leaderboardArray);
+        return;
+      }
+      
+      // Fallback to simple leaderboard format
+      const leaderboardObj = payload?.leaderboard || {};
+      if (leaderboardObj && typeof leaderboardObj === 'object' && Object.keys(leaderboardObj).length > 0) {
+        const leaderboardArray = Object.entries(leaderboardObj)
+          .filter(([userId, score]) => userId && (Number(score) || 0) > 0)
+          .map(([userId, score]) => {
+            const participant = participants.find(
+              (p) => String(p?.id || p?._id || p?.userId || "") === String(userId)
+            );
+            return {
+              userId,
+              name: participant?.name || "Unknown",
+              email: participant?.email || "",
+              score: Number(score) || 0,
+            };
+          });
+        // Sort by score descending
+        leaderboardArray.sort((a, b) => (b.score || 0) - (a.score || 0));
+        console.log('[SessionRoom] Leaderboard updated via socket:', leaderboardArray.length, 'entries', leaderboardArray);
+        setLeaderboard(leaderboardArray);
+      }
+    };
+    socket.on("session:leaderboard", onLeaderboardUpdate);
+    
+    // Listen for bookmark events
+    socket.on("bookmark:new", (payload) => {
+      if (payload?.sessionId !== sessionId) return;
+      if (payload?.bookmark) {
+        setBookmarks((prev) => {
+          // Check if bookmark already exists
+          const exists = prev.some((b) => (b.id || b._id) === (payload.bookmark.id || payload.bookmark._id));
+          if (exists) return prev;
+          return [...prev, payload.bookmark].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+        });
+      }
+    });
+    
+    socket.on("bookmark:deleted", (payload) => {
+      if (payload?.sessionId !== sessionId) return;
+      if (payload?.bookmarkId) {
+        setBookmarks((prev) => prev.filter((b) => (b.id || b._id) !== payload.bookmarkId));
+      }
+    });
+    
+    socket.on("bookmark:error", (payload) => {
+      if (payload?.sessionId !== sessionId) return;
+      toast.error(payload?.error || "Bookmark error");
+    });
+    
     socket.on("stream:meta", onStreamMeta);
     socket.on("webrtc:signal", onWebrtcSignal);
     socket.on("session:status", onSessionStatus);
@@ -1205,14 +1443,18 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
       socket.off("session:participants", onParticipants);
       socket.off("chat:message", onChat);
       socket.off("resource:new", onResource);
-      socket.off("poll:snapshot", onPollSnapshot);
-      socket.off("poll:new", onPollNew);
-      socket.off("poll:draft", onPollDraft);
-      socket.off("poll:published", onPollPublished);
-      socket.off("poll:correctAnswer", onPollCorrectAnswer);
-      socket.off("poll:update", onPollUpdate);
-      socket.off("poll:answer", onPollAnswer);
+      socket.off("quiz:snapshot", onQuizSnapshot);
+      socket.off("quiz:new", onQuizNew);
+      socket.off("quiz:draft", onQuizDraft);
+      socket.off("quiz:published", onQuizPublished);
+      socket.off("quiz:correctAnswer", onQuizCorrectAnswer);
+      socket.off("quiz:update", onQuizUpdate);
+      socket.off("quiz:answer", onQuizAnswer);
       socket.off("session:snapshot", onSessionSnapshot);
+      socket.off("session:leaderboard", onLeaderboardUpdate);
+      socket.off("bookmark:new");
+      socket.off("bookmark:deleted");
+      socket.off("bookmark:error");
       socket.off("stream:meta", onStreamMeta);
       socket.off("webrtc:signal", onWebrtcSignal);
       socket.off("session:status", onSessionStatus);
@@ -1224,6 +1466,37 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [socket, sessionId, isTutor]);
+
+  // Fetch bookmarks, notices, and resources when sessionId changes
+  useEffect(() => {
+    if (!sessionId) return;
+
+    const fetchSessionData = async () => {
+      try {
+        // Fetch all bookmarks for the session (not filtered by userId)
+        const bookmarksRes = await sessionAPI.getBookmarks(sessionId);
+        if (bookmarksRes.success && bookmarksRes.data?.bookmarks) {
+          setBookmarks(bookmarksRes.data.bookmarks);
+        }
+
+        // Fetch notices
+        const noticesRes = await sessionAPI.getNotices(sessionId);
+        if (noticesRes.success && noticesRes.data?.notices) {
+          setNotices(noticesRes.data.notices);
+        }
+
+        // Fetch resources
+        const resourcesRes = await sessionAPI.getResources(sessionId);
+        if (resourcesRes.success && resourcesRes.data?.resources) {
+          setSessionResources(resourcesRes.data.resources);
+        }
+      } catch (error) {
+        console.error("Error fetching session data:", error);
+      }
+    };
+
+    fetchSessionData();
+  }, [sessionId, user?.id, user?._id]);
 
   const requestMedia = (kind) => {
     if (!socket) return;
@@ -1538,35 +1811,65 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
     toast.success("Resource shared");
   };
 
-  const createPoll = () => {
+  const createQuiz = () => {
     if (!socket) return;
-    const q = pollQuestion.trim();
-    const opts = pollOptions.map((o) => o.trim()).filter(Boolean);
+    const q = quizQuestion.trim();
+    const opts = quizOptions.map((o) => o.trim()).filter(Boolean);
     if (!q || opts.length < 2) {
-      toast.error("Poll needs a question + at least 2 options");
+      toast.error("Quiz needs a question + at least 2 options");
       return;
     }
-    socket.emit("poll:create", {
+    
+    // Support both single and multiple correct answers
+    let correctAnswer = undefined;
+    let correctAnswers = undefined;
+    if (quizIsMultipleChoice && quizCorrectAnswers.length > 0) {
+      correctAnswers = quizCorrectAnswers;
+    } else if (!quizIsMultipleChoice && quizCorrectAnswer !== null) {
+      correctAnswer = quizCorrectAnswer;
+    }
+    
+    socket.emit("quiz:create", {
       sessionId,
       question: q,
       options: opts,
-      correctAnswer: pollCorrectAnswer !== null ? pollCorrectAnswer : undefined,
+      correctAnswer,
+      correctAnswers,
+      scored: quizIsScored,
+      title: newQuizTitle.trim() || undefined,
+      timestamp: newQuizTimestamp.trim() || undefined,
     });
-    setPollQuestion("");
-    setPollOptions(["", ""]);
-    setPollCorrectAnswer(null);
-    setShowPollComposer(false);
+    setQuizQuestion("");
+    setQuizOptions(["", ""]);
+    setQuizCorrectAnswer(null);
+    setQuizCorrectAnswers([]);
+    setQuizIsMultipleChoice(false);
+    setQuizIsScored(true);
+    setNewQuizTitle("");
+    setNewQuizTimestamp("");
+    toast.success("Quiz created!");
   };
 
-  const vote = (pollId, optionIndex) => {
+  const vote = (quizId, optionIndex, optionIndices = null) => {
     if (!socket) return;
-    // Check if poll is published
-    const poll = polls.find((p) => p.id === pollId);
-    if (!poll || !poll.published) {
-      toast.error("This poll is not published yet");
+    // Check if quiz is published
+    const quiz = quizzes.find((q) => q.id === quizId);
+    if (!quiz || !quiz.published) {
+      toast.error("This quiz is not published yet");
       return;
     }
-    socket.emit("poll:vote", { sessionId, pollId, optionIndex });
+    // Check if quiz is stopped
+    if (quiz.stopped) {
+      toast.error("Quiz is stopped. No more votes allowed.");
+      return;
+    }
+    
+    // Support both single and multiple choice
+    if (optionIndices !== null && Array.isArray(optionIndices)) {
+      socket.emit("quiz:vote", { sessionId, quizId, optionIndices });
+    } else {
+      socket.emit("quiz:vote", { sessionId, quizId, optionIndex });
+    }
   };
 
   const copyLink = async () => {
@@ -1936,45 +2239,259 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
           }
         `}</style>
         <div className="h-screen w-screen overflow-hidden bg-[#0b0f1a] text-white flex flex-col">
-        {/* Learner Poll Popup */}
-        {!isTutor && pollPopupOpen && activePoll && (
+        {/* Quiz Launch Modal (Tutor) */}
+        {isTutor && showQuizLaunchModal && quizToLaunch && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 px-4">
+            <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#1a1f2e] p-6 shadow-2xl">
+              <div className="text-center mb-4">
+                <div className="text-lg font-semibold text-white mb-2">Do you wish to launch the Quiz?</div>
+                <div className="text-sm text-white/70">{quizToLaunch.question}</div>
+              </div>
+              <div className="flex gap-3">
+                <Button
+                  variant="secondary"
+                  className="flex-1"
+                  onClick={() => {
+                    setShowQuizLaunchModal(false);
+                    setQuizToLaunch(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  className="flex-1"
+                  onClick={() => {
+                    if (socket && quizToLaunch) {
+                      socket.emit("quiz:publish", { sessionId, quizId: quizToLaunch.id });
+                      toast.success("Quiz launched!");
+                      setShowQuizLaunchModal(false);
+                      setQuizToLaunch(null);
+                    }
+                  }}
+                >
+                  Launch
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Quiz Creator Modal (Tutor) */}
+        {isTutor && showQuizCreator && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 px-4">
+            <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-[#1a1f2e] p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-4">
+                <div className="text-lg font-semibold text-white">Create New Quiz</div>
+                <button
+                  onClick={() => {
+                    setShowQuizCreator(false);
+                    setNewQuizTitle("");
+                    setNewQuizTimestamp("");
+                    setQuizQuestion("");
+                    setQuizOptions(["", ""]);
+                    setQuizCorrectAnswer(null);
+                  }}
+                  className="p-1 hover:bg-white/10 rounded"
+                >
+                  <X className="h-5 w-5 text-white/60" />
+                </button>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-white/80 mb-1">Quiz Title (optional)</label>
+                  <input
+                    value={newQuizTitle}
+                    onChange={(e) => setNewQuizTitle(e.target.value)}
+                    className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-white/30"
+                    placeholder="e.g., Quiz 1"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-white/80 mb-1">Timestamp (optional)</label>
+                  <input
+                    value={newQuizTimestamp}
+                    onChange={(e) => setNewQuizTimestamp(e.target.value)}
+                    className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-white/30"
+                    placeholder="e.g., 10:26"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-white/80 mb-1">Question</label>
+                  <input
+                    value={quizQuestion}
+                    onChange={(e) => setQuizQuestion(e.target.value)}
+                    className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-white/30"
+                    placeholder="Enter quiz question…"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-white/80 mb-1">Options</label>
+                  <div className="space-y-2">
+                    {quizOptions.map((opt, idx) => (
+                      <input
+                        key={idx}
+                        value={opt}
+                        onChange={(e) => {
+                          const next = [...quizOptions];
+                          next[idx] = e.target.value;
+                          setQuizOptions(next);
+                        }}
+                        className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-white/30"
+                        placeholder={`Option ${idx + 1}`}
+                      />
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => setQuizOptions((q) => (q.length < 10 ? [...q, ""] : q))}
+                    className="mt-2 text-xs text-white/60 hover:text-white/80"
+                  >
+                    + Add Option
+                  </button>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-white/80 mb-1">Correct Answer (optional)</label>
+                  <select
+                    value={quizCorrectAnswer !== null ? quizCorrectAnswer : ""}
+                    onChange={(e) => setQuizCorrectAnswer(e.target.value ? Number(e.target.value) : null)}
+                    className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-white/30"
+                  >
+                    <option value="">None</option>
+                    {quizOptions.map((opt, idx) => (
+                      <option key={idx} value={idx}>
+                        {opt || `Option ${idx + 1}`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <Button
+                    variant="secondary"
+                    className="flex-1"
+                    onClick={() => {
+                      setShowQuizCreator(false);
+                      setNewQuizTitle("");
+                      setNewQuizTimestamp("");
+                      setQuizQuestion("");
+                      setQuizOptions(["", ""]);
+                      setQuizCorrectAnswer(null);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="primary"
+                    className="flex-1"
+                    onClick={() => {
+                      createQuiz();
+                      setShowQuizCreator(false);
+                      setNewQuizTitle("");
+                      setNewQuizTimestamp("");
+                    }}
+                  >
+                    Create Quiz
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Leaderboard Modal */}
+        {leftSidebarTab === "leaderboard" && (
+          <div className="fixed inset-0 z-[90] bg-black/60 flex items-center justify-center px-4">
+            <div className="w-full max-w-2xl rounded-2xl border border-white/10 bg-[#1a1f2e] p-6 shadow-2xl max-h-[80vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Trophy className="h-5 w-5 text-yellow-400" />
+                  <div className="text-lg font-semibold text-white">Leaderboard</div>
+                </div>
+                <button
+                  onClick={() => setLeftSidebarTab("students")}
+                  className="p-1 hover:bg-white/10 rounded"
+                >
+                  <X className="h-5 w-5 text-white/60" />
+                </button>
+              </div>
+              {leaderboard.length === 0 ? (
+                <div className="text-center py-12 text-white/60">
+                  <Trophy className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No scores yet. Quizzes will update the leaderboard.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {leaderboard
+                    .sort((a, b) => b.score - a.score)
+                    .map((entry, idx) => (
+                      <div
+                        key={entry.userId}
+                        className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 p-4 hover:bg-white/10 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                            idx === 0 ? "bg-yellow-500/20 text-yellow-400" :
+                            idx === 1 ? "bg-gray-400/20 text-gray-300" :
+                            idx === 2 ? "bg-orange-500/20 text-orange-400" :
+                            "bg-white/10 text-white/60"
+                          }`}>
+                            {idx + 1}
+                          </div>
+                          <div>
+                            <div className="text-sm font-semibold text-white/90">{entry.name || "Unknown"}</div>
+                            <div className="text-xs text-white/50">{entry.email || ""}</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Trophy className="h-4 w-4 text-yellow-400" />
+                          <div className="text-sm font-bold text-white">{entry.score}</div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Learner Quiz Popup */}
+        {!isTutor && quizPopupOpen && activeQuiz && (
           <div
             className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 px-4"
             role="dialog"
             aria-modal="true"
-            aria-labelledby={pollDialogTitleId}
+            aria-labelledby={quizDialogTitleId}
             onMouseDown={(e) => {
-              if (e.target === e.currentTarget) setPollPopupOpen(false);
+              if (e.target === e.currentTarget) setQuizPopupOpen(false);
             }}
           >
             <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-white p-5 text-text shadow-2xl">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <div className="text-xs font-semibold uppercase tracking-[0.3em] text-textMuted">Poll</div>
-                  <div id={pollDialogTitleId} className="mt-1 text-lg font-semibold text-text">
-                    {activePoll.question}
+                  <div className="text-xs font-semibold uppercase tracking-[0.3em] text-textMuted">Quiz</div>
+                  <div id={quizDialogTitleId} className="mt-1 text-lg font-semibold text-text">
+                    {activeQuiz.question}
                   </div>
                 </div>
-                <Button variant="secondary" onClick={() => setPollPopupOpen(false)}>
+                <Button variant="secondary" onClick={() => setQuizPopupOpen(false)}>
                   Close
                 </Button>
               </div>
 
               <div className="mt-4 space-y-2">
-                {activePoll.options?.map((opt, idx) => (
+                {activeQuiz.options?.map((opt, idx) => (
                   <button
                     key={idx}
                     type="button"
-                    ref={idx === 0 ? firstPollOptionRef : null}
+                    ref={idx === 0 ? firstQuizOptionRef : null}
                     className="flex w-full items-center justify-between rounded-xl border border-brintelli-border px-3 py-2 text-left text-sm hover:bg-brintelli-baseAlt"
                     onClick={() => {
-                      vote(activePoll.id, idx);
+                      vote(activeQuiz.id, idx);
                       toast.success("Answer submitted");
-                      setPollPopupOpen(false);
+                      setQuizPopupOpen(false);
                     }}
                   >
                     <span className="font-semibold text-textSoft">{opt}</span>
-                    <span className="text-xs font-semibold text-textMuted">{activePoll.counts?.[idx] ?? 0}</span>
+                    <span className="text-xs font-semibold text-textMuted">{activeQuiz.counts?.[idx] ?? 0}</span>
                   </button>
                 ))}
               </div>
@@ -1984,41 +2501,92 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
           </div>
         )}
 
-        {/* Top meeting bar */}
-        <div className="flex-shrink-0 flex items-center justify-between gap-3 border-b border-white/10 bg-black/30 px-4 py-3">
-          <div className="min-w-0">
-            <div className="truncate text-sm font-semibold">
-              {session?.name ? session.name : "Live Class"}
-              <span className="ml-2 text-xs font-semibold text-white/60">({sessionStatus})</span>
-            </div>
-            <div className="text-xs text-white/60 truncate">{myJoinLink}</div>
-          </div>
-          <div className="flex items-center gap-2">
-            {isTutor && (
-              <>
-                <Button variant="secondary" className="gap-2" onClick={startSession}>
-                  <Play className="h-4 w-4" />
-                  Start
-                </Button>
-                <Button variant="secondary" className="gap-2" onClick={endSession}>
-                  <StopCircle className="h-4 w-4" />
-                  End
-                </Button>
-              </>
-            )}
-            <Button
-              variant="secondary"
-              className="gap-2 lg:hidden"
-              onClick={() => setChatDrawerOpen(true)}
-              aria-label="Open chat"
-              title="Open chat"
+        {/* Top Navigation Bar - Scaler Style */}
+        <div className="flex-shrink-0 flex items-center justify-between gap-4 border-b border-white/10 bg-[#1a1f2e] px-4 py-2.5">
+          {/* Left: Lecture title with back arrow */}
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              onClick={() => navigate(-1)}
+              className="flex-shrink-0 p-1.5 hover:bg-white/10 rounded-lg transition-colors"
+              aria-label="Go back"
             >
-              <MessageSquare className="h-4 w-4" />
-              Chat
-            </Button>
-            <Button variant="secondary" onClick={copyLink}>
-              Copy link
-            </Button>
+              <ArrowLeft className="h-5 w-5 text-white/80" />
+            </button>
+            <div className="min-w-0">
+              <div className="truncate text-sm font-semibold text-white">
+                Lecture | {session?.name || "Live Session"}
+              </div>
+            </div>
+          </div>
+
+          {/* Center: Quiz tabs - List ALL quizzes */}
+          <div className="flex-1 flex items-center gap-1 overflow-x-auto scrollbar-hide px-4">
+            <button
+              onClick={() => setSelectedQuizTab("all")}
+              className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                selectedQuizTab === "all"
+                  ? "bg-blue-600 text-white"
+                  : "text-white/70 hover:text-white hover:bg-white/10"
+              }`}
+            >
+              All Quizzes
+            </button>
+            {Array.isArray(quizzes) && quizzes.length > 0 ? (
+              quizzes
+                .filter(q => q && q.id) // Filter out any null/undefined quizzes
+                .map((quiz, idx) => {
+                  const timestamp = quiz.timestamp || (quiz.ts ? new Date(quiz.ts).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : "");
+                  const quizLabel = quiz.title || `Quiz ${idx + 1}${timestamp ? ` (${timestamp})` : ""}`;
+                  return (
+                    <button
+                      key={quiz.id}
+                      onClick={() => {
+                        setSelectedQuizTab(quiz.id);
+                        if (mode === "studio") {
+                          setQuizToLaunch(quiz);
+                          setShowQuizLaunchModal(true);
+                        }
+                      }}
+                      className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${
+                        selectedQuizTab === quiz.id
+                          ? "bg-blue-600 text-white"
+                          : "text-white/70 hover:text-white hover:bg-white/10"
+                      }`}
+                    >
+                      {quizLabel}
+                    </button>
+                  );
+                })
+            ) : (
+              <div className="text-xs text-white/50 px-3 py-1.5 whitespace-nowrap">No quizzes yet</div>
+            )}
+            {mode === "studio" && (
+              <button
+                onClick={() => setShowQuizCreator(true)}
+                className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold text-white/70 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-1 whitespace-nowrap"
+                title="Create new quiz"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                New Quiz
+              </button>
+            )}
+          </div>
+
+          {/* Right: Trophy and Settings icons */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={() => setLeftSidebarTab("leaderboard")}
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+              title="Leaderboard"
+            >
+              <Trophy className="h-5 w-5 text-white/80" />
+            </button>
+            <button
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+              title="Settings"
+            >
+              <Settings className="h-5 w-5 text-white/80" />
+            </button>
           </div>
         </div>
 
@@ -2081,25 +2649,14 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
           </div>
         </div>
 
-        {/* Main layout: left sidebar (tutor only) + stage + right panel */}
+        {/* Main layout: left sidebar (studio mode only) + stage + right panel */}
         <div className="flex-1 flex overflow-hidden relative">
-          {/* Left Sidebar - Tutor Only */}
-          {isTutor && (
+          {/* Left Sidebar - Studio Mode Only (Tutors, LSM, PM, Admin) */}
+          {mode === "studio" && (
             <div className={`${showLeftSidebar ? "w-[320px]" : "w-0"} flex-shrink-0 border-r border-white/10 bg-[#0d1326] flex flex-col transition-all duration-200 overflow-hidden`}>
               {showLeftSidebar && (
                 <>
-                  {/* Sidebar Header */}
-                  <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b border-white/10">
-                    <div className="flex items-center gap-2 text-sm font-semibold">
-                      <Users className="h-4 w-4 text-white/80" />
-                      Participants
-                    </div>
-                    <Button variant="secondary" onClick={() => setShowLeftSidebar(false)} aria-label="Hide sidebar">
-                      ←
-                    </Button>
-                  </div>
-
-                  {/* Tabs: Students, Polls, Leaderboard */}
+                  {/* Tabs: Students, Quiz, Leaderboard */}
                   <div className="flex-shrink-0 flex border-b border-white/10">
                     <button
                       type="button"
@@ -2114,14 +2671,14 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
                     </button>
                     <button
                       type="button"
-                      onClick={() => setLeftSidebarTab("polls")}
+                      onClick={() => setLeftSidebarTab("quizzes")}
                       className={`flex-1 px-3 py-2 text-xs font-semibold hover:bg-white/5 ${
-                        leftSidebarTab === "polls"
+                        leftSidebarTab === "quizzes"
                           ? "text-white/90 border-b-2 border-white/80"
                           : "text-white/60"
                       }`}
                     >
-                      Polls
+                      Quiz
                     </button>
                     <button
                       type="button"
@@ -2201,99 +2758,97 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
                       </>
                     )}
 
-                    {leftSidebarTab === "polls" && (
+                    {leftSidebarTab === "quizzes" && (
                       <div className="flex flex-col h-full">
-                        {/* Poll Creation Form */}
-                        {isTutor && (
-                          <div className="flex-shrink-0 p-2 border-b border-white/10">
-                            <div className="rounded-lg border border-white/10 bg-black/20 p-2 space-y-2">
-                              <div className="text-xs font-semibold text-white/70">Create Poll</div>
-                              <input
-                                value={pollQuestion}
-                                onChange={(e) => setPollQuestion(e.target.value)}
-                                className="w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white outline-none focus:border-white/30"
-                                placeholder="Poll question…"
-                              />
-                              <div className="space-y-1">
-                                {pollOptions.map((opt, idx) => (
-                                  <input
-                                    key={idx}
-                                    value={opt}
-                                    onChange={(e) => {
-                                      const next = [...pollOptions];
-                                      next[idx] = e.target.value;
-                                      setPollOptions(next);
-                                    }}
-                                    className="w-full rounded border border-white/10 bg-black/30 px-2 py-1 text-xs text-white outline-none focus:border-white/30"
-                                    placeholder={`Option ${idx + 1}`}
-                                  />
-                                ))}
-                              </div>
-                              <div className="flex gap-1">
-                                <Button
-                                  variant="secondary"
-                                  className="flex-1 text-xs py-1"
-                                  onClick={() => setPollOptions((p) => (p.length < 10 ? [...p, ""] : p))}
-                                >
-                                  Add Option
-                                </Button>
-                                <Button
-                                  variant="primary"
-                                  className="flex-1 text-xs py-1"
-                                  onClick={createPoll}
-                                >
-                                  Create
-                                </Button>
-                              </div>
-                              <div className="space-y-1">
-                                <label className="text-xs text-white/70">Correct Answer (optional):</label>
-                                <select
-                                  value={pollCorrectAnswer !== null ? pollCorrectAnswer : ""}
-                                  onChange={(e) => setPollCorrectAnswer(e.target.value ? Number(e.target.value) : null)}
+                        {/* Quiz Creation Form - Always visible in studio mode */}
+                        <div className="flex-shrink-0 p-2 border-b border-white/10">
+                          <div className="rounded-lg border border-white/10 bg-black/20 p-2 space-y-2">
+                            <div className="text-xs font-semibold text-white/70">Create Quiz</div>
+                            <input
+                              value={quizQuestion}
+                              onChange={(e) => setQuizQuestion(e.target.value)}
+                              className="w-full rounded border border-white/10 bg-black/30 px-2 py-1.5 text-xs text-white outline-none focus:border-white/30"
+                              placeholder="Poll question…"
+                            />
+                            <div className="space-y-1">
+                              {quizOptions.map((opt, idx) => (
+                                <input
+                                  key={idx}
+                                  value={opt}
+                                  onChange={(e) => {
+                                    const next = [...quizOptions];
+                                    next[idx] = e.target.value;
+                                    setQuizOptions(next);
+                                  }}
                                   className="w-full rounded border border-white/10 bg-black/30 px-2 py-1 text-xs text-white outline-none focus:border-white/30"
-                                >
-                                  <option value="">None</option>
-                                  {pollOptions.map((opt, idx) => (
-                                    <option key={idx} value={idx}>
-                                      {opt || `Option ${idx + 1}`}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
+                                  placeholder={`Option${idx + 1}`}
+                                />
+                              ))}
+                            </div>
+                            <div className="flex gap-1">
+                              <Button
+                                variant="secondary"
+                                className="flex-1 text-xs py-1"
+                                onClick={() => setQuizOptions((q) => (q.length < 10 ? [...q, ""] : q))}
+                              >
+                                Add Option
+                              </Button>
+                              <Button
+                                variant="primary"
+                                className="flex-1 text-xs py-1"
+                                onClick={createQuiz}
+                              >
+                                Create
+                              </Button>
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-xs text-white/70">Correct Answer (optional):</label>
+                              <select
+                                value={quizCorrectAnswer !== null ? quizCorrectAnswer : ""}
+                                onChange={(e) => setQuizCorrectAnswer(e.target.value ? Number(e.target.value) : null)}
+                                className="w-full rounded border border-white/10 bg-black/30 px-2 py-1 text-xs text-white outline-none focus:border-white/30"
+                              >
+                                <option value="">None</option>
+                                {quizOptions.map((opt, idx) => (
+                                  <option key={idx} value={idx}>
+                                    {opt || `Option ${idx + 1}`}
+                                  </option>
+                                ))}
+                              </select>
                             </div>
                           </div>
-                        )}
-                        {/* Polls List */}
+                        </div>
+                        {/* Quizzes List */}
                         <div className="flex-1 min-h-0 overflow-y-auto p-2 space-y-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                          <style>{`.polls-scroll::-webkit-scrollbar { display: none; }`}</style>
-                          <div className="polls-scroll">
-                          {polls.length === 0 ? (
+                          <style>{`.quizzes-scroll::-webkit-scrollbar { display: none; }`}</style>
+                          <div className="quizzes-scroll">
+                          {quizzes.length === 0 ? (
                             <div className="p-4 text-sm text-white/60 text-center">No polls yet.</div>
                           ) : (
-                            polls.map((poll) => (
+                            quizzes.map((quiz) => (
                             <div
-                              key={poll.id}
+                              key={quiz.id}
                               className="rounded-lg border border-white/10 bg-black/20 p-3 space-y-2"
                             >
-                              <div className="text-sm font-semibold text-white/90">{poll.question}</div>
+                              <div className="text-sm font-semibold text-white/90">{quiz.question}</div>
                               <div className="text-xs text-white/60">
-                                {poll.published ? "Published" : "Draft"}
-                                {poll.correctAnswer !== null && " • Answer set"}
+                                {quiz.published ? "Published" : "Draft"}
+                                {quiz.correctAnswer !== null && " • Answer set"}
                               </div>
-                              {!poll.published && (
+                              {!quiz.published && (
                                 <Button
                                   variant="primary"
                                   className="w-full text-xs py-1"
                                   onClick={() => {
                                     if (socket) {
-                                      socket.emit("poll:publish", { sessionId, pollId: poll.id });
+                                      socket.emit("quiz:publish", { sessionId, quizId: quiz.id });
                                     }
                                   }}
                                 >
                                   Publish
                                 </Button>
                               )}
-                              {poll.published && poll.correctAnswer === null && (
+                              {quiz.published && quiz.correctAnswer === null && (
                                 <div className="space-y-1">
                                   <label className="text-xs text-white/70">Set correct answer:</label>
                                   <select
@@ -2301,16 +2856,16 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
                                     onChange={(e) => {
                                       const idx = Number(e.target.value);
                                       if (!isNaN(idx) && socket) {
-                                        socket.emit("poll:correctAnswer", {
+                                        socket.emit("quiz:correctAnswer", {
                                           sessionId,
-                                          pollId: poll.id,
+                                          quizId: quiz.id,
                                           correctAnswer: idx,
                                         });
                                       }
                                     }}
                                   >
                                     <option value="">Select...</option>
-                                    {poll.options?.map((opt, idx) => (
+                                    {quiz.options?.map((opt, idx) => (
                                       <option key={idx} value={idx}>
                                         {opt}
                                       </option>
@@ -2318,9 +2873,9 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
                                   </select>
                                 </div>
                               )}
-                              {poll.published && poll.votes && (
+                              {quiz.published && quiz.votes && (
                                 <div className="text-xs text-white/60">
-                                  Votes: {Object.keys(poll.votes).length}
+                                  Votes: {Object.keys(quiz.votes).length}
                                 </div>
                               )}
                             </div>
@@ -2346,8 +2901,7 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
                                 <div className="flex items-center gap-2">
                                   <div className="text-xs font-semibold text-white/60 w-6">#{idx + 1}</div>
                                   <div>
-                                    <div className="text-sm font-semibold text-white/90">{entry.name}</div>
-                                    <div className="text-xs text-white/60">{entry.email}</div>
+                                    <div className="text-sm font-semibold text-white/90">{entry.name || 'Unknown'}</div>
                                   </div>
                                 </div>
                                 <div className="text-sm font-bold text-emerald-400">{entry.score}</div>
@@ -2359,11 +2913,11 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
                   </div>
                 </>
               )}
-              {!showLeftSidebar && (
+              {!showLeftSidebar && mode === "studio" && (
                 <button
                   type="button"
                   onClick={() => setShowLeftSidebar(true)}
-                  className="absolute left-0 top-1/2 -translate-y-1/2 bg-[#0d1326] border-r border-y border-white/10 px-2 py-4 rounded-r-lg hover:bg-[#0f1628]"
+                  className="absolute left-0 top-1/2 -translate-y-1/2 bg-[#0d1326] border-r border-y border-white/10 px-2 py-4 rounded-r-lg hover:bg-[#0f1628] z-10"
                   aria-label="Show sidebar"
                 >
                   →
@@ -2510,55 +3064,124 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
               )}
           </div>
 
-          {/* Right panel (Chat) - Sticky */}
+          {/* Right panel - Scaler Style with Tabs */}
           <div className="hidden lg:flex flex-col border-l border-white/10 bg-[#0d1326] w-[380px] flex-shrink-0 h-full">
-            {/* Chat Header - Sticky */}
+            {/* Tab Header */}
             <div className="flex-shrink-0 flex items-center justify-between gap-2 px-4 py-3 border-b border-white/10">
               <div className="flex items-center gap-2 text-sm font-semibold">
-                <MessageSquare className="h-4 w-4 text-white/80" />
+                {rightSidebarTab === "chat" && (
+                  <>
+                    <MessageSquare className="h-4 w-4 text-white/80" />
+                    Chat
+                    {mentionAlerts > 0 && (
+                      <span className="ml-1 inline-flex items-center rounded-full bg-rose-500/20 px-2 py-0.5 text-[11px] font-bold text-rose-200 ring-1 ring-rose-500/30">
+                        {mentionAlerts}
+                      </span>
+                    )}
+                  </>
+                )}
+                {rightSidebarTab === "bookmarks" && (
+                  <>
+                    <Bookmark className="h-4 w-4 text-white/80" />
+                    Bookmarks & Notes
+                    {bookmarks.length > 0 && (
+                      <span className="ml-1 inline-flex items-center rounded-full bg-blue-500/20 px-2 py-0.5 text-[11px] font-bold text-blue-200 ring-1 ring-blue-500/30">
+                        {bookmarks.length}
+                      </span>
+                    )}
+                  </>
+                )}
+                {rightSidebarTab === "notes" && (
+                  <>
+                    <FileText className="h-4 w-4 text-white/80" />
+                    Lecture Notes
+                    {lectureNotes.length > 0 && (
+                      <span className="ml-1 inline-flex items-center rounded-full bg-blue-500/20 px-2 py-0.5 text-[11px] font-bold text-blue-200 ring-1 ring-blue-500/30">
+                        {lectureNotes.length}
+                      </span>
+                    )}
+                  </>
+                )}
+                {rightSidebarTab === "notice" && (
+                  <>
+                    <Bell className="h-4 w-4 text-white/80" />
+                    Notice Board
+                  </>
+                )}
+              </div>
+              <button
+                onClick={() => setRightSidebarTab("chat")}
+                className="p-1 hover:bg-white/10 rounded transition-colors"
+                aria-label="Close sidebar"
+              >
+                <X className="h-4 w-4 text-white/60" />
+              </button>
+            </div>
+
+            {/* Tab Navigation - Bottom */}
+            <div className="flex-shrink-0 flex items-center border-t border-white/10 bg-[#0d1326]">
+              <button
+                onClick={() => setRightSidebarTab("chat")}
+                className={`flex-1 px-3 py-2.5 text-xs font-semibold transition-colors ${
+                  rightSidebarTab === "chat"
+                    ? "text-orange-400 border-b-2 border-orange-400 bg-white/5"
+                    : "text-white/60 hover:text-white/80"
+                }`}
+              >
                 Chat
-                {mentionAlerts > 0 && (
-                  <span className="ml-1 inline-flex items-center rounded-full bg-rose-500/20 px-2 py-0.5 text-[11px] font-bold text-rose-200 ring-1 ring-rose-500/30">
+                {mentionAlerts > 0 && rightSidebarTab !== "chat" && (
+                  <span className="ml-1 inline-flex items-center rounded-full bg-rose-500/20 px-1.5 py-0.5 text-[10px] font-bold text-rose-200">
                     {mentionAlerts}
                   </span>
                 )}
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="text-xs font-semibold text-white/60">
-                  {participants.length} in call{isTutor ? " (click names to @mention)" : ""}
-                </div>
-              </div>
+              </button>
+              <button
+                onClick={() => setRightSidebarTab("bookmarks")}
+                className={`flex-1 px-3 py-2.5 text-xs font-semibold transition-colors ${
+                  rightSidebarTab === "bookmarks"
+                    ? "text-orange-400 border-b-2 border-orange-400 bg-white/5"
+                    : "text-white/60 hover:text-white/80"
+                }`}
+              >
+                Bookmarks & Notes
+                {bookmarks.length > 0 && rightSidebarTab !== "bookmarks" && (
+                  <span className="ml-1 inline-flex items-center rounded-full bg-blue-500/20 px-1.5 py-0.5 text-[10px] font-bold text-blue-200">
+                    {bookmarks.length}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => setRightSidebarTab("notes")}
+                className={`flex-1 px-3 py-2.5 text-xs font-semibold transition-colors ${
+                  rightSidebarTab === "notes"
+                    ? "text-orange-400 border-b-2 border-orange-400 bg-white/5"
+                    : "text-white/60 hover:text-white/80"
+                }`}
+              >
+                Lecture Notes
+                {lectureNotes.length > 0 && rightSidebarTab !== "notes" && (
+                  <span className="ml-1 inline-flex items-center rounded-full bg-blue-500/20 px-1.5 py-0.5 text-[10px] font-bold text-blue-200">
+                    {lectureNotes.length}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => setRightSidebarTab("notice")}
+                className={`flex-1 px-3 py-2.5 text-xs font-semibold transition-colors ${
+                  rightSidebarTab === "notice"
+                    ? "text-orange-400 border-b-2 border-orange-400 bg-white/5"
+                    : "text-white/60 hover:text-white/80"
+                }`}
+              >
+                Notice Board
+              </button>
             </div>
 
             {/* Scrollable content area */}
             <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-              {/* Poll composer - Sticky */}
-
-              {/* Participants list - Sticky */}
-              {isTutor && (
-                <div className="flex-shrink-0 px-4 pt-3 pb-2 border-b border-white/10">
-                  <div className="max-h-[120px] overflow-auto rounded-xl border border-white/10 bg-black/20 p-2">
-                    {participants.length === 0 ? (
-                      <div className="text-xs text-white/60 px-2 py-1">No participants yet.</div>
-                    ) : (
-                      <div className="flex flex-wrap gap-2">
-                        {participants.map((p) => (
-                          <button
-                            key={p.socketId || p.id}
-                            type="button"
-                            className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-white/80 hover:bg-white/10"
-                            onClick={() => setChatInput((prev) => (prev ? `${prev} @${p.name} ` : `@${p.name} `))}
-                            title="Click to @mention"
-                          >
-                            {p.name}
-                            {p.handRaised ? " ✋" : ""}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
+              {/* Chat Tab Content */}
+              {rightSidebarTab === "chat" && (
+                <>
 
               {/* Tutor: incoming mic/cam requests - Sticky */}
               {isTutor && incomingMediaRequests.length > 0 && (
@@ -2600,7 +3223,7 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
                 </div>
               )}
 
-              {/* Chat messages - Scrollable (only comments, no polls/resources) */}
+              {/* Chat messages - Scrollable (only comments, no quizzes/resources) */}
               <div
                 ref={chatScrollRef}
                 className="flex-1 min-h-0 overflow-y-auto px-4 pt-4"
@@ -2724,6 +3347,515 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
                 <Button onClick={sendChat} aria-label="Send message">Send</Button>
               </div>
               </div>
+                </>
+              )}
+
+              {/* Bookmarks Tab Content */}
+              {rightSidebarTab === "bookmarks" && (
+                <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 scrollbar-hide">
+                  <div className="space-y-3">
+                    {/* Allow all users to create bookmarks */}
+                    <div className="space-y-2">
+                      <input
+                        type="text"
+                        placeholder="Bookmark title..."
+                        value={bookmarkTitle}
+                        onChange={(e) => setBookmarkTitle(e.target.value)}
+                        className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white placeholder-white/40 outline-none focus:border-white/30"
+                      />
+                      <textarea
+                        placeholder="Notes (optional)..."
+                        value={bookmarkNotes}
+                        onChange={(e) => setBookmarkNotes(e.target.value)}
+                        rows={2}
+                        className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white placeholder-white/40 outline-none focus:border-white/30 resize-none"
+                      />
+                      <button
+                        onClick={async () => {
+                          if (!bookmarkTitle.trim()) {
+                            toast.error("Please enter a bookmark title");
+                            return;
+                          }
+                          try {
+                            const timestamp = 0; // TODO: Get actual video timestamp
+                            const res = await sessionAPI.createBookmark(sessionId, {
+                              timestamp,
+                              title: bookmarkTitle.trim(),
+                              notes: bookmarkNotes.trim(),
+                            });
+                            if (res.success) {
+                              setBookmarks((prev) => [...prev, res.data.bookmark]);
+                              setBookmarkTitle("");
+                              setBookmarkNotes("");
+                              toast.success("Bookmark created");
+                            }
+                          } catch (error) {
+                            toast.error("Failed to create bookmark");
+                          }
+                        }}
+                        className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-white/80 hover:bg-white/10 transition-colors flex items-center gap-2 justify-center"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Add Bookmark
+                      </button>
+                    </div>
+                    {bookmarks.length === 0 ? (
+                      <div className="text-center py-8 text-white/60 text-sm">
+                        No bookmarks yet.
+                      </div>
+                    ) : (
+                      bookmarks.map((bookmark) => {
+                        const isOwner = String(bookmark.createdBy?.id || bookmark.userId) === String(user?.id || user?._id);
+                        return (
+                          <div
+                            key={bookmark.id || bookmark._id}
+                            className="rounded-lg border border-white/10 bg-white/5 p-3 hover:bg-white/10 transition-colors"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-semibold text-white/90">{bookmark.title || "Untitled Bookmark"}</div>
+                                {bookmark.notes && (
+                                  <div className="text-xs text-white/60 mt-1">{bookmark.notes}</div>
+                                )}
+                                <div className="flex items-center gap-2 mt-1">
+                                  <div className="text-xs text-white/50">
+                                    {bookmark.timestamp ? `${bookmark.timestamp}s` : "No timestamp"}
+                                  </div>
+                                  {bookmark.createdBy?.name && (
+                                    <>
+                                      <span className="text-xs text-white/30">•</span>
+                                      <div className="text-xs text-white/50">
+                                        by {bookmark.createdBy.name}
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                              {(isOwner || isTutor) && (
+                                <button
+                                  onClick={async () => {
+                                    try {
+                                      const res = await sessionAPI.deleteBookmark(bookmark.id || bookmark._id);
+                                      if (res.success) {
+                                        setBookmarks((prev) => prev.filter((b) => (b.id || b._id) !== (bookmark.id || bookmark._id)));
+                                        toast.success("Bookmark deleted");
+                                      }
+                                    } catch (error) {
+                                      toast.error("Failed to delete bookmark");
+                                    }
+                                  }}
+                                  className="p-1 hover:bg-white/10 rounded"
+                                >
+                                  <X className="h-3.5 w-3.5 text-white/60" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Lecture Notes Tab Content */}
+              {rightSidebarTab === "notes" && (
+                <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 scrollbar-hide">
+                  <div className="space-y-3">
+                    {canCreateContent && (
+                      <div className="space-y-2 rounded-lg border border-white/10 bg-black/30 p-3">
+                        <input
+                          type="text"
+                          placeholder="Note title..."
+                          value={noteTitle}
+                          onChange={(e) => setNoteTitle(e.target.value)}
+                          className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white placeholder-white/40 outline-none focus:border-white/30"
+                        />
+                        <textarea
+                          placeholder="Description (optional)..."
+                          value={noteDescription}
+                          onChange={(e) => setNoteDescription(e.target.value)}
+                          rows={2}
+                          className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white placeholder-white/40 outline-none focus:border-white/30 resize-none"
+                        />
+                        <input
+                          type="url"
+                          placeholder="Or paste a link (optional)..."
+                          value={noteUrl}
+                          onChange={(e) => setNoteUrl(e.target.value)}
+                          className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white placeholder-white/40 outline-none focus:border-white/30"
+                        />
+                        <div className="flex items-center gap-2">
+                          <label className="flex-1 cursor-pointer">
+                            <input
+                              type="file"
+                              accept="image/*,application/pdf,.doc,.docx"
+                              onChange={(e) => setNoteFile(e.target.files?.[0] || null)}
+                              className="hidden"
+                            />
+                            <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/80 hover:bg-white/10 transition-colors">
+                              <Upload className="h-4 w-4" />
+                              {noteFile ? noteFile.name : "Upload file (image/PDF)"}
+                            </div>
+                          </label>
+                          {noteFile && (
+                            <button
+                              onClick={() => setNoteFile(null)}
+                              className="p-1 hover:bg-white/10 rounded"
+                            >
+                              <X className="h-3.5 w-3.5 text-white/60" />
+                            </button>
+                          )}
+                        </div>
+                        <button
+                          onClick={async () => {
+                            if (!noteTitle.trim() && !noteFile && !noteUrl.trim()) {
+                              toast.error("Please provide a title, file, or link");
+                              return;
+                            }
+                            try {
+                              setNoteUploading(true);
+                              let fileUrl = null;
+                              let fileKey = null;
+                              let fileName = null;
+                              let fileSize = 0;
+                              let mimeType = null;
+
+                              if (noteFile) {
+                                const uploadRes = await uploadAPI.uploadFile(noteFile, 'session-notes');
+                                if (uploadRes.success) {
+                                  fileUrl = uploadRes.data.url;
+                                  fileKey = uploadRes.data.key;
+                                  fileName = noteFile.name;
+                                  fileSize = noteFile.size;
+                                  mimeType = noteFile.type;
+                                } else {
+                                  throw new Error("File upload failed");
+                                }
+                              }
+
+                              const res = await sessionAPI.createResource(sessionId, {
+                                title: noteTitle.trim() || (noteFile ? noteFile.name : "Untitled Note"),
+                                description: noteDescription.trim(),
+                                url: noteUrl.trim() || fileUrl || "",
+                                fileKey,
+                                fileName,
+                                fileSize,
+                                mimeType,
+                                fileUrl,
+                              });
+                              if (res.success) {
+                                setLectureNotes((prev) => [...prev, res.data.resource]);
+                                setNoteTitle("");
+                                setNoteDescription("");
+                                setNoteUrl("");
+                                setNoteFile(null);
+                                toast.success("Note created");
+                              }
+                            } catch (error) {
+                              toast.error(error.message || "Failed to create note");
+                            } finally {
+                              setNoteUploading(false);
+                            }
+                          }}
+                          disabled={noteUploading}
+                          className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-white/80 hover:bg-white/10 transition-colors flex items-center gap-2 justify-center disabled:opacity-50"
+                        >
+                          <Plus className="h-4 w-4" />
+                          {noteUploading ? "Uploading..." : "Add Note"}
+                        </button>
+                      </div>
+                    )}
+                    {lectureNotes.length === 0 ? (
+                      <div className="text-center py-8 text-white/60 text-sm">
+                        No lecture notes yet.
+                      </div>
+                    ) : (
+                      lectureNotes.map((note) => {
+                        const isImage = note.mimeType?.startsWith('image/') || note.type === 'IMAGE';
+                        const isPDF = note.mimeType === 'application/pdf' || note.type === 'PDF';
+                        const fileUrl = note.fileUrl || note.url;
+                        return (
+                          <div
+                            key={note.id || note._id}
+                            className="rounded-lg border border-white/10 bg-white/5 p-3 hover:bg-white/10 transition-colors"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-semibold text-white/90">{note.title}</div>
+                                {(note.description || note.content) && (
+                                  <div className="text-xs text-white/60 mt-1">{note.description || note.content}</div>
+                                )}
+                                {isImage && fileUrl && (
+                                  <img
+                                    src={fileUrl}
+                                    alt={note.title}
+                                    className="mt-2 rounded-lg max-w-full h-auto max-h-64 object-contain"
+                                  />
+                                )}
+                                {isPDF && fileUrl && (
+                                  <a
+                                    href={fileUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="mt-2 flex items-center gap-2 text-xs text-blue-400 hover:underline"
+                                  >
+                                    <File className="h-4 w-4" />
+                                    {note.fileName || "View PDF"}
+                                  </a>
+                                )}
+                                {note.type === 'LINK' && note.url && !fileUrl && (
+                                  <a
+                                    href={note.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="mt-2 flex items-center gap-2 text-xs text-blue-400 hover:underline"
+                                  >
+                                    <LinkIcon className="h-4 w-4" />
+                                    {note.url}
+                                  </a>
+                                )}
+                                {fileUrl && !isImage && !isPDF && note.type !== 'LINK' && (
+                                  <a
+                                    href={fileUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="mt-2 flex items-center gap-2 text-xs text-blue-400 hover:underline"
+                                  >
+                                    <File className="h-4 w-4" />
+                                    {note.fileName || "Download file"}
+                                  </a>
+                                )}
+                                <div className="text-xs text-white/50 mt-1">
+                                  {note.createdAt ? new Date(note.createdAt).toLocaleString() : ""}
+                                </div>
+                              </div>
+                              {canCreateContent && (
+                                <button
+                                  onClick={async () => {
+                                    try {
+                                      const res = await sessionAPI.deleteResource(note.id || note._id);
+                                      if (res.success) {
+                                        setLectureNotes((prev) => prev.filter((n) => (n.id || n._id) !== (note.id || note._id)));
+                                        toast.success("Note deleted");
+                                      }
+                                    } catch (error) {
+                                      toast.error("Failed to delete note");
+                                    }
+                                  }}
+                                  className="p-1 hover:bg-white/10 rounded"
+                                >
+                                  <X className="h-3.5 w-3.5 text-white/60" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Notice Board Tab Content */}
+              {rightSidebarTab === "notice" && (
+                <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 scrollbar-hide">
+                  <div className="space-y-3">
+                    {isTutor && (
+                      <div className="space-y-2 rounded-lg border border-white/10 bg-black/30 p-3">
+                        <input
+                          type="text"
+                          placeholder="Notice title..."
+                          value={noticeTitle}
+                          onChange={(e) => setNoticeTitle(e.target.value)}
+                          className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white placeholder-white/40 outline-none focus:border-white/30"
+                        />
+                        <textarea
+                          placeholder="Description (optional)..."
+                          value={noticeDescription}
+                          onChange={(e) => setNoticeDescription(e.target.value)}
+                          rows={2}
+                          className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white placeholder-white/40 outline-none focus:border-white/30 resize-none"
+                        />
+                        <input
+                          type="url"
+                          placeholder="Or paste a link (optional)..."
+                          value={noticeUrl}
+                          onChange={(e) => setNoticeUrl(e.target.value)}
+                          className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white placeholder-white/40 outline-none focus:border-white/30"
+                        />
+                        <div className="flex items-center gap-2">
+                          <label className="flex-1 cursor-pointer">
+                            <input
+                              type="file"
+                              accept="image/*,application/pdf,.doc,.docx"
+                              onChange={(e) => setNoticeFile(e.target.files?.[0] || null)}
+                              className="hidden"
+                            />
+                            <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/80 hover:bg-white/10 transition-colors">
+                              <Upload className="h-4 w-4" />
+                              {noticeFile ? noticeFile.name : "Upload file (image/PDF)"}
+                            </div>
+                          </label>
+                          {noticeFile && (
+                            <button
+                              onClick={() => setNoticeFile(null)}
+                              className="p-1 hover:bg-white/10 rounded"
+                            >
+                              <X className="h-3.5 w-3.5 text-white/60" />
+                            </button>
+                          )}
+                        </div>
+                        <button
+                          onClick={async () => {
+                            if (!noticeTitle.trim() && !noticeFile && !noticeUrl.trim()) {
+                              toast.error("Please provide a title, file, or link");
+                              return;
+                            }
+                            try {
+                              setNoticeUploading(true);
+                              let fileUrl = null;
+                              let fileKey = null;
+                              let fileName = null;
+                              let fileSize = 0;
+                              let mimeType = null;
+
+                              if (noticeFile) {
+                                const uploadRes = await uploadAPI.uploadFile(noticeFile, 'session-notices');
+                                if (uploadRes.success) {
+                                  fileUrl = uploadRes.data.url;
+                                  fileKey = uploadRes.data.key;
+                                  fileName = noticeFile.name;
+                                  fileSize = noticeFile.size;
+                                  mimeType = noticeFile.type;
+                                } else {
+                                  throw new Error("File upload failed");
+                                }
+                              }
+
+                              const res = await sessionAPI.createNotice(sessionId, {
+                                title: noticeTitle.trim() || (noticeFile ? noticeFile.name : "Untitled Notice"),
+                                description: noticeDescription.trim(),
+                                url: noticeUrl.trim() || fileUrl || undefined,
+                                fileKey,
+                                fileName,
+                                fileSize,
+                                mimeType,
+                                fileUrl,
+                              });
+                              if (res.success) {
+                                setNotices((prev) => [...prev, res.data.notice]);
+                                setNoticeTitle("");
+                                setNoticeDescription("");
+                                setNoticeUrl("");
+                                setNoticeFile(null);
+                                toast.success("Notice created");
+                              }
+                            } catch (error) {
+                              toast.error(error.message || "Failed to create notice");
+                            } finally {
+                              setNoticeUploading(false);
+                            }
+                          }}
+                          disabled={noticeUploading}
+                          className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-white/80 hover:bg-white/10 transition-colors flex items-center gap-2 justify-center disabled:opacity-50"
+                        >
+                          <Plus className="h-4 w-4" />
+                          {noticeUploading ? "Uploading..." : "Add Notice"}
+                        </button>
+                      </div>
+                    )}
+                    {notices.length === 0 ? (
+                      <div className="text-center py-8 text-white/60 text-sm">
+                        No notices yet.
+                      </div>
+                    ) : (
+                      notices.map((notice) => {
+                        const isImage = notice.mimeType?.startsWith('image/') || notice.type === 'IMAGE';
+                        const isPDF = notice.mimeType === 'application/pdf' || notice.type === 'PDF';
+                        const fileUrl = notice.fileUrl || notice.url;
+                        return (
+                          <div
+                            key={notice.id || notice._id}
+                            className="rounded-lg border border-white/10 bg-white/5 p-3 hover:bg-white/10 transition-colors"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-semibold text-white/90">{notice.title}</div>
+                                {(notice.description || notice.content) && (
+                                  <div className="text-xs text-white/60 mt-1">{notice.description || notice.content}</div>
+                                )}
+                                {isImage && fileUrl && (
+                                  <img
+                                    src={fileUrl}
+                                    alt={notice.title}
+                                    className="mt-2 rounded-lg max-w-full h-auto max-h-64 object-contain"
+                                  />
+                                )}
+                                {isPDF && fileUrl && (
+                                  <a
+                                    href={fileUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="mt-2 flex items-center gap-2 text-xs text-blue-400 hover:underline"
+                                  >
+                                    <File className="h-4 w-4" />
+                                    {notice.fileName || "View PDF"}
+                                  </a>
+                                )}
+                                {notice.type === 'LINK' && notice.url && !fileUrl && (
+                                  <a
+                                    href={notice.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="mt-2 flex items-center gap-2 text-xs text-blue-400 hover:underline"
+                                  >
+                                    <LinkIcon className="h-4 w-4" />
+                                    {notice.url}
+                                  </a>
+                                )}
+                                {fileUrl && !isImage && !isPDF && notice.type !== 'LINK' && (
+                                  <a
+                                    href={fileUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="mt-2 flex items-center gap-2 text-xs text-blue-400 hover:underline"
+                                  >
+                                    <File className="h-4 w-4" />
+                                    {notice.fileName || "Download file"}
+                                  </a>
+                                )}
+                                <div className="text-xs text-white/50 mt-1">
+                                  {notice.createdAt ? new Date(notice.createdAt).toLocaleString() : ""}
+                                </div>
+                              </div>
+                              {canCreateContent && (
+                                <button
+                                  onClick={async () => {
+                                    try {
+                                      const res = await sessionAPI.deleteNotice(notice.id || notice._id);
+                                      if (res.success) {
+                                        setNotices((prev) => prev.filter((n) => (n.id || n._id) !== (notice.id || notice._id)));
+                                        toast.success("Notice deleted");
+                                      }
+                                    } catch (error) {
+                                      toast.error("Failed to delete notice");
+                                    }
+                                  }}
+                                  className="p-1 hover:bg-white/10 rounded"
+                                >
+                                  <X className="h-3.5 w-3.5 text-white/60" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
+
             </div>
           </div>
         </div>
@@ -2830,34 +3962,34 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
 
   return (
     <>
-      {/* Learner Poll Popup */}
-      {!isTutor && pollPopupOpen && activePoll && (
+      {/* Learner Quiz Popup */}
+      {!isTutor && quizPopupOpen && activeQuiz && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 px-4">
           <div className="w-full max-w-lg rounded-2xl border border-brintelli-border bg-white p-5 shadow-2xl">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.3em] text-textMuted">Poll</div>
-                <div className="mt-1 text-lg font-semibold text-text">{activePoll.question}</div>
+                <div className="text-xs font-semibold uppercase tracking-[0.3em] text-textMuted">Quiz</div>
+                <div className="mt-1 text-lg font-semibold text-text">{activeQuiz.question}</div>
               </div>
-              <Button variant="secondary" onClick={() => setPollPopupOpen(false)}>
+              <Button variant="secondary" onClick={() => setQuizPopupOpen(false)}>
                 Close
               </Button>
             </div>
 
             <div className="mt-4 space-y-2">
-              {activePoll.options?.map((opt, idx) => (
+              {activeQuiz.options?.map((opt, idx) => (
                 <button
                   key={idx}
                   type="button"
                   className="flex w-full items-center justify-between rounded-xl border border-brintelli-border px-3 py-2 text-left text-sm hover:bg-brintelli-baseAlt"
                   onClick={() => {
-                    vote(activePoll.id, idx);
+                    vote(activeQuiz.id, idx);
                     toast.success("Answer submitted");
-                    setPollPopupOpen(false);
+                    setQuizPopupOpen(false);
                   }}
                 >
                   <span className="font-semibold text-textSoft">{opt}</span>
-                  <span className="text-xs font-semibold text-textMuted">{activePoll.counts?.[idx] ?? 0}</span>
+                  <span className="text-xs font-semibold text-textMuted">{activeQuiz.counts?.[idx] ?? 0}</span>
                 </button>
               ))}
             </div>
@@ -2871,7 +4003,7 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
 
       <PageHeader
         title={session?.name ? `Live: ${session.name}` : "Live Session"}
-        description="Chat, resources, polls, and screen sharing — all in one room."
+        description="Chat, resources, quizzes, and screen sharing — all in one room."
         actions={
           <div className="flex gap-2">
             {isTutor && (
@@ -2912,34 +4044,34 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
       />
 
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-        {/* Learner Poll Popup - inside main layout */}
-        {!isTutor && pollPopupOpen && activePoll && (
+        {/* Learner Quiz Popup - inside main layout */}
+        {!isTutor && quizPopupOpen && activeQuiz && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 px-4">
             <div className="w-full max-w-lg rounded-2xl border border-brintelli-border bg-white p-5 shadow-2xl">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <div className="text-xs font-semibold uppercase tracking-[0.3em] text-textMuted">Poll</div>
-                  <div className="mt-1 text-lg font-semibold text-text">{activePoll.question}</div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.3em] text-textMuted">Quiz</div>
+                  <div className="mt-1 text-lg font-semibold text-text">{activeQuiz.question}</div>
                 </div>
-                <Button variant="secondary" onClick={() => setPollPopupOpen(false)}>
+                <Button variant="secondary" onClick={() => setQuizPopupOpen(false)}>
                   Close
                 </Button>
               </div>
 
               <div className="mt-4 space-y-2">
-                {activePoll.options?.map((opt, idx) => (
+                {activeQuiz.options?.map((opt, idx) => (
                   <button
                     key={idx}
                     type="button"
                     className="flex w-full items-center justify-between rounded-xl border border-brintelli-border px-3 py-2 text-left text-sm hover:bg-brintelli-baseAlt"
                     onClick={() => {
-                      vote(activePoll.id, idx);
+                      vote(activeQuiz.id, idx);
                       toast.success("Answer submitted");
-                      setPollPopupOpen(false);
+                      setQuizPopupOpen(false);
                     }}
                   >
                     <span className="font-semibold text-textSoft">{opt}</span>
-                    <span className="text-xs font-semibold text-textMuted">{activePoll.counts?.[idx] ?? 0}</span>
+                    <span className="text-xs font-semibold text-textMuted">{activeQuiz.counts?.[idx] ?? 0}</span>
                   </button>
                 ))}
               </div>
@@ -3057,7 +4189,7 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
             </div>
           </div>
 
-          {/* Bottom utility area: Recording fallback + Resources + Polls (kept for now, will be tightened next) */}
+          {/* Bottom utility area: Recording fallback + Resources + Quizzes (kept for now, will be tightened next) */}
           <div className="grid gap-6 lg:grid-cols-3">
             {/* Recording storage */}
             {isTutor && (
@@ -3174,35 +4306,35 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
             </div>
             )}
 
-            {/* Polls (tutor/admin only) */}
+            {/* Quizzes (tutor/admin only) */}
             {canModerate && (
             <div className="rounded-2xl border border-brintelli-border bg-brintelli-card p-5 shadow-soft">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 font-semibold text-text">
                   <BarChart3 className="h-4 w-4 text-brand-600" />
-                  Polls
+                  Quizzes
                 </div>
-                  <Button variant="secondary" onClick={() => setShowPollComposer((v) => !v)}>
-                    {showPollComposer ? "Close" : "Create"}
+                  <Button variant="secondary" onClick={() => setShowQuizComposer((v) => !v)}>
+                    {showQuizComposer ? "Close" : "Create"}
                   </Button>
               </div>
 
-              {showPollComposer && (
+              {showQuizComposer && (
                 <div className="mt-3 space-y-2">
                   <input
-                    value={pollQuestion}
-                    onChange={(e) => setPollQuestion(e.target.value)}
+                    value={quizQuestion}
+                    onChange={(e) => setQuizQuestion(e.target.value)}
                     className="w-full rounded-xl border border-brintelli-border bg-white px-3 py-2 text-sm text-textSoft outline-none focus:border-brand-500"
-                    placeholder="Poll question…"
+                    placeholder="Quiz question…"
                   />
-                  {pollOptions.map((opt, idx) => (
+                  {quizOptions.map((opt, idx) => (
                     <input
                       key={idx}
                       value={opt}
                       onChange={(e) => {
-                        const next = [...pollOptions];
+                        const next = [...quizOptions];
                         next[idx] = e.target.value;
-                        setPollOptions(next);
+                        setQuizOptions(next);
                       }}
                       className="w-full rounded-xl border border-brintelli-border bg-white px-3 py-2 text-sm text-textSoft outline-none focus:border-brand-500"
                       placeholder={`Option ${idx + 1}`}
@@ -3211,32 +4343,32 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
                   <div className="flex gap-2">
                     <Button
                       variant="secondary"
-                      onClick={() => setPollOptions((p) => (p.length < 10 ? [...p, ""] : p))}
+                      onClick={() => setQuizOptions((q) => (q.length < 10 ? [...q, ""] : q))}
                     >
                       Add option
                     </Button>
-                    <Button onClick={createPoll}>Create poll</Button>
+                    <Button onClick={createQuiz}>Create quiz</Button>
                   </div>
                 </div>
               )}
 
               <div className="mt-4 space-y-3">
-                {polls.length === 0 ? (
-                  <div className="text-sm text-textMuted">No polls yet.</div>
+                {quizzes.length === 0 ? (
+                  <div className="text-sm text-textMuted">No quizzes yet.</div>
                 ) : (
-                  polls.map((p) => (
-                    <div key={p.id} className="rounded-xl border border-brintelli-border bg-white p-3">
-                      <div className="font-semibold text-text">{p.question}</div>
+                  quizzes.map((q) => (
+                    <div key={q.id} className="rounded-xl border border-brintelli-border bg-white p-3">
+                      <div className="font-semibold text-text">{q.question}</div>
                       <div className="mt-2 space-y-2">
-                        {p.options?.map((opt, idx) => (
+                        {q.options?.map((opt, idx) => (
                           <button
                             key={idx}
-                            onClick={() => vote(p.id, idx)}
+                            onClick={() => vote(q.id, idx)}
                             className="flex w-full items-center justify-between rounded-lg border border-brintelli-border px-3 py-2 text-left text-sm text-textSoft hover:bg-brintelli-baseAlt"
                           >
                             <span>{opt}</span>
                             <span className="text-xs font-semibold text-textMuted">
-                              {p.counts?.[idx] ?? 0}
+                              {q.counts?.[idx] ?? 0}
                             </span>
                           </button>
                         ))}
@@ -3250,53 +4382,53 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
 
             {/* Students (tutor only) */}
             {isTutor && (
-              <div className="rounded-2xl border border-brintelli-border bg-brintelli-card p-5 shadow-soft">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 font-semibold text-text">
-                    <Users className="h-4 w-4 text-brand-600" />
-                    Students
-                  </div>
-                  <div className="text-xs font-semibold text-textMuted">
-                    {enrolledStudents.length > 0 ? `${enrolledStudents.length} enrolled` : "—"}
-                  </div>
+            <div className="rounded-2xl border border-brintelli-border bg-brintelli-card p-5 shadow-soft">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 font-semibold text-text">
+                  <Users className="h-4 w-4 text-brand-600" />
+                  Students
                 </div>
-                <div className="mt-2 text-xs text-textMuted">
-                  {enrolledBatch?.name ? <>Batch: <b>{enrolledBatch.name}</b></> : "Enrolled list available for tutors"}
+                <div className="text-xs font-semibold text-textMuted">
+                  {enrolledStudents.length > 0 ? `${enrolledStudents.length} enrolled` : "—"}
                 </div>
-                <div className="mt-4 max-h-[280px] overflow-auto rounded-xl border border-brintelli-border bg-white p-3">
-                  {isTutor && enrolledStudents.length === 0 ? (
-                    <div className="text-sm text-textMuted">No enrolled students found (or batch not assigned).</div>
-                  ) : (
-                    <div className="space-y-2">
-                      {enrolledStudents.map((s) => {
-                        const isOnline = participants.some((p) => (p.role === "student" || p.role === "learner") && (p.name === s.name || p.id === s.id));
-                        return (
-                          <div
-                            key={s.id}
-                            className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm ${
-                              isOnline ? "border-emerald-200 bg-emerald-50/40" : "border-brintelli-border bg-white"
-                            }`}
-                          >
-                            <div className="font-semibold text-text">{s.name || "Student"}</div>
-                            <div className="text-xs font-semibold text-textMuted">{isOnline ? "Attending" : "Offline"}</div>
+              </div>
+              <div className="mt-2 text-xs text-textMuted">
+                {enrolledBatch?.name ? <>Batch: <b>{enrolledBatch.name}</b></> : "Enrolled list available for tutors"}
+              </div>
+              <div className="mt-4 max-h-[280px] overflow-auto rounded-xl border border-brintelli-border bg-white p-3">
+                {isTutor && enrolledStudents.length === 0 ? (
+                  <div className="text-sm text-textMuted">No enrolled students found (or batch not assigned).</div>
+                ) : (
+                  <div className="space-y-2">
+                    {enrolledStudents.map((s) => {
+                      const isOnline = participants.some((p) => (p.role === "student" || p.role === "learner") && (p.name === s.name || p.id === s.id));
+                      return (
+                        <div
+                          key={s.id}
+                          className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm ${
+                            isOnline ? "border-emerald-200 bg-emerald-50/40" : "border-brintelli-border bg-white"
+                          }`}
+                        >
+                          <div className="font-semibold text-text">{s.name || "Student"}</div>
+                          <div className="text-xs font-semibold text-textMuted">{isOnline ? "Attending" : "Offline"}</div>
+                        </div>
+                      );
+                    })}
+                    {!isTutor && (
+                      participants
+                        .filter((p) => p.role === "student" || p.role === "learner")
+                        .map((p) => (
+                          <div key={p.socketId} className="flex items-center justify-between rounded-lg border border-brintelli-border bg-white px-3 py-2 text-sm">
+                            <div className="font-semibold text-text">{p.name || "Student"}</div>
+                            <div className="text-xs font-semibold text-textMuted">Attending</div>
                           </div>
-                        );
-                      })}
-                      {!isTutor && (
-                        participants
-                          .filter((p) => p.role === "student" || p.role === "learner")
-                          .map((p) => (
-                            <div key={p.socketId} className="flex items-center justify-between rounded-lg border border-brintelli-border bg-white px-3 py-2 text-sm">
-                              <div className="font-semibold text-text">{p.name || "Student"}</div>
-                              <div className="text-xs font-semibold text-textMuted">Attending</div>
-                            </div>
-                          ))
-                      )}
+                        ))
+                    )}
                       {isTutor && participants.length > 0 && (
                         <>
                           <div className="mt-3 border-t border-brintelli-border/60 pt-3 text-xs font-semibold text-textMuted">
                             Online in this session (click to @mention)
-                          </div>
+                  </div>
                           {participants.map((p) => (
                             <button
                               key={`online_${p.socketId || p.id}`}
@@ -3309,10 +4441,10 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
                             </button>
                           ))}
                         </>
-                      )}
-                    </div>
+                )}
+              </div>
                   )}
-                </div>
+            </div>
               </div>
             )}
           </div>
@@ -3426,7 +4558,7 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic" 
                 }}
               className="w-full rounded-xl border border-brintelli-border bg-white px-3 py-2 text-sm text-textSoft outline-none focus:border-brand-500"
                 placeholder="Ask doubts / leave comments… (type @ to mention)"
-              />
+            />
 
               {mentionOpen && mentionCandidates.length > 0 && (
                 <div className="absolute bottom-[46px] left-0 z-10 w-full overflow-hidden rounded-xl border border-brintelli-border bg-white shadow-lg">

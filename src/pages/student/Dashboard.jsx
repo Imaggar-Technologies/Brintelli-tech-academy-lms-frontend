@@ -274,9 +274,9 @@ const StudentDashboard = () => {
                   This Session
                 </h2>
                 <Button variant="ghost" size="sm" onClick={() => navigate('/student/sessions')}>
-                  View All
-                </Button>
-              </div>
+              View All
+            </Button>
+          </div>
               
               <div className="bg-white rounded-xl p-6 shadow-sm">
                 <div className="flex items-start justify-between mb-4">
@@ -285,13 +285,13 @@ const StudentDashboard = () => {
                       {nextSession.status === 'ONGOING' ? (
                         <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
                           LIVE NOW
-                        </span>
+                  </span>
                       ) : (
                         <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">
                           {getDaysUntil(nextSession.scheduledDate) === 0 ? 'Today' : `${getDaysUntil(nextSession.scheduledDate)} Day${getDaysUntil(nextSession.scheduledDate) !== 1 ? 's' : ''} Left`}
-                        </span>
-                      )}
-                    </div>
+                  </span>
+                  )}
+                </div>
                     <h3 className="text-lg font-semibold text-text mb-2">{nextSession.name}</h3>
                     {nextSession.description && (
                       <p className="text-sm text-textMuted mb-3">{nextSession.description}</p>
@@ -308,7 +308,7 @@ const StudentDashboard = () => {
                     </div>
                   </div>
                 </div>
-                <Button
+                  <Button
                   className="w-full"
                   onClick={() => {
                     if (nextSession.status === 'ONGOING' || nextSession.meetingLink) {
@@ -319,15 +319,15 @@ const StudentDashboard = () => {
                   }}
                 >
                   {nextSession.status === 'ONGOING' ? 'Join Now' : 'View Details'}
-                </Button>
-              </div>
-            </div>
-          )}
+                  </Button>
+          </div>
+        </div>
+      )}
 
           {/* Assignment Notifications */}
           {pendingAssignments.length > 0 && (
             <div className="rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft p-6">
-              <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold text-text flex items-center gap-2">
                   <Bell className="h-5 w-5 text-orange-500" />
                   Assignment Notifications
@@ -367,8 +367,8 @@ const StudentDashboard = () => {
                                 ? `Overdue by ${Math.abs(daysUntilDue)} day${Math.abs(daysUntilDue) !== 1 ? 's' : ''}`
                                 : `${daysUntilDue} day${daysUntilDue !== 1 ? 's' : ''} left`
                               }
-                    </span>
-                          )}
+                      </span>
+                    )}
                   </div>
                         {assignment.description && (
                           <p className="text-sm text-textMuted line-clamp-2 mb-2">{assignment.description}</p>
@@ -380,12 +380,12 @@ const StudentDashboard = () => {
                           )}
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
           {/* Ongoing/Upcoming Sessions Section */}
           {allSessions.length > 0 && (

@@ -45,6 +45,8 @@ import StudentProjects from "../pages/student/Projects";
 import StudentProjectTemplates from "../pages/student/ProjectTemplates";
 import StudentPortfolio from "../pages/student/Portfolio";
 import StudentMentorSessions from "../pages/student/MentorSessions";
+import MentorConnectorChoose from "../pages/student/MentorConnectorChoose";
+import MentorConnectorMyMentor from "../pages/student/MentorConnectorMyMentor";
 import StudentPerformance from "../pages/student/Performance";
 import StudentAnalytics from "../pages/student/Analytics";
 import StudentAchievements from "../pages/student/Achievements";
@@ -315,9 +317,13 @@ const AppRouter = () => {
             <Route path="tests" element={<StudentTests />} />
             <Route path="mock-interviews" element={<StudentMockInterviews />} />
 
-            {/* Mentors */}
-            <Route path="mentors" element={<StudentMentorSessions />} />
-            <Route path="mentors/book" element={<StudentMentorSessions />} />
+            {/* Mentor Connector */}
+            <Route path="mentor-connector/choose" element={<MentorConnectorChoose />} />
+            <Route path="mentor-connector/my-mentor" element={<MentorConnectorMyMentor />} />
+            
+            {/* Legacy mentor routes - keeping for backward compatibility */}
+            <Route path="mentors" element={<MentorConnectorChoose />} />
+            <Route path="mentors/book" element={<MentorConnectorMyMentor />} />
 
             {/* Community */}
             <Route path="forum" element={<StudentForum />} />
@@ -419,6 +425,7 @@ const AppRouter = () => {
             <Route path="profiles" element={<Profiles />} />
             <Route path="escalations" element={<Escalations />} />
             <Route path="sessions" element={<Sessions />} />
+            <Route path="sessions/:sessionId/live" element={<TutorLiveSessionRoom />} />
             <Route path="one-on-one" element={<OneOnOne />} />
             <Route path="session-logs" element={<SessionLogs />} />
             <Route path="engagement" element={<Engagement />} />
@@ -464,6 +471,7 @@ const AppRouter = () => {
             <Route path="tutor-performance" element={<TutorPerformance />} />
             <Route path="tutor-schedule" element={<ProgramManagerTutorSchedule />} />
             <Route path="sessions/:sessionId" element={<SessionDetails />} />
+            <Route path="sessions/:sessionId/live" element={<TutorLiveSessionRoom />} />
           </Route>
 
           <Route path="finance">

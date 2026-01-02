@@ -274,13 +274,13 @@ const StudentAssignments = () => {
         <div className="rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-4">
-              <button
+          <button
                 onClick={() => navigateSession('prev')}
                 className="p-2 rounded-lg hover:bg-brintelli-baseAlt transition-colors"
                 aria-label="Previous session"
               >
                 <ChevronLeft className="h-5 w-5 text-textMuted" />
-              </button>
+          </button>
               <div className="flex-1">
                 <div className="flex items-center gap-3">
                   <h2 className="text-xl font-semibold text-text">{currentSession.name}</h2>
@@ -294,15 +294,15 @@ const StudentAssignments = () => {
                   </p>
                 )}
               </div>
-              <button
+          <button
                 onClick={() => navigateSession('next')}
                 className="p-2 rounded-lg hover:bg-brintelli-baseAlt transition-colors"
                 aria-label="Next session"
               >
                 <ChevronRight className="h-5 w-5 text-textMuted" />
-              </button>
-            </div>
-          </div>
+          </button>
+        </div>
+      </div>
 
           {/* Progress Stats */}
           <div className="flex items-center gap-6 text-sm">
@@ -327,8 +327,8 @@ const StudentAssignments = () => {
                 </span>
               </div>
             )}
-          </div>
-        </div>
+              </div>
+            </div>
       )}
 
       {/* Assignments Table */}

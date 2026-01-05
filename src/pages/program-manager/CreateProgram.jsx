@@ -499,8 +499,8 @@ const CreateProgram = () => {
                         <div className="flex items-center gap-6 text-xs font-medium text-textMuted">
                           <span>Order: {module.order}</span>
                           <span>Duration: {module.duration || 0}h</span>
-                          {module.objectives && module.objectives.length > 0 && (
-                            <span>{module.objectives.length} Learning Objective{module.objectives.length !== 1 ? 's' : ''}</span>
+                          {module.subModules && module.subModules.length > 0 && (
+                            <span>{module.subModules.length} Sub-Module{module.subModules.length !== 1 ? 's' : ''}</span>
                           )}
                         </div>
                       </div>
@@ -524,20 +524,20 @@ const CreateProgram = () => {
                       </div>
                     </div>
 
-                    {/* Learning Objectives Link */}
+                    {/* Sub-Modules Link */}
                     <div className="mt-4 pt-4 border-t border-gray-200">
                       <Button
                         variant="secondary"
                         size="sm"
                         onClick={(e) => {
                           e.stopPropagation();
-                          navigate(`/program-manager/programs/${programId}/modules/${module.id || module._id}/objectives`);
+                          navigate(`/program-manager/programs/${programId}/modules/${module.id || module._id}`);
                         }}
                         className="w-full justify-between"
                       >
                         <span className="flex items-center gap-2">
-                          <BookOpen className="h-4 w-4" />
-                          Manage Learning Objectives ({module.objectives?.length || 0})
+                          <Layers3 className="h-4 w-4" />
+                          Manage Sub-Modules
                         </span>
                         <ArrowRight className="h-4 w-4" />
                       </Button>

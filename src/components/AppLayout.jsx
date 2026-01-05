@@ -68,9 +68,9 @@ const AppLayout = () => {
               role={role}
             />
             <SecureContextBanner />
-            <main className="relative flex-1 overflow-y-auto px-4 py-8 sm:px-6 lg:px-10">
+            <main className="relative flex-1 overflow-y-auto px-3 py-6 sm:px-4 lg:px-6">
               <div className="pointer-events-none absolute inset-0 bg-grid-brintelli/40" />
-              <div className="relative mx-auto flex w-full max-w-[1500px] flex-col gap-8">
+              <div className="relative mx-auto flex w-full max-w-[1500px] flex-col gap-4">
                 <Outlet />
               </div>
             </main>

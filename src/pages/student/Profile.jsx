@@ -1,4 +1,4 @@
-import { Award, Briefcase, FileText, MapPin, Target } from "lucide-react";
+import { Award, Briefcase, FileText, MapPin, Target, Mail, Phone, Star } from "lucide-react";
 import PageHeader from "../../components/PageHeader";
 import Button from "../../components/Button";
 import StatsCard from "../../components/StatsCard";

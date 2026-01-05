@@ -27,6 +27,7 @@ import StudentMockInterviews from "../pages/student/MockInterviews";
 import StudentDoubts from "../pages/student/Doubts";
 import StudentDoubtHistory from "../pages/student/DoubtHistory";
 import StudentProfile from "../pages/student/Profile";
+import StudentSettings from "../pages/student/Settings";
 import StudentMCQPractice from "../pages/student/MCQPractice";
 import StudentCertifications from "../pages/student/CertificationsMock";
 import StudentCodePlayground from "../pages/student/CodePlayground";
@@ -45,8 +46,6 @@ import StudentProjects from "../pages/student/Projects";
 import StudentProjectTemplates from "../pages/student/ProjectTemplates";
 import StudentPortfolio from "../pages/student/Portfolio";
 import StudentMentorSessions from "../pages/student/MentorSessions";
-import MentorConnectorChoose from "../pages/student/MentorConnectorChoose";
-import MentorConnectorMyMentor from "../pages/student/MentorConnectorMyMentor";
 import StudentPerformance from "../pages/student/Performance";
 import StudentAnalytics from "../pages/student/Analytics";
 import StudentAchievements from "../pages/student/Achievements";
@@ -135,6 +134,9 @@ import CreateProgram from "../pages/program-manager/CreateProgram";
 import ProgramBuilder from "../pages/program-manager/ProgramBuilder";
 import ModuleDetails from "../pages/program-manager/ModuleDetails";
 import ObjectivesList from "../pages/program-manager/ObjectivesList";
+import SubModuleDetails from "../pages/program-manager/SubModuleDetails";
+import SubModuleObjectives from "../pages/program-manager/SubModuleObjectives";
+import SubModules from "../pages/program-manager/SubModules";
 import ObjectiveDetails from "../pages/program-manager/ObjectiveDetails";
 import ManageContent from "../pages/program-manager/ManageContent";
 import Assignments from "../pages/program-manager/Assignments";
@@ -317,19 +319,19 @@ const AppRouter = () => {
             <Route path="tests" element={<StudentTests />} />
             <Route path="mock-interviews" element={<StudentMockInterviews />} />
 
-            {/* Mentor Connector */}
-            <Route path="mentor-connector/choose" element={<MentorConnectorChoose />} />
-            <Route path="mentor-connector/my-mentor" element={<MentorConnectorMyMentor />} />
-            
-            {/* Legacy mentor routes - keeping for backward compatibility */}
-            <Route path="mentors" element={<MentorConnectorChoose />} />
-            <Route path="mentors/book" element={<MentorConnectorMyMentor />} />
+            {/* Mentors */}
+            <Route path="mentors" element={<StudentMentorSessions />} />
+            <Route path="mentors/book" element={<StudentMentorSessions />} />
 
             {/* Community */}
             <Route path="forum" element={<StudentForum />} />
 
             {/* Support */}
             <Route path="support" element={<StudentSupport />} />
+
+            {/* Profile & Settings */}
+            <Route path="profile" element={<StudentProfile />} />
+            <Route path="settings" element={<StudentSettings />} />
 
             {/* Practice & Coding */}
             <Route path="mcq-practice" element={<StudentMCQPractice />} />
@@ -457,6 +459,12 @@ const AppRouter = () => {
             <Route path="programs/:programId/modules/:moduleId/objectives/new" element={<ObjectiveDetails />} />
             <Route path="programs/:programId/modules/:moduleId/objectives/:objectiveIndex" element={<ObjectiveDetails />} />
             <Route path="programs/:programId/modules/:moduleId/objectives/:objectiveId/content" element={<ManageContent />} />
+            <Route path="programs/:programId/modules/:moduleId/submodules" element={<SubModules />} />
+            <Route path="programs/:programId/modules/:moduleId/submodules/new" element={<SubModuleDetails />} />
+            <Route path="programs/:programId/modules/:moduleId/submodules/:subModuleId" element={<SubModuleDetails />} />
+            <Route path="programs/:programId/modules/:moduleId/submodules/:subModuleId/objectives" element={<SubModuleObjectives />} />
+            {/* Redirect old objectives route to sub-modules */}
+            <Route path="programs/:programId/modules/:moduleId/objectives" element={<SubModules />} />
             <Route path="programs/:programId/add-modules" element={<AddModules />} />
             <Route path="modules/:programId" element={<Modules />} />
             <Route path="modules/:programId/assignments/:moduleId" element={<Assignments />} />

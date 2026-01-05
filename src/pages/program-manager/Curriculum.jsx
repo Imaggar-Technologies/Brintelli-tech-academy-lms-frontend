@@ -184,10 +184,10 @@ const Curriculum = () => {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => navigate(`/program-manager/modules/${selectedProgram.id || selectedProgram._id}/assignments/${module.id || module._id}`)}
+                          onClick={() => navigate(`/program-manager/programs/${selectedProgram.id || selectedProgram._id}/modules/${module.id || module._id}/submodules`)}
                         >
-                          <FileText className="h-4 w-4 mr-1" />
-                          Assignments
+                          <Layers3 className="h-4 w-4 mr-1" />
+                          Sub-Modules
                         </Button>
                       </div>
                       <p className="text-sm text-textMuted mb-2">{module.description || 'No description'}</p>

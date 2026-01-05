@@ -135,8 +135,8 @@ export const roleNavigationConfig = {
     ],
   },
   sales: {
-    title: "Brintelli Sales",
-    subtitle: "Sales Operations",
+    title: "Brintelli LMS",
+    subtitle: "Dashboard",
     nav: salesNav,
     pinned: [
       { label: "Pipeline Overview", to: "/sales/pipeline", icon: BarChart3 },
@@ -146,8 +146,8 @@ export const roleNavigationConfig = {
   },
   // Sales sub-roles will override the base sales config
   sales_agent: {
-    title: "Brintelli Sales",
-    subtitle: "Sales Operations",
+    title: "Brintelli LMS",
+    subtitle: "Dashboard",
     nav: salesAgentNav,
     pinned: [
       { label: "Pipeline", to: "/sales/pipeline", icon: ArrowRightLeft },
@@ -156,8 +156,8 @@ export const roleNavigationConfig = {
     ],
   },
   sales_lead: {
-    title: "Brintelli Sales",
-    subtitle: "Sales Operations",
+    title: "Brintelli LMS",
+    subtitle: "Dashboard",
     nav: salesLeadNav,
     pinned: [
       { label: "Pipeline Overview", to: "/sales/pipeline", icon: BarChart3 },
@@ -166,8 +166,8 @@ export const roleNavigationConfig = {
     ],
   },
   sales_head: {
-    title: "Brintelli Sales",
-    subtitle: "Sales Operations",
+    title: "Brintelli LMS",
+    subtitle: "Dashboard",
     nav: salesHeadNav,
     pinned: [
       { label: "Pipeline Overview", to: "/sales/pipeline", icon: BarChart3 },

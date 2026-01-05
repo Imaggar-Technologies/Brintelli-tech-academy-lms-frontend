@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Lock, Briefcase, ExternalLink } from "lucide-react";
+import { Lock, Briefcase } from "lucide-react";
+import AuthImageCarousel from "../../components/AuthImageCarousel";
 
 const RegisterStaff = () => {
   const navigate = useNavigate();
@@ -22,13 +23,11 @@ const RegisterStaff = () => {
             <div className="w-full max-w-md">
               {/* Logo */}
               <div className="mb-8 flex items-center justify-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-600 text-white shadow-lg">
-                  <span className="text-2xl font-bold">BT</span>
-                </div>
-                <div className="ml-4">
-                  <h1 className="text-2xl font-bold text-text">Brintelli</h1>
-                  <p className="text-sm text-textMuted">Tech Academy</p>
-                </div>
+                <img 
+                  src="/logo.png" 
+                  alt="Brintelli Logo" 
+                  className="h-20 w-auto object-contain"
+                />
               </div>
 
               {/* Message Card */}
@@ -56,29 +55,9 @@ const RegisterStaff = () => {
           </div>
         </div>
 
-        {/* Right Side - Image */}
-        <div className="hidden lg:flex lg:w-1/2 items-center justify-center bg-gradient-to-br from-purple-100 via-pink-100 to-orange-100 p-12">
-          <a
-            href="https://brintellitechacademy.in"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group relative flex h-full w-full items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-purple-200/80 via-pink-200/80 to-orange-200/80 transition-all hover:scale-[1.02] hover:shadow-2xl"
-          >
-            <div className="absolute inset-0 bg-gradient-to-br from-purple-400/20 via-pink-400/20 to-orange-400/20" />
-            <div className="relative z-10 text-center p-8">
-              <div className="mb-6 flex justify-center">
-                <div className="flex h-24 w-24 items-center justify-center rounded-3xl bg-white/90 shadow-xl backdrop-blur-sm">
-                  <Briefcase className="h-12 w-12 text-purple-600" />
-                </div>
-              </div>
-              <h3 className="mb-4 text-3xl font-bold text-slate-800">Join Our Team</h3>
-              <p className="mb-6 text-lg text-slate-700">Shape the future of tech education</p>
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/90 px-6 py-3 text-sm font-semibold text-slate-800 shadow-lg transition-all group-hover:gap-3">
-                <span>Visit Our Website</span>
-                <ExternalLink className="h-4 w-4" />
-              </div>
-            </div>
-          </a>
+        {/* Right Side - Image Carousel */}
+        <div className="hidden lg:flex lg:w-1/2 h-screen" style={{ margin: 0, padding: 0 }}>
+          <AuthImageCarousel />
         </div>
       </div>
     </div>

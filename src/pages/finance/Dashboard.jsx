@@ -285,7 +285,7 @@ const FinanceDashboard = () => {
       ) : (
         <>
       {/* Top KPI Cards */}
-      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4 mb-6">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4 mb-4">
         <StatsCard
           icon={DollarSign}
           value={formatCurrency(stats.totalRevenue)}
@@ -315,7 +315,7 @@ const FinanceDashboard = () => {
         />
       </div>
 
-      <div className="grid gap-5 md:grid-cols-3 mb-6">
+      <div className="grid gap-3 md:grid-cols-3 mb-4">
         <StatsCard
           icon={TrendingUp}
           value={formatCurrency(stats.todayCollections)}
@@ -338,16 +338,16 @@ const FinanceDashboard = () => {
       </div>
 
       {/* Charts and Quick Tables */}
-      <div className="grid gap-6 lg:grid-cols-2 mb-6">
+      <div className="grid gap-4 lg:grid-cols-2 mb-4">
         {/* Revenue Trend */}
-        <div className="rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-text">Revenue Trend (Last 30 Days)</h3>
+        <div className="rounded-xl border border-brintelli-border bg-brintelli-card shadow-soft p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-base font-semibold text-text">Revenue Trend (Last 30 Days)</h3>
             <Button variant="ghost" size="sm" onClick={() => toast.info('View full analytics')}>
               View All <ArrowRight className="h-4 w-4 ml-1" />
             </Button>
           </div>
-          <div className="h-64 flex items-end justify-between gap-1">
+          <div className="h-48 flex items-end justify-between gap-1">
             {revenueTrend.map((day, index) => {
               const maxRevenue = Math.max(...revenueTrend.map(d => d.revenue), 1);
               const height = (day.revenue / maxRevenue) * 100;
@@ -370,9 +370,9 @@ const FinanceDashboard = () => {
         </div>
 
         {/* Payment Mode Split */}
-        <div className="rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft p-6">
-          <h3 className="text-lg font-semibold text-text mb-4">Payment Mode Split</h3>
-          <div className="space-y-4">
+        <div className="rounded-xl border border-brintelli-border bg-brintelli-card shadow-soft p-4">
+          <h3 className="text-base font-semibold text-text mb-3">Payment Mode Split</h3>
+          <div className="space-y-3">
             {Object.entries(paymentModeSplit).map(([mode, amount]) => {
               const total = Object.values(paymentModeSplit).reduce((sum, val) => sum + val, 0);
               const percentage = total > 0 ? (amount / total) * 100 : 0;
@@ -396,11 +396,11 @@ const FinanceDashboard = () => {
       </div>
 
       {/* Quick Tables */}
-      <div className="grid gap-6 lg:grid-cols-2 mb-6">
+      <div className="grid gap-4 lg:grid-cols-2 mb-4">
         {/* Latest 10 Payments */}
-        <div className="rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-text">Latest 10 Payments</h3>
+        <div className="rounded-xl border border-brintelli-border bg-brintelli-card shadow-soft p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-base font-semibold text-text">Latest 10 Payments</h3>
             <Button variant="ghost" size="sm" onClick={() => window.location.href = '/finance/processing'}>
               View All <ArrowRight className="h-4 w-4 ml-1" />
             </Button>
@@ -409,15 +409,15 @@ const FinanceDashboard = () => {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-brintelli-border/50">
-                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Student</th>
-                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Amount</th>
-                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Date</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Student</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Amount</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Date</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-brintelli-border/30">
                 {loading ? (
                   <tr>
-                    <td colSpan={3} className="px-6 py-16 text-center">
+                    <td colSpan={3} className="px-4 py-12 text-center">
                       <div className="flex flex-col items-center justify-center">
                         <p className="text-sm font-medium text-textMuted">Loading...</p>
                       </div>
@@ -425,7 +425,7 @@ const FinanceDashboard = () => {
                   </tr>
                 ) : latestPayments.length === 0 ? (
                   <tr>
-                    <td colSpan={3} className="px-6 py-16 text-center">
+                    <td colSpan={3} className="px-4 py-12 text-center">
                       <div className="flex flex-col items-center justify-center">
                         <p className="text-sm font-medium text-textMuted">No payments found</p>
                       </div>
@@ -434,14 +434,14 @@ const FinanceDashboard = () => {
                 ) : (
                   latestPayments.map((payment) => (
                     <tr key={payment.id} className="transition-colors duration-150 hover:bg-brintelli-baseAlt/30">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <p className="font-semibold text-text">{payment.lead?.name || 'N/A'}</p>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <p className="font-semibold text-sm text-text">{payment.lead?.name || 'N/A'}</p>
                         <p className="text-xs text-textMuted">{payment.paymentMethod || 'N/A'}</p>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="font-semibold text-text">₹{payment.paymentAmount?.toLocaleString() || '0'}</span>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className="font-semibold text-sm text-text">₹{payment.paymentAmount?.toLocaleString() || '0'}</span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <span className="text-textMuted text-xs">
                           {payment.paymentDate ? new Date(payment.paymentDate).toLocaleDateString() : 'N/A'}
                         </span>
@@ -455,9 +455,9 @@ const FinanceDashboard = () => {
         </div>
 
         {/* Top 10 Overdue */}
-        <div className="rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-text">Top 10 Overdue Students</h3>
+        <div className="rounded-xl border border-brintelli-border bg-brintelli-card shadow-soft p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-base font-semibold text-text">Top 10 Overdue Students</h3>
             <Button variant="ghost" size="sm" onClick={() => window.location.href = '/finance/dues'}>
               View All <ArrowRight className="h-4 w-4 ml-1" />
             </Button>
@@ -466,16 +466,16 @@ const FinanceDashboard = () => {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-brintelli-border/50">
-                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Student</th>
-                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Due</th>
-                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Days</th>
-                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Risk</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Student</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Due</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Days</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Risk</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-brintelli-border/30">
                 {loading ? (
                   <tr>
-                    <td colSpan={4} className="px-6 py-16 text-center">
+                    <td colSpan={4} className="px-4 py-12 text-center">
                       <div className="flex flex-col items-center justify-center">
                         <p className="text-sm font-medium text-textMuted">Loading...</p>
                       </div>
@@ -483,7 +483,7 @@ const FinanceDashboard = () => {
                   </tr>
                 ) : topOverdue.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-6 py-16 text-center">
+                    <td colSpan={4} className="px-4 py-12 text-center">
                       <div className="flex flex-col items-center justify-center">
                         <p className="text-sm font-medium text-textMuted">No overdue found</p>
                       </div>
@@ -494,17 +494,17 @@ const FinanceDashboard = () => {
                     const risk = getRiskLevel(item.daysOverdue);
                     return (
                       <tr key={item.id} className="transition-colors duration-150 hover:bg-brintelli-baseAlt/30">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <p className="font-semibold text-text">{item.lead?.name || 'N/A'}</p>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <p className="font-semibold text-sm text-text">{item.lead?.name || 'N/A'}</p>
                           <p className="text-xs text-textMuted">{item.lead?.email || 'N/A'}</p>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="font-semibold text-text">₹{item.offeredPrice?.toLocaleString() || '0'}</span>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className="font-semibold text-sm text-text">₹{item.offeredPrice?.toLocaleString() || '0'}</span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-textMuted">{item.daysOverdue} days</span>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className="text-sm text-textMuted">{item.daysOverdue} days</span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-4 py-3 whitespace-nowrap">
                           <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${risk.color}`}>
                             {risk.level}
                           </span>
@@ -520,25 +520,25 @@ const FinanceDashboard = () => {
       </div>
 
       {/* Paid vs Due vs Overdue Donut (Simplified) */}
-      <div className="rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft p-6">
-        <h3 className="text-lg font-semibold text-text mb-4">Payment Status Overview</h3>
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="text-center p-4 rounded-xl bg-green-50">
-            <p className="text-2xl font-bold text-green-700">{formatCurrency(stats.totalCollected)}</p>
+      <div className="rounded-xl border border-brintelli-border bg-brintelli-card shadow-soft p-4">
+        <h3 className="text-base font-semibold text-text mb-3">Payment Status Overview</h3>
+        <div className="grid gap-3 md:grid-cols-3">
+          <div className="text-center p-3 rounded-lg bg-green-50">
+            <p className="text-xl font-bold text-green-700">{formatCurrency(stats.totalCollected)}</p>
             <p className="text-sm text-green-600 mt-1">Paid</p>
             <p className="text-xs text-textMuted mt-1">
               {stats.totalRevenue > 0 ? ((stats.totalCollected / stats.totalRevenue) * 100).toFixed(1) : 0}%
             </p>
           </div>
-          <div className="text-center p-4 rounded-xl bg-yellow-50">
-            <p className="text-2xl font-bold text-yellow-700">{formatCurrency(stats.totalOutstanding - stats.overdueAmount)}</p>
+          <div className="text-center p-3 rounded-lg bg-yellow-50">
+            <p className="text-xl font-bold text-yellow-700">{formatCurrency(stats.totalOutstanding - stats.overdueAmount)}</p>
             <p className="text-sm text-yellow-600 mt-1">Due</p>
             <p className="text-xs text-textMuted mt-1">
               {stats.totalRevenue > 0 ? (((stats.totalOutstanding - stats.overdueAmount) / stats.totalRevenue) * 100).toFixed(1) : 0}%
             </p>
           </div>
-          <div className="text-center p-4 rounded-xl bg-red-50">
-            <p className="text-2xl font-bold text-red-700">{formatCurrency(stats.overdueAmount)}</p>
+          <div className="text-center p-3 rounded-lg bg-red-50">
+            <p className="text-xl font-bold text-red-700">{formatCurrency(stats.overdueAmount)}</p>
             <p className="text-sm text-red-600 mt-1">Overdue</p>
             <p className="text-xs text-textMuted mt-1">
               {stats.totalRevenue > 0 ? ((stats.overdueAmount / stats.totalRevenue) * 100).toFixed(1) : 0}%

@@ -44,18 +44,18 @@ const Modules = () => {
       const response = await programAPI.getModulesByProgram(programId);
       if (response.success) {
         const modulesData = response.data.modules || [];
-        // Fetch objectives count for each module
+        // Fetch sub-modules count for each module
         const modulesWithCounts = await Promise.all(
           modulesData.map(async (module) => {
             try {
-              const objectivesResponse = await programAPI.getObjectivesByModule(module.id || module._id);
-              const objectivesCount = objectivesResponse.success && objectivesResponse.data.objectives 
-                ? objectivesResponse.data.objectives.length 
+              const subModulesResponse = await programAPI.getSubModulesByModule(module.id || module._id);
+              const subModulesCount = subModulesResponse.success && subModulesResponse.data.subModules 
+                ? subModulesResponse.data.subModules.length 
                 : 0;
-              return { ...module, objectivesCount };
+              return { ...module, subModules: subModulesResponse.success ? subModulesResponse.data.subModules : [], subModulesCount };
             } catch (error) {
-              console.error(`Error fetching objectives for module ${module.id}:`, error);
-              return { ...module, objectivesCount: 0 };
+              console.error(`Error fetching sub-modules for module ${module.id}:`, error);
+              return { ...module, subModules: [], subModulesCount: 0 };
             }
           })
         );
@@ -165,15 +165,18 @@ const Modules = () => {
       )
     },
     { 
-      key: 'objectives', 
-      title: 'Learning Objectives',
-      render: (_, row) => (
-        <div className="flex items-center gap-2">
-          <BookOpen className="h-4 w-4 text-blue-600" />
-          <span className="font-semibold text-text">{row.objectivesCount || 0}</span>
-          <span className="text-xs text-textMuted">objectives</span>
-        </div>
-      )
+      key: 'subModules', 
+      title: 'Sub-Modules',
+      render: (_, row) => {
+        const subModulesCount = row.subModulesCount || row.subModules?.length || 0;
+        return (
+          <div className="flex items-center gap-2">
+            <Layers3 className="h-4 w-4 text-purple-600" />
+            <span className="font-semibold text-text">{subModulesCount}</span>
+            <span className="text-xs text-textMuted">sub-modules</span>
+          </div>
+        );
+      }
     },
     { 
       key: 'order', 
@@ -209,12 +212,12 @@ const Modules = () => {
               onClick={(e) => {
                 e.stopPropagation();
                 e.preventDefault();
-                navigate(`/program-manager/programs/${programId}/modules/${moduleId}/objectives`);
+                navigate(`/program-manager/programs/${programId}/modules/${moduleId}/submodules`);
               }}
               className="hover:bg-brand-600"
             >
-              <BookOpen className="h-4 w-4 mr-1" />
-              Objectives
+              <Layers3 className="h-4 w-4 mr-1" />
+              Sub-Modules
             </Button>
             <Button
               variant="ghost"
@@ -288,15 +291,15 @@ const Modules = () => {
               <Layers3 className="h-8 w-8 text-blue-600" />
             </div>
           </div>
-          <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
+          <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-green-700 mb-1">Total Objectives</p>
-                <p className="text-2xl font-bold text-green-900">
-                  {modules.reduce((sum, m) => sum + (m.objectivesCount || 0), 0)}
+                <p className="text-sm font-medium text-purple-700 mb-1">Total Sub-Modules</p>
+                <p className="text-2xl font-bold text-purple-900">
+                  {modules.reduce((sum, m) => sum + (m.subModules?.length || 0), 0)}
                 </p>
               </div>
-              <BookOpen className="h-8 w-8 text-green-600" />
+              <Layers3 className="h-8 w-8 text-purple-600" />
             </div>
           </div>
           <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200">
@@ -335,9 +338,11 @@ const Modules = () => {
             <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
               <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded">Modules</span>
               <ArrowRight className="h-3 w-3" />
+              <span className="px-2 py-1 bg-purple-50 text-purple-700 rounded">Sub-Modules</span>
+              <ArrowRight className="h-3 w-3" />
               <span className="px-2 py-1 bg-green-50 text-green-700 rounded">Objectives</span>
               <ArrowRight className="h-3 w-3" />
-              <span className="px-2 py-1 bg-purple-50 text-purple-700 rounded">Content</span>
+              <span className="px-2 py-1 bg-orange-50 text-orange-700 rounded">Content</span>
             </div>
           </div>
         </div>
@@ -372,7 +377,7 @@ const Modules = () => {
                 minRows={10}
                 onRowClick={(row) => {
                   const moduleId = row.id || row._id;
-                  navigate(`/program-manager/programs/${programId}/modules/${moduleId}/objectives`);
+                  navigate(`/program-manager/programs/${programId}/modules/${moduleId}/submodules`);
                 }}
                 rowClassName="cursor-pointer hover:bg-gray-50"
               />

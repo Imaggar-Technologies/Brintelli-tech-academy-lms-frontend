@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
@@ -58,11 +58,6 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic",
   const [messages, setMessages] = useState([]);
   const [resources, setResources] = useState([]);
   const [quizzes, setQuizzes] = useState([]);
-  
-  // Debug: Log quizzes when they change
-  useEffect(() => {
-    console.log('[SessionRoom] Quizzes state updated:', quizzes.length, quizzes);
-  }, [quizzes]);
   const [sessionRecordings, setSessionRecordings] = useState([]);
   const [mentionAlerts, setMentionAlerts] = useState(0);
   const [showParticipantsPanel, setShowParticipantsPanel] = useState(false);
@@ -755,23 +750,6 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic",
       if (payload?.sessionId !== sessionId) return;
       const rawParticipants = payload.participants || [];
       
-      // Update leaderboard with participant names
-      setLeaderboard((prev) => {
-        return prev.map((entry) => {
-          const participant = rawParticipants.find(
-            (p) => String(p?.id || p?._id || p?.userId || "") === String(entry.userId)
-          );
-          if (participant) {
-            return {
-              ...entry,
-              name: participant.name || entry.name,
-              email: participant.email || entry.email,
-            };
-          }
-          return entry;
-        });
-      });
-      
       // Deduplicate by userId/id and email, keeping the most recent socketId
       const seen = new Map();
       const deduplicated = [];
@@ -801,7 +779,47 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic",
           }
         }
       }
-      setParticipants(deduplicated);
+      
+      // Batch state updates to prevent multiple re-renders
+      setParticipants((prev) => {
+        // Only update if participants actually changed
+        const prevKeys = new Set(prev.map(p => p.id || p.userId || p.email || p.socketId));
+        const newKeys = new Set(deduplicated.map(p => p.id || p.userId || p.email || p.socketId));
+        if (prevKeys.size === newKeys.size && 
+            Array.from(prevKeys).every(key => newKeys.has(key))) {
+          // Check if any participant data changed
+          const changed = deduplicated.some(p => {
+            const prevP = prev.find(prevP => 
+              (prevP.id || prevP.userId || prevP.email || prevP.socketId) === 
+              (p.id || p.userId || p.email || p.socketId)
+            );
+            return !prevP || prevP.socketId !== p.socketId || prevP.name !== p.name;
+          });
+          if (!changed) return prev;
+        }
+        return deduplicated;
+      });
+      
+      // Update leaderboard with participant names only if leaderboard exists and needs update
+      setLeaderboard((prev) => {
+        if (prev.length === 0) return prev;
+        let updated = false;
+        const updatedLeaderboard = prev.map((entry) => {
+          const participant = deduplicated.find(
+            (p) => String(p?.id || p?._id || p?.userId || "") === String(entry.userId)
+          );
+          if (participant && (participant.name !== entry.name || participant.email !== entry.email)) {
+            updated = true;
+            return {
+              ...entry,
+              name: participant.name || entry.name,
+              email: participant.email || entry.email,
+            };
+          }
+          return entry;
+        });
+        return updated ? updatedLeaderboard : prev;
+      });
     };
     const onChat = (payload) => {
       if (payload?.sessionId !== sessionId) return;
@@ -1465,7 +1483,7 @@ export default function SessionRoom({ sessionId, session, uiVariant = "classic",
       stopAllBroadcast();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [socket, sessionId, isTutor]);
+  }, [socket, sessionId]);
 
   // Fetch bookmarks, notices, and resources when sessionId changes
   useEffect(() => {

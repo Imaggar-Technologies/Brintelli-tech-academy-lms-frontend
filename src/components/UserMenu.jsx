@@ -11,9 +11,27 @@ import { selectCurrentUser } from "../store/slices/authSlice";
 const profilePaths = {
   student: "/student/profile",
   sales: "/sales/profile",
+  tutor: "/tutor/profile",
+  lsm: "/lsm/profile",
+  mentor: "/mentor/profile",
+  placement: "/placement/profile",
+  "program-manager": "/program-manager/profile",
+  finance: "/finance/profile",
+  marketing: "/marketing/profile",
+  "external-hr": "/external-hr/profile",
 };
 
 const settingsPaths = {
+  student: "/student/settings",
+  sales: "/sales/settings",
+  tutor: "/tutor/settings",
+  lsm: "/lsm/settings",
+  mentor: "/mentor/settings",
+  placement: "/placement/settings",
+  "program-manager": "/program-manager/settings",
+  finance: "/finance/settings",
+  marketing: "/marketing/settings",
+  "external-hr": "/external-hr/settings",
   admin: "/admin/settings",
 };
 
@@ -23,7 +41,7 @@ const roleLabelMap = {
   sales_lead: "Sales Lead",
   sales_head: "Sales Head",
   sales_admin: "Sales Admin",
-  sales: "Sales Operations",
+  sales: "Dashboard",
   student: "Student",
   tutor: "Tutor",
   lsm: "Learning Success Manager",
@@ -121,10 +139,6 @@ const UserMenu = ({ role = "student", roleLabel = "Student LMS", userId }) => {
       return;
     }
 
-    if (action === "switch") {
-      navigate("/auth/signin");
-      return;
-    }
 
     if (action === "logout") {
       handleLogout(dispatch, navigate, store.getState);
@@ -134,7 +148,6 @@ const UserMenu = ({ role = "student", roleLabel = "Student LMS", userId }) => {
   const menuItems = [
     { key: "profile", label: "Profile", icon: UserIcon },
     { key: "settings", label: "Settings", icon: Settings },
-    { key: "switch", label: "Switch User", icon: RefreshCw },
     { key: "logout", label: "Logout", icon: LogOut },
   ];
 

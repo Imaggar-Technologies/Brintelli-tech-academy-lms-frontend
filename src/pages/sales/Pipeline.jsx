@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Target, Filter, Search, Plus, User, DollarSign, Calendar, GraduationCap, MoreVertical, BookOpen, Phone, Mail, Building2 } from "lucide-react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { Target, Filter, Search, Plus, DollarSign, Calendar, GraduationCap, BookOpen, Phone, Building2, Trash2 } from "lucide-react";
 import PageHeader from "../../components/PageHeader";
 import Button from "../../components/Button";
 import { leadAPI } from "../../api/lead";
@@ -79,22 +79,10 @@ const SalesPipeline = () => {
       description: "Technical test to screen knowledge (beginner/intermediate/advanced)"
     },
     { 
-      id: "program_manager_interview",
-      name: "Program Manager Interview", 
-      color: "bg-teal-500",
-      description: "Final interview with program manager"
-    },
-    { 
       id: "offer",
       name: "Offer", 
       color: "bg-yellow-500",
       description: "Offer released to candidate"
-    },
-    { 
-      id: "deal_negotiation",
-      name: "Deal Negotiation", 
-      color: "bg-amber-500",
-      description: "Deal can be negotiated with offers"
     },
     { 
       id: "payment_and_financial_clearance",
@@ -108,64 +96,104 @@ const SalesPipeline = () => {
       color: "bg-green-500",
       description: "Student added to LSM dashboard"
     },
+    { 
+      id: "lead_dump",
+      name: "Lead Dump", 
+      color: "bg-red-500",
+      description: "Leads that are no longer interested or not qualified"
+    },
   ];
+
+  // Memoize sales team emails to prevent unnecessary re-renders
+  const teamEmails = useMemo(() => {
+    return salesTeam.map(member => member.email);
+  }, [salesTeam]);
 
   // Fetch leads from database with ABAC filtering
   useEffect(() => {
     const fetchLeads = async () => {
       try {
         setLoading(true);
+        console.log('[Pipeline] Fetching leads...', { isSalesAgent, isSalesLead, isSalesHead, userEmail, teamEmails });
         const response = await leadAPI.getAllLeads();
-        if (response.success && response.data.leads) {
-          let fetchedLeads = response.data.leads;
+        console.log('[Pipeline] API Response:', response);
+        
+        if (response && response.success) {
+          // Handle different response structures
+          let fetchedLeads = [];
+          if (Array.isArray(response.data)) {
+            fetchedLeads = response.data;
+          } else if (response.data?.leads && Array.isArray(response.data.leads)) {
+            fetchedLeads = response.data.leads;
+          } else if (response.data?.data && Array.isArray(response.data.data)) {
+            fetchedLeads = response.data.data;
+          }
+          console.log('[Pipeline] Raw leads count:', fetchedLeads.length);
           
           // ABAC: Filter leads based on role
           if (isSalesAgent && userEmail) {
             // Sales Agent: Only own leads
             fetchedLeads = fetchedLeads.filter(lead => lead.assignedTo === userEmail);
-          } else if (isSalesLead) {
+            console.log('[Pipeline] Filtered for sales agent:', fetchedLeads.length);
+          } else if (isSalesLead && teamEmails.length > 0) {
             // Sales Lead: Team leads (leads assigned to team members)
-            const teamEmails = salesTeam.map(member => member.email);
             fetchedLeads = fetchedLeads.filter(lead => 
               !lead.assignedTo || lead.assignedTo === '' || teamEmails.includes(lead.assignedTo)
             );
+            console.log('[Pipeline] Filtered for sales lead:', fetchedLeads.length);
           } else if (isSalesHead) {
             // Sales Head: All department leads (no filtering - read-only view)
             // All leads are visible for analytics
+            console.log('[Pipeline] Sales head - showing all leads:', fetchedLeads.length);
           }
           
+          console.log('[Pipeline] Setting leads:', fetchedLeads.length);
           setLeads(fetchedLeads);
+        } else {
+          console.warn('[Pipeline] API response not successful:', response);
+          setLeads([]);
         }
       } catch (error) {
-        console.error('Error fetching leads:', error);
-        toast.error('Failed to load leads');
+        console.error('[Pipeline] Error fetching leads:', error);
+        toast.error(error?.message || 'Failed to load leads');
+        setLeads([]);
       } finally {
         setLoading(false);
       }
     };
 
     if (isSalesAgent && !userEmail) {
+      console.log('[Pipeline] Waiting for user email...');
       return; // Wait for user to load
     }
 
     fetchLeads();
-  }, [isSalesAgent, isSalesLead, isSalesHead, userEmail, salesTeam]);
+  }, [isSalesAgent, isSalesLead, isSalesHead, userEmail, teamEmails]);
+
+  // Memoize leads by stage to prevent unnecessary recalculations
+  const leadsByStage = useMemo(() => {
+    const grouped = {};
+    pipelineStages.forEach(stage => {
+      if (stage.id === 'unassigned') {
+        if (isSalesAgent) {
+          grouped[stage.id] = [];
+        } else {
+          grouped[stage.id] = leads.filter(lead => !lead.assignedTo || lead.assignedTo === '');
+        }
+      } else {
+        grouped[stage.id] = leads.filter(lead => {
+          const leadStage = lead.pipelineStage || 'primary_screening';
+          return leadStage === stage.id;
+        });
+      }
+    });
+    return grouped;
+  }, [leads, pipelineStages, isSalesAgent]);
 
   // Group leads by pipeline stage
-  const getLeadsByStage = (stageId) => {
-    if (stageId === 'unassigned') {
-      // For sales agents, they won't see unassigned leads (they only see their own)
-      if (isSalesAgent) {
-        return [];
-      }
-      // Show unassigned leads in all stages
-      return leads.filter(lead => !lead.assignedTo || lead.assignedTo === '');
-    }
-    return leads.filter(lead => {
-      const stage = lead.pipelineStage || 'primary_screening';
-      return stage === stageId;
-    });
-  };
+  const getLeadsByStage = useCallback((stageId) => {
+    return leadsByStage[stageId] || [];
+  }, [leadsByStage]);
 
   // Get unassigned leads count
   const getUnassignedCount = () => {
@@ -231,17 +259,17 @@ const SalesPipeline = () => {
     return member ? (member.name || member.fullName) : email;
   };
 
-  // Filter leads by search term
-  const filteredLeads = leads.filter(lead => {
-    if (!searchTerm) return true;
+  // Memoize filtered leads to prevent unnecessary recalculations
+  const filteredLeads = useMemo(() => {
+    if (!searchTerm) return leads;
     const search = searchTerm.toLowerCase();
-    return (
+    return leads.filter(lead => 
       lead.name?.toLowerCase().includes(search) ||
       lead.email?.toLowerCase().includes(search) ||
       lead.phone?.includes(search) ||
       lead.company?.toLowerCase().includes(search)
     );
-  });
+  }, [leads, searchTerm]);
 
   // Calculate stats
   const totalLeads = leads.length;
@@ -258,7 +286,7 @@ const SalesPipeline = () => {
   };
 
   return (
-    <>
+    <div className="w-full">
       <PageHeader
         title={isSalesHead ? "Pipeline Analytics" : "Sales Pipeline"}
         description={
@@ -288,7 +316,7 @@ const SalesPipeline = () => {
         }
       />
 
-      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-brintelli-border bg-brintelli-card p-4 mb-6">
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-brintelli-border bg-brintelli-card p-3 mb-4">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-textMuted" />
           <input
@@ -296,7 +324,7 @@ const SalesPipeline = () => {
             placeholder="Search by name, email, phone, or company..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full rounded-xl border border-brintelli-border bg-brintelli-baseAlt px-10 py-2.5 text-sm focus:border-brand-500 focus:outline-none"
+            className="w-full rounded-lg border border-brintelli-border bg-brintelli-baseAlt px-10 py-2 text-sm focus:border-brand-500 focus:outline-none"
           />
         </div>
         <Button variant="ghost" className="gap-2">
@@ -313,108 +341,85 @@ const SalesPipeline = () => {
           </div>
         </div>
       ) : (
-      <div className="overflow-x-auto pb-4">
-        <div className="flex gap-4 min-w-max">
+        <div className="w-full overflow-x-auto pb-4" style={{ scrollbarWidth: 'thin' }}>
+        <div className="inline-flex gap-3">
             {pipelineStages.map((stage) => {
-              const stageLeads = getLeadsByStage(stage.id).filter(lead => 
+              const allStageLeads = getLeadsByStage(stage.id);
+              const stageLeads = allStageLeads.filter(lead => 
                 filteredLeads.some(f => f.id === lead.id)
               );
 
               return (
             <div 
               key={stage.id} 
-              className="flex-shrink-0 w-80 rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft"
+              className="flex-shrink-0 w-[240px] min-w-[240px] rounded-xl border border-brintelli-border bg-brintelli-card shadow-soft"
             >
               {/* Column Header */}
-              <div className="sticky top-0 z-10 rounded-t-2xl border-b border-brintelli-border bg-brintelli-baseAlt p-4">
-                    <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-2">
-                    <div className={`h-3 w-3 rounded-full ${stage.color}`} />
-                    <h3 className="font-semibold text-text">{stage.name}</h3>
+              <div className="sticky top-0 z-10 rounded-t-xl border-b border-brintelli-border bg-brintelli-baseAlt p-3">
+                    <div className="flex items-center justify-between mb-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <div className={`h-2.5 w-2.5 rounded-full ${stage.color}`} />
+                    <h3 className="font-semibold text-sm text-text">{stage.name}</h3>
                   </div>
-                  <span className="rounded-full bg-brintelli-card px-2.5 py-1 text-xs font-semibold text-text">
+                  <span className="rounded-full bg-brintelli-card px-2 py-0.5 text-xs font-semibold text-text">
                         {stageLeads.length}
                   </span>
                 </div>
-                    <p className="text-xs text-textMuted mt-1">{stage.description}</p>
+                    <p className="text-xs text-textMuted mt-0.5">{stage.description}</p>
               </div>
 
                   {/* Column Body - Lead Cards */}
-              <div className="p-3 space-y-3 max-h-[calc(100vh-300px)] overflow-y-auto">
+              <div className="p-2 space-y-2 max-h-[calc(100vh-280px)] overflow-y-auto">
                     {stageLeads.map((lead) => (
                   <div
                     key={lead.id}
-                        className="group rounded-xl border border-brintelli-border bg-brintelli-baseAlt p-4 transition-all hover:border-brand-500 hover:shadow-md"
+                        className="group rounded-lg border border-brintelli-border/40 bg-white/50 p-2 transition-all hover:border-brand-300/60 hover:bg-white/80"
                   >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-text group-hover:text-brand-600 transition">
+                    <div className="flex items-start justify-between mb-1">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-xs text-text/80 truncate">
                               {lead.name || "Unnamed Lead"}
                         </h4>
-                            <div className="flex items-center gap-2 mt-1 flex-wrap">
-                              {lead.phone && (
-                                <>
-                                  <span className="text-xs text-textMuted flex items-center gap-1">
-                                    <Phone className="h-3 w-3" />
-                                    {lead.phone}
-                                  </span>
-                                </>
-                              )}
-                              {lead.email && (
-                                <>
-                          <span className="text-xs text-textMuted">•</span>
-                                  <span className="text-xs text-textMuted flex items-center gap-1">
-                                    <Mail className="h-3 w-3" />
-                                    {lead.email}
-                                  </span>
-                                </>
-                              )}
-                        </div>
+                            {lead.phone && (
+                              <div className="flex items-center gap-1 mt-0.5">
+                                  <Phone className="h-2.5 w-2.5 text-textMuted/60" />
+                                  <span className="text-[10px] text-textMuted/70 truncate">{lead.phone}</span>
+                              </div>
+                            )}
                       </div>
-                      <button className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-brintelli-border rounded">
-                        <MoreVertical className="h-4 w-4 text-textMuted" />
-                      </button>
                     </div>
 
                         {lead.company && (
-                          <div className="mb-2 flex items-center gap-2">
-                            <Building2 className="h-3.5 w-3.5 text-textMuted" />
-                            <span className="text-sm text-textMuted">{lead.company}</span>
+                          <div className="mb-1 flex items-center gap-1">
+                            <Building2 className="h-2.5 w-2.5 text-textMuted/60" />
+                            <span className="text-[10px] text-textMuted/70 truncate">{lead.company}</span>
                       </div>
                         )}
 
-                        <div className="mb-3 space-y-1">
-                          {lead.source && (
-                      <div className="flex items-center gap-2">
-                              <span className="text-xs text-textMuted">Source:</span>
-                              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">
-                                {lead.source}
-                        </span>
-                            </div>
-                          )}
-                          {lead.assignedTo && (
-                            <div className="flex items-center gap-2">
-                              <User className="h-3.5 w-3.5 text-textMuted" />
-                              <span className="text-xs text-textMuted">{getAssignedName(lead.assignedTo)}</span>
-                            </div>
-                          )}
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-textMuted">{getDaysInStage(lead)} days in stage</span>
-                      </div>
-                    </div>
-
                         {lead.value && (
-                    <div className="flex items-center justify-between pt-2 border-t border-brintelli-border">
-                      <div className="flex items-center gap-1.5">
-                        <DollarSign className="h-3.5 w-3.5 text-green-600" />
-                              <span className="font-semibold text-text text-sm">{lead.value}</span>
-                            </div>
+                    <div className="flex items-center gap-1 pt-1 border-t border-brintelli-border/30">
+                        <DollarSign className="h-2.5 w-2.5 text-green-500/70" />
+                              <span className="font-medium text-[10px] text-text/70">{lead.value}</span>
+                          </div>
+                        )}
+
+                        {/* Move to Dump Button - Available from all stages */}
+                        {!isSalesHead && stage.id !== 'lead_dump' && (
+                          <div className="mt-1.5 pt-1.5 border-t border-brintelli-border/30">
+                            <button
+                              onClick={() => handleStageUpdate(lead.id, 'lead_dump')}
+                              className="w-full flex items-center justify-center gap-1 text-[10px] px-1.5 py-0.5 rounded transition bg-red-500/80 text-white hover:bg-red-500"
+                              title="Move to Lead Dump"
+                            >
+                              <Trash2 className="h-2.5 w-2.5" />
+                              Move to Dump
+                            </button>
                           </div>
                         )}
 
                         {/* Stage Navigation Buttons - Role-based */}
                         {!isSalesHead && (
-                          <div className="mt-3 pt-3 border-t border-brintelli-border">
+                          <div className="mt-1.5 pt-1.5 border-t border-brintelli-border/30">
                             <div className="flex gap-1">
                               {pipelineStages.map((nextStage) => {
                                 if (nextStage.id === stage.id) return null;
@@ -427,10 +432,10 @@ const SalesPipeline = () => {
                                   <button
                                     key={nextStage.id}
                                     onClick={() => handleStageUpdate(lead.id, nextStage.id)}
-                                    className={`flex-1 text-xs px-2 py-1 rounded-lg transition ${
+                                    className={`flex-1 text-[10px] px-1.5 py-0.5 rounded transition ${
                                       isNext
-                                        ? 'bg-brand-500 text-white hover:bg-brand-600'
-                                        : 'bg-brintelli-border text-textMuted hover:bg-brintelli-base'
+                                        ? 'bg-brand-500/80 text-white hover:bg-brand-500'
+                                        : 'bg-brintelli-border/40 text-textMuted/70 hover:bg-brintelli-border/60'
                                     }`}
                                     title={`Move to ${nextStage.name}`}
                                   >
@@ -477,7 +482,7 @@ const SalesPipeline = () => {
             </div>
         </div>
       )}
-    </>
+    </div>
   );
 };
 

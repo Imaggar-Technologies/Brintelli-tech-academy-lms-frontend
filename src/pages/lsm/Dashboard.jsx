@@ -16,17 +16,17 @@ const LsmDashboard = () => {
           </Button>
         }
       />
-      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <StatsCard icon={HeartHandshake} value="48" label="Active Mentees" trend="6 need attention" trendType="negative" />
         <StatsCard icon={AlertTriangle} value="9" label="Missed Classes" trend="-3 vs last week" />
         <StatsCard icon={Target} value="14" label="Placement Ready" trend="+4 this week" />
         <StatsCard icon={Target} value="5" label="Escalations" trend="Resolve today" trendType="negative" />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
-        <div className="rounded-2xl border border-brintelli-border bg-brintelli-card p-6 shadow-soft">
-          <h3 className="text-lg font-semibold text-text">Mentees Needing Attention</h3>
-          <div className="mt-5 space-y-4 text-sm text-textSoft">
+      <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr]">
+        <div className="rounded-xl border border-brintelli-border bg-brintelli-card p-4 shadow-soft">
+          <h3 className="text-base font-semibold text-text">Mentees Needing Attention</h3>
+          <div className="mt-3 space-y-3 text-sm text-textSoft">
             {[
               {
                 name: "Arjun M",
@@ -46,7 +46,7 @@ const LsmDashboard = () => {
             ].map((mentee) => (
               <div
                 key={mentee.name}
-                className="rounded-2xl border border-brintelli-border bg-brintelli-baseAlt px-4 py-4 shadow-soft/20"
+                className="rounded-lg border border-brintelli-border bg-brintelli-baseAlt px-3 py-3 shadow-soft/20"
               >
                 <div className="flex items-center justify-between">
                   <p className="text-base font-semibold text-text">{mentee.name}</p>
@@ -62,24 +62,24 @@ const LsmDashboard = () => {
             ))}
           </div>
         </div>
-        <div className="flex flex-col gap-6">
-          <div className="rounded-2xl border border-brintelli-border bg-brintelli-card p-6 shadow-soft">
-            <h3 className="text-lg font-semibold text-text">Missed Classes Alerts</h3>
-            <div className="mt-4 space-y-3 text-sm text-textSoft">
+        <div className="flex flex-col gap-4">
+          <div className="rounded-xl border border-brintelli-border bg-brintelli-card p-4 shadow-soft">
+            <h3 className="text-base font-semibold text-text">Missed Classes Alerts</h3>
+            <div className="mt-3 space-y-2 text-sm text-textSoft">
               {[
                 "Arjun M missed Backend Live Class yesterday",
                 "Shraddha P missed DSA Sprint recap",
                 "Harsh Y missed Placement prep sync",
               ].map((alert) => (
-                <div key={alert} className="rounded-xl bg-brand-600/10 px-4 py-3 font-semibold text-brand-600">
+                <div key={alert} className="rounded-lg bg-brand-600/10 px-3 py-2 font-semibold text-brand-600">
                   {alert}
                 </div>
               ))}
             </div>
           </div>
-          <div className="rounded-2xl border border-brintelli-border bg-brintelli-card p-6 shadow-soft">
-            <h3 className="text-lg font-semibold text-text">Announcements to Share</h3>
-            <div className="mt-4 space-y-4">
+          <div className="rounded-xl border border-brintelli-border bg-brintelli-card p-4 shadow-soft">
+            <h3 className="text-base font-semibold text-text">Announcements to Share</h3>
+            <div className="mt-3 space-y-3">
               <AnnouncementCard
                 title="Placement Masterclass"
                 description="Encourage mentees to join the session hosted by Amazon alumni this Friday."

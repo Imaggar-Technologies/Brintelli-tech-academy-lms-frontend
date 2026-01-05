@@ -69,43 +69,52 @@ const Sidebar = ({ collapsed, mobileOpen, onCloseMobile, role }) => {
       />
       <aside
         className={[
-          "fixed inset-y-0 left-0 z-40 transform bg-brintelli-baseAlt shadow-card transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-40 transform bg-brintelli-baseAlt shadow-card transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 lg:flex-shrink-0",
           sidebarWidth,
           mobileOpen ? "translate-x-0" : "-translate-x-full",
         ].join(" ")}
       >
         <div className="flex h-screen flex-col border-r border-brintelli-border/70 px-4 py-6">
           <div className={[
-            "flex items-center",
+            "flex items-center flex-shrink-0",
             collapsed ? "justify-center" : "gap-3",
           ].join(" ")}>
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-brintelli text-white shadow-glow">
-              BT
-            </div>
+            <img 
+              src="/mobile%20logo.png" 
+              alt="Brintelli Logo" 
+              className={collapsed ? "h-11 w-11 object-contain rounded-xl" : "h-12 w-auto max-w-[180px] object-contain"}
+              onError={(e) => {
+                // Fallback if mobile logo doesn't load
+                e.target.src = "/logo.png";
+              }}
+            />
             {!collapsed && (
-              <div>
-                <p className="text-text font-semibold text-lg leading-tight">{title}</p>
-                <p className="text-textMuted text-xs">{subtitle}</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-text font-semibold text-lg leading-tight truncate">{title}</p>
+                <p className="text-textMuted text-xs truncate">{subtitle}</p>
               </div>
             )}
           </div>
 
-          <div className="mt-6 flex-1 overflow-y-auto">
-            {pinned && pinned.length > 0 && (
-              <div className="flex flex-col gap-2">
-                {!collapsed && (
-                  <p className="px-2 text-xs font-semibold uppercase tracking-wide text-textMuted">Pinned tools</p>
-                )}
-                <div className="flex flex-col gap-1.5">{pinned.map((tool) => renderLink(tool))}</div>
-              </div>
-            )}
-
-            <div className="mt-6 flex flex-col gap-2">
-              {!collapsed && (
-                <p className="px-2 text-xs font-semibold uppercase tracking-wide text-textMuted">Navigation</p>
+          <div 
+            className="mt-6 flex-1 overflow-y-auto overflow-x-hidden sidebar-scroll"
+          >
+            <div className="sidebar-content">
+              {pinned && pinned.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  {!collapsed && (
+                    <p className="px-2 text-xs font-semibold uppercase tracking-wide text-textMuted">Pinned tools</p>
+                  )}
+                  <div className="flex flex-col gap-1.5">{pinned.map((tool) => renderLink(tool))}</div>
+                </div>
               )}
-              <div className="flex flex-col gap-1.5">
-                {navigation.map((item) => {
+
+              <div className="mt-6 flex flex-col gap-2">
+                {!collapsed && (
+                  <p className="px-2 text-xs font-semibold uppercase tracking-wide text-textMuted">Navigation</p>
+                )}
+                <div className="flex flex-col gap-1.5">
+                  {navigation.map((item) => {
                   if (item.children && item.children.length > 0) {
                     const isOpen = collapsed ? true : openGroups.has(item.id);
                     const Icon = item.icon ?? defaultIcon;
@@ -142,9 +151,10 @@ const Sidebar = ({ collapsed, mobileOpen, onCloseMobile, role }) => {
                 })}
               </div>
             </div>
+            </div>
           </div>
 
-          <div className="mt-6 rounded-2xl bg-white/60 p-4 shadow-card">
+          <div className="mt-6 flex-shrink-0 rounded-2xl bg-white/60 p-4 shadow-card">
             {!collapsed ? (
               <>
                 <h4 className="text-text font-semibold text-base">Need support?</h4>

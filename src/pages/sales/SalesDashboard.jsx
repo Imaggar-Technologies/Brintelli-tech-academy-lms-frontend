@@ -43,10 +43,10 @@ const SalesDashboard = () => {
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-2xl border border-brintelli-border bg-brintelli-card p-6 shadow-soft">
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-xl border border-brintelli-border bg-brintelli-card p-4 shadow-soft">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-text">Pipeline Overview</h3>
+            <h3 className="text-base font-semibold text-text">Pipeline Overview</h3>
             <Button variant="ghost" size="sm" className="gap-2">
               View All
               <ArrowUpRight className="h-4 w-4" />
@@ -59,7 +59,7 @@ const SalesDashboard = () => {
               { stage: "Proposal Sent", count: 18, value: "₹420K", color: "bg-orange-500" },
               { stage: "Negotiation", count: 12, value: "₹280K", color: "bg-yellow-500" },
             ].map((item) => (
-              <div key={item.stage} className="flex items-center justify-between rounded-xl border border-brintelli-border bg-brintelli-baseAlt px-4 py-3">
+              <div key={item.stage} className="flex items-center justify-between rounded-lg border border-brintelli-border bg-brintelli-baseAlt px-3 py-2">
                 <div className="flex items-center gap-3">
                   <div className={`h-2 w-2 rounded-full ${item.color}`} />
                   <div>
@@ -73,16 +73,16 @@ const SalesDashboard = () => {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-brintelli-border bg-brintelli-card p-6 shadow-soft">
-          <h3 className="text-lg font-semibold text-text">Recent Activity</h3>
-          <div className="mt-4 space-y-3">
+        <div className="rounded-xl border border-brintelli-border bg-brintelli-card p-4 shadow-soft">
+          <h3 className="text-base font-semibold text-text">Recent Activity</h3>
+          <div className="mt-3 space-y-2">
             {[
               { action: "New lead added", company: "TechCorp Inc.", time: "2 hours ago" },
               { action: "Demo completed", company: "StartupXYZ", time: "5 hours ago" },
               { action: "Deal won", company: "Enterprise Solutions", time: "1 day ago" },
               { action: "Follow-up scheduled", company: "Global Tech", time: "2 days ago" },
             ].map((item, idx) => (
-              <div key={idx} className="rounded-xl border border-brintelli-border bg-brintelli-baseAlt px-4 py-3">
+              <div key={idx} className="rounded-lg border border-brintelli-border bg-brintelli-baseAlt px-3 py-2">
                 <p className="font-semibold text-text">{item.action}</p>
                 <p className="text-sm text-textSoft">{item.company}</p>
                 <p className="text-xs text-textMuted">{item.time}</p>
@@ -92,9 +92,9 @@ const SalesDashboard = () => {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-brintelli-border bg-brintelli-card p-6 shadow-soft">
-        <h3 className="text-lg font-semibold text-text">Sales Performance</h3>
-        <div className="mt-6 h-72 rounded-2xl border border-dashed border-brintelli-border bg-brintelli-baseAlt text-center text-sm text-textMuted">
+      <div className="rounded-xl border border-brintelli-border bg-brintelli-card p-4 shadow-soft">
+        <h3 className="text-base font-semibold text-text">Sales Performance</h3>
+        <div className="mt-4 h-56 rounded-xl border border-dashed border-brintelli-border bg-brintelli-baseAlt text-center text-sm text-textMuted">
           <div className="flex h-full flex-col items-center justify-center">
             <BarChart3 className="h-10 w-10 text-textMuted" />
             <p className="mt-3 font-semibold text-textMuted">Revenue Chart</p>

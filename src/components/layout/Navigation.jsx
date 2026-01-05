@@ -79,21 +79,27 @@ const Navigation = ({ role = "student", collapsed, mobileOpen, onCloseMobile, on
         }`}
       />
       <aside
-        className={`fixed inset-y-0 left-0 z-40 transform bg-gradient-to-b from-brand-dark via-brand to-accent-purple text-white shadow-glow transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 transform bg-gradient-to-b from-brand-dark via-brand to-accent-purple text-white shadow-glow transition-all duration-300 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
           sidebarWidth
         } ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
         <div className="flex h-screen flex-col border-r border-white/15 px-4 py-6 backdrop-blur-sm">
-          <div className={`flex items-center ${collapsed ? "justify-center" : "gap-3"}`}>
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/25 text-brand-dark shadow-glow">
-              BT
-            </div>
+          <div className={`flex items-center flex-shrink-0 ${collapsed ? "justify-center" : "gap-3"}`}>
+            <img 
+              src="/mobile%20logo.png" 
+              alt="Brintelli Logo" 
+              className={collapsed ? "h-11 w-11 object-contain rounded-xl" : "h-12 w-auto max-w-[180px] object-contain"}
+              onError={(e) => {
+                // Fallback if mobile logo doesn't load
+                e.target.src = "/logo.png";
+              }}
+            />
             {!collapsed && (
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.45em] text-white/60">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-[0.45em] text-white/60 truncate">
                   {title}
                 </p>
-                <p className="text-lg font-semibold text-white">{subtitle}</p>
+                <p className="text-lg font-semibold text-white truncate">{subtitle}</p>
               </div>
             )}
             <button
@@ -107,8 +113,9 @@ const Navigation = ({ role = "student", collapsed, mobileOpen, onCloseMobile, on
             </button>
           </div>
 
-          <nav className="mt-6 flex-1 overflow-y-auto">
-            <div className="flex flex-col gap-2">
+          <nav className="mt-6 flex-1 overflow-y-auto overflow-x-hidden sidebar-scroll">
+            <div className="sidebar-content">
+              <div className="flex flex-col gap-2">
               {!collapsed && (
                 <p className="px-3 text-xs font-semibold uppercase tracking-wide text-white/60">
                   Pinned Tools
@@ -220,6 +227,7 @@ const Navigation = ({ role = "student", collapsed, mobileOpen, onCloseMobile, on
                   );
                 })}
               </div>
+            </div>
             </div>
           </nav>
 

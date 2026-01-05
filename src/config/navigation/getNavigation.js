@@ -204,7 +204,7 @@ export function getRoleNavigation(role, userPermissions = [], userAttributes = {
  */
 function getDomainTitle(domain) {
   const titles = {
-    sales: "Brintelli Sales",
+    sales: "Brintelli LMS",
     marketing: "Brintelli Marketing",
     finance: "Brintelli Finance",
     academic: "Brintelli LMS",
@@ -219,7 +219,7 @@ function getDomainTitle(domain) {
  */
 function getDomainSubtitle(domain, role) {
   const subtitles = {
-    sales: "Sales Operations",
+    sales: "Dashboard",
     marketing: "Marketing Operations",
     finance: "Revenue Operations",
     academic: getAcademicSubtitle(role),

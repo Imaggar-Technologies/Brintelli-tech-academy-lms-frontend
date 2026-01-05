@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Lock, ExternalLink } from "lucide-react";
+import { Lock } from "lucide-react";
+import AuthImageCarousel from "../../components/AuthImageCarousel";
 
 const Register = () => {
   const navigate = useNavigate();
@@ -53,29 +54,9 @@ const Register = () => {
           </div>
         </div>
 
-        {/* Right Side - Image */}
-        <div className="hidden lg:flex lg:w-1/2 items-center justify-center bg-gradient-to-br from-blue-100 via-indigo-100 to-purple-100 p-12">
-          <a
-            href="https://brintellitechacademy.in"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group relative flex h-full w-full items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-blue-200/80 via-indigo-200/80 to-purple-200/80 transition-all hover:scale-[1.02] hover:shadow-2xl"
-          >
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-400/20 via-indigo-400/20 to-purple-400/20" />
-            <div className="relative z-10 text-center p-8">
-              <div className="mb-6 flex justify-center">
-                <div className="flex h-24 w-24 items-center justify-center rounded-3xl bg-white/90 shadow-xl backdrop-blur-sm">
-                  <span className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">BT</span>
-                </div>
-              </div>
-              <h3 className="mb-4 text-3xl font-bold text-slate-800">Brintelli Tech Academy</h3>
-              <p className="mb-6 text-lg text-slate-700">Transforming Careers Through Technology</p>
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/90 px-6 py-3 text-sm font-semibold text-slate-800 shadow-lg transition-all group-hover:gap-3">
-                <span>Visit Our Website</span>
-                <ExternalLink className="h-4 w-4" />
-              </div>
-            </div>
-          </a>
+        {/* Right Side - Image Carousel */}
+        <div className="hidden lg:flex lg:w-1/2 h-screen" style={{ margin: 0, padding: 0 }}>
+          <AuthImageCarousel />
         </div>
       </div>
     </div>

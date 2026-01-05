@@ -55,6 +55,60 @@ export const programAPI = {
     });
   },
 
+  // Sub-Modules
+  createSubModule: async (moduleId, subModuleData) => {
+    return apiRequest(`/api/programs/modules/${moduleId}/submodules`, {
+      method: 'POST',
+      body: JSON.stringify(subModuleData),
+    });
+  },
+
+  getSubModulesByModule: async (moduleId) => {
+    return apiRequest(`/api/programs/modules/${moduleId}/submodules`);
+  },
+
+  getSubModuleById: async (subModuleId) => {
+    return apiRequest(`/api/programs/submodules/${subModuleId}`);
+  },
+
+  updateSubModule: async (subModuleId, updates) => {
+    return apiRequest(`/api/programs/submodules/${subModuleId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+  },
+
+  deleteSubModule: async (subModuleId) => {
+    return apiRequest(`/api/programs/submodules/${subModuleId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Sub-Module Objectives
+  createSubModuleObjective: async (subModuleId, objectiveData) => {
+    return apiRequest(`/api/programs/submodules/${subModuleId}/objectives`, {
+      method: 'POST',
+      body: JSON.stringify(objectiveData),
+    });
+  },
+
+  getSubModuleObjectives: async (subModuleId) => {
+    return apiRequest(`/api/programs/submodules/${subModuleId}/objectives`);
+  },
+
+  updateSubModuleObjective: async (objectiveId, updates) => {
+    return apiRequest(`/api/programs/submodule-objectives/${objectiveId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+  },
+
+  deleteSubModuleObjective: async (objectiveId) => {
+    return apiRequest(`/api/programs/submodule-objectives/${objectiveId}`, {
+      method: 'DELETE',
+    });
+  },
+
   // Sessions
   createSession: async (moduleId, sessionData) => {
     return apiRequest(`/api/programs/modules/${moduleId}/sessions`, {

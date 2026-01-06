@@ -8,7 +8,7 @@ export function connectSocket() {
   const visitorId = getVisitorId();
   const websiteId = window.botstackSettings?.websiteId;
 
-  socket = io("http://localhost:3002/chat", {
+  socket = io("https://back.botstaq.in/chat", {
     transports: ["websocket"],
     auth: { 
         token:token ? `Bearer ${token}` : null,

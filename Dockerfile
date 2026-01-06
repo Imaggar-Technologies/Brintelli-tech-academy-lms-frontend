@@ -3,15 +3,19 @@ FROM node:20 AS builder
 
 WORKDIR /app
 
-# VERY IMPORTANT: force devDependencies
-COPY package.json package-lock.json ./
-RUN npm ci --include=dev --prefer-offline --no-audit
+# 🔑 FORCE devDependencies (do NOT rely on defaults)
+ENV NODE_ENV=development
+ENV npm_config_production=false
 
-# Copy source
+COPY package.json package-lock.json ./
+RUN npm ci --prefer-offline --no-audit
+
 COPY . .
 
 ENV NODE_OPTIONS=--max-old-space-size=4096
-RUN npm run build
+
+# 🔑 Use npx so vite is resolved explicitly
+RUN npx vite build
 
 # ===== RUN STAGE =====
 FROM nginx:alpine

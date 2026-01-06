@@ -1,16 +1,22 @@
-FROM oven/bun:1 AS builder
+# ===== BUILD STAGE =====
+FROM node:20 AS builder
 
 WORKDIR /app
 
-COPY bun.lock package.json ./
-RUN bun install
+COPY package.json package-lock.json ./
+RUN npm ci --prefer-offline --no-audit
 
 COPY . .
-RUN bun run build
 
+ENV NODE_OPTIONS=--max-old-space-size=4096
+RUN npm run build
+
+# ===== RUN STAGE =====
 FROM nginx:alpine
+
 RUN rm /etc/nginx/conf.d/default.conf
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+
 COPY --from=builder /app/dist /usr/share/nginx/html
 
 EXPOSE 80

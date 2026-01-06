@@ -1,26 +1,22 @@
-# ===== Build stage =====
+# ===== BUILD STAGE =====
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
 COPY package*.json ./
 RUN npm install
-RUN npm install -g vite
 
 COPY . .
-ENV NODE_OPTIONS=--max-old-space-size=2048
-RUN vite build
 
-# ===== Run stage =====
+ENV NODE_OPTIONS=--max-old-space-size=4096
+RUN npm run build
+
+# ===== RUN STAGE =====
 FROM nginx:alpine
 
-# REMOVE DEFAULT NGINX CONFIG
 RUN rm /etc/nginx/conf.d/default.conf
-
-# COPY SPA NGINX CONFIG
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# COPY BUILD FILES
 COPY --from=builder /app/dist /usr/share/nginx/html
 
 EXPOSE 80

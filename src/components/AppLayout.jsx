@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Navigation from "./layout/Navigation";
 import Topbar from "./layout/Topbar";
 import SecureContextBanner from "./SecureContextBanner";
+import Chat from "../components/chatbot/chat";
 
 const getRoleFromPath = (pathname) => {
   // Redirect admin routes to admin portal
@@ -75,6 +76,7 @@ const AppLayout = () => {
               </div>
             </main>
           </div>
+           <Chat />
         </div>
       )}
     </div>

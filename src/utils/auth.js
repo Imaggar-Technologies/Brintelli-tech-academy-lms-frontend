@@ -12,6 +12,7 @@ import toast from "react-hot-toast";
  * 5. Navigating to login page
  */
 export const handleLogout = async (dispatch, navigate = null, getState = null) => {
+  console.log("Logging out user...");
   try {
     // Get refresh token from state if available
     let refreshToken = null;
@@ -40,6 +41,11 @@ export const handleLogout = async (dispatch, navigate = null, getState = null) =
         console.warn('Logout API call failed:', error);
         // Continue with local logout even if API call fails
       }
+    }
+    let id = localStorage.getItem("visitor-id");
+    console.log("Removing local session for id:", id);
+    if (id) {
+      localStorage.removeItem("visitor-id");
     }
   } catch (error) {
     console.warn('Error during logout API call:', error);

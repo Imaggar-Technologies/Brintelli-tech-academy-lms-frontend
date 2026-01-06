@@ -1,26 +1,31 @@
-# ===== Build stage =====
-FROM node:20-alpine AS builder
+# ===== BUILD STAGE =====
+FROM node:20 AS builder
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm install
-RUN npm install -g vite
+# Copy dependency files first (cache friendly)
+COPY package.json package-lock.json ./
+RUN npm ci --include=dev --prefer-offline --no-audit
 
+# Copy source code
 COPY . .
-ENV NODE_OPTIONS=--max-old-space-size=2048
-RUN vite build
 
-# ===== Run stage =====
+# Increase memory for Vite build
+ENV NODE_OPTIONS=--max-old-space-size=4096
+
+# Build the app
+RUN npm run build
+
+# ===== RUN STAGE =====
 FROM nginx:alpine
 
-# REMOVE DEFAULT NGINX CONFIG
+# Remove default Nginx config
 RUN rm /etc/nginx/conf.d/default.conf
 
-# COPY SPA NGINX CONFIG
+# Copy our Nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# COPY BUILD FILES
+# Copy build output
 COPY --from=builder /app/dist /usr/share/nginx/html
 
 EXPOSE 80

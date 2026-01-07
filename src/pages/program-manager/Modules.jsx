@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { Plus, ChevronLeft, ChevronRight, X, FileText, Layers3, BookOpen, ArrowRight, Eye, Edit } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, X, FileText, Layers3, BookOpen, ArrowRight, Eye, Edit, MoreVertical } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
-import Table from '../../components/Table';
 import programAPI from '../../api/program';
 
 const Modules = () => {
@@ -18,6 +17,8 @@ const Modules = () => {
   const [showModuleModal, setShowModuleModal] = useState(false);
   const [formData, setFormData] = useState({});
   const [objectives, setObjectives] = useState([]); // Array of { text, resources: [], minDuration }
+  const [openMenuId, setOpenMenuId] = useState(null);
+  const menuRefs = useRef({});
 
   useEffect(() => {
     if (programId) {
@@ -130,35 +131,37 @@ const Modules = () => {
   const endIndex = startIndex + itemsPerPage;
   const paginatedModules = modules.slice(startIndex, endIndex);
 
-  const getStatusBadge = (status) => {
-    const statusConfig = {
-      DRAFT: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Draft' },
-      ACTIVE: { bg: 'bg-green-100', text: 'text-green-700', label: 'Active' },
-      COMPLETED: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Completed' },
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      Object.values(menuRefs.current).forEach((ref) => {
+        if (ref && !ref.contains(event.target)) {
+          setOpenMenuId(null);
+        }
+      });
     };
-    const config = statusConfig[status] || statusConfig.DRAFT;
-    return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
-        {config.label}
-      </span>
-    );
-  };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const moduleColumns = [
     { 
       key: 'name', 
-      title: 'Module Name',
+      title: 'Module',
       render: (_, row) => (
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 min-w-0">
           <div className="flex-shrink-0">
-            <div className="w-10 h-10 rounded-lg bg-brand-100 flex items-center justify-center">
-              <Layers3 className="h-5 w-5 text-brand-600" />
+            <div className="w-8 h-8 rounded-lg bg-brand-100 flex items-center justify-center">
+              <Layers3 className="h-4 w-4 text-brand-600" />
             </div>
           </div>
           <div className="flex-1 min-w-0">
-            <div className="font-semibold text-text">{row.name || '—'}</div>
+            <div className="font-medium text-sm text-text truncate">{row.name || '—'}</div>
             {row.description && (
-              <div className="text-xs text-textMuted mt-0.5 line-clamp-1">{row.description}</div>
+              <div className="text-xs text-textMuted mt-0.5 truncate max-w-xs">{row.description}</div>
             )}
           </div>
         </div>
@@ -170,19 +173,18 @@ const Modules = () => {
       render: (_, row) => {
         const subModulesCount = row.subModulesCount || row.subModules?.length || 0;
         return (
-          <div className="flex items-center gap-2">
-            <Layers3 className="h-4 w-4 text-purple-600" />
-            <span className="font-semibold text-text">{subModulesCount}</span>
-            <span className="text-xs text-textMuted">sub-modules</span>
+          <div className="flex items-center gap-1.5">
+            <Layers3 className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" />
+            <span className="text-sm font-medium text-text">{subModulesCount}</span>
           </div>
         );
       }
     },
     { 
       key: 'order', 
-      title: 'Order',
+      title: '#',
       render: (_, row) => (
-        <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 text-gray-700 font-semibold text-sm">
+        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-gray-700 font-medium text-xs">
           {row.order ?? '—'}
         </span>
       )
@@ -191,47 +193,69 @@ const Modules = () => {
       key: 'duration', 
       title: 'Duration',
       render: (_, row) => (
-        <span className="text-text font-medium">{row.duration ? `${row.duration}h` : '—'}</span>
+        <span className="text-sm text-text">{row.duration ? `${row.duration}h` : '—'}</span>
       )
     },
     { 
       key: 'status', 
       title: 'Status',
-      render: (_, row) => getStatusBadge(row.status)
+      render: (_, row) => (
+        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${
+          row.status === 'ACTIVE' ? 'bg-green-100 text-green-700' :
+          row.status === 'COMPLETED' ? 'bg-blue-100 text-blue-700' :
+          'bg-gray-100 text-gray-700'
+        }`}>
+          {row.status || 'Draft'}
+        </span>
+      )
     },
     {
       key: 'actions',
-      title: 'Actions',
+      title: '',
       render: (_, row) => {
         const moduleId = row.id || row._id;
+        const isOpen = openMenuId === moduleId;
+        
         return (
-          <div className="flex gap-2">
-            <Button
-              variant="primary"
-              size="sm"
+          <div className="relative" ref={(el) => (menuRefs.current[moduleId] = el)}>
+            <button
               onClick={(e) => {
                 e.stopPropagation();
                 e.preventDefault();
-                navigate(`/program-manager/programs/${programId}/modules/${moduleId}/submodules`);
+                setOpenMenuId(isOpen ? null : moduleId);
               }}
-              className="hover:bg-brand-600"
+              className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
             >
-              <Layers3 className="h-4 w-4 mr-1" />
-              Sub-Modules
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                navigate(`/program-manager/programs/${programId}/modules/${moduleId}`);
-              }}
-              className="hover:bg-gray-100"
-            >
-              <Edit className="h-4 w-4 mr-1" />
-              Edit
-            </Button>
+              <MoreVertical className="h-4 w-4 text-textMuted" />
+            </button>
+            {isOpen && (
+              <div className="absolute right-0 top-8 z-50 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    setOpenMenuId(null);
+                    navigate(`/program-manager/programs/${programId}/modules/${moduleId}/submodules`);
+                  }}
+                  className="w-full px-4 py-2 text-left text-sm text-text hover:bg-gray-50 flex items-center gap-2"
+                >
+                  <Layers3 className="h-4 w-4 text-purple-600" />
+                  View Sub-Modules
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    setOpenMenuId(null);
+                    navigate(`/program-manager/programs/${programId}/modules/${moduleId}`);
+                  }}
+                  className="w-full px-4 py-2 text-left text-sm text-text hover:bg-gray-50 flex items-center gap-2"
+                >
+                  <Edit className="h-4 w-4 text-blue-600" />
+                  Edit
+                </button>
+              </div>
+            )}
           </div>
         );
       },
@@ -328,23 +352,12 @@ const Modules = () => {
       )}
 
       {/* Modules Table */}
-      <div className="rounded-2xl border border-gray-200 bg-white shadow-lg p-6 mb-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h3 className="text-2xl font-bold text-gray-900">All Modules</h3>
-            <p className="text-sm text-gray-600 mt-1">
-              {program ? `Manage modules and their learning objectives for ${program.name}` : 'Manage modules for this program'}
-            </p>
-            <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
-              <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded">Modules</span>
-              <ArrowRight className="h-3 w-3" />
-              <span className="px-2 py-1 bg-purple-50 text-purple-700 rounded">Sub-Modules</span>
-              <ArrowRight className="h-3 w-3" />
-              <span className="px-2 py-1 bg-green-50 text-green-700 rounded">Objectives</span>
-              <ArrowRight className="h-3 w-3" />
-              <span className="px-2 py-1 bg-orange-50 text-orange-700 rounded">Content</span>
-            </div>
-          </div>
+      <div className="rounded-2xl border border-gray-200 bg-white shadow-lg p-4 mb-6">
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">All Modules</h3>
+          <p className="text-xs text-gray-600 mt-1">
+            {program ? `Manage modules and their learning objectives for ${program.name}` : 'Manage modules for this program'}
+          </p>
         </div>
         {loading ? (
           <div className="text-center py-12">
@@ -370,17 +383,39 @@ const Modules = () => {
           </div>
         ) : (
           <>
-            <div className="overflow-hidden">
-              <Table 
-                columns={moduleColumns} 
-                data={paginatedModules} 
-                minRows={10}
-                onRowClick={(row) => {
-                  const moduleId = row.id || row._id;
-                  navigate(`/program-manager/programs/${programId}/modules/${moduleId}/submodules`);
-                }}
-                rowClassName="cursor-pointer hover:bg-gray-50"
-              />
+            <div className="overflow-x-auto">
+              <table className="w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    {moduleColumns.map((column) => (
+                      <th
+                        key={column.key}
+                        className="px-3 py-2 text-left text-[10px] font-semibold text-gray-700 uppercase tracking-wider"
+                      >
+                        {column.title}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {paginatedModules.map((row) => (
+                    <tr
+                      key={row.id || row._id}
+                      onClick={() => {
+                        const moduleId = row.id || row._id;
+                        navigate(`/program-manager/programs/${programId}/modules/${moduleId}/submodules`);
+                      }}
+                      className="cursor-pointer hover:bg-gray-50 transition-colors"
+                    >
+                      {moduleColumns.map((column) => (
+                        <td key={column.key} className="px-3 py-3 whitespace-nowrap">
+                          {column.render(null, row)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
             {/* Pagination */}
             {totalPages > 1 && (

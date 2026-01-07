@@ -173,6 +173,10 @@ export const programAPI = {
   },
 
   // Resources
+  getResourcesByObjective: async (objectiveId) => {
+    return apiRequest(`/api/programs/objectives/${objectiveId}/resources`);
+  },
+
   createResource: async (objectiveId, resourceData) => {
     return apiRequest(`/api/programs/objectives/${objectiveId}/resources`, {
       method: 'POST',
@@ -194,6 +198,10 @@ export const programAPI = {
   },
 
   // Objective Assignments
+  getAssignmentsByObjective: async (objectiveId) => {
+    return apiRequest(`/api/programs/objectives/${objectiveId}/assignments`);
+  },
+
   createObjectiveAssignment: async (objectiveId, assignmentData) => {
     return apiRequest(`/api/programs/objectives/${objectiveId}/assignments`, {
       method: 'POST',
@@ -215,6 +223,10 @@ export const programAPI = {
   },
 
   // Practice Codes
+  getPracticeCodesByObjective: async (objectiveId) => {
+    return apiRequest(`/api/programs/objectives/${objectiveId}/practice-codes`);
+  },
+
   createPracticeCode: async (objectiveId, practiceCodeData) => {
     return apiRequest(`/api/programs/objectives/${objectiveId}/practice-codes`, {
       method: 'POST',
@@ -236,6 +248,10 @@ export const programAPI = {
   },
 
   // MCQs
+  getMCQsByObjective: async (objectiveId) => {
+    return apiRequest(`/api/programs/objectives/${objectiveId}/mcqs`);
+  },
+
   createMCQ: async (objectiveId, mcqData) => {
     return apiRequest(`/api/programs/objectives/${objectiveId}/mcqs`, {
       method: 'POST',
@@ -254,6 +270,38 @@ export const programAPI = {
     return apiRequest(`/api/programs/mcqs/${mcqId}`, {
       method: 'DELETE',
     });
+  },
+
+  // Get all items directly from collections (with context)
+  getAllResources: async (filters = {}) => {
+    const queryParams = new URLSearchParams();
+    if (filters.type) queryParams.append('type', filters.type);
+    if (filters.forWhom) queryParams.append('forWhom', filters.forWhom);
+    const queryString = queryParams.toString();
+    return apiRequest(`/api/programs/content/resources${queryString ? `?${queryString}` : ''}`);
+  },
+
+  getAllAssignments: async (filters = {}) => {
+    const queryParams = new URLSearchParams();
+    if (filters.difficulty) queryParams.append('difficulty', filters.difficulty);
+    if (filters.type) queryParams.append('type', filters.type);
+    const queryString = queryParams.toString();
+    return apiRequest(`/api/programs/content/assignments${queryString ? `?${queryString}` : ''}`);
+  },
+
+  getAllPracticeCodes: async (filters = {}) => {
+    const queryParams = new URLSearchParams();
+    if (filters.difficulty) queryParams.append('difficulty', filters.difficulty);
+    if (filters.language) queryParams.append('language', filters.language);
+    const queryString = queryParams.toString();
+    return apiRequest(`/api/programs/content/practice-codes${queryString ? `?${queryString}` : ''}`);
+  },
+
+  getAllMCQs: async (filters = {}) => {
+    const queryParams = new URLSearchParams();
+    if (filters.questionType) queryParams.append('questionType', filters.questionType);
+    const queryString = queryParams.toString();
+    return apiRequest(`/api/programs/content/mcqs${queryString ? `?${queryString}` : ''}`);
   },
 };
 

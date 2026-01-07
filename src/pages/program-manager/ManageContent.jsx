@@ -11,7 +11,7 @@ import uploadAPI from '../../api/upload';
 
 const ManageContent = () => {
   const navigate = useNavigate();
-  const { programId, moduleId, objectiveId } = useParams();
+  const { programId, moduleId, subModuleId, objectiveId } = useParams();
   const [activeTab, setActiveTab] = useState('resources'); // 'resources', 'assignments', 'practiceCodes', 'mcq'
   const [loading, setLoading] = useState(true);
   const [objective, setObjective] = useState(null);
@@ -29,54 +29,89 @@ const ManageContent = () => {
 
   useEffect(() => {
     loadObjective();
-  }, [objectiveId, moduleId, programId]);
+  }, [objectiveId, moduleId, subModuleId, programId]);
 
   const loadObjective = async () => {
     try {
       setLoading(true);
-      const response = await programAPI.getObjectivesByModule(moduleId);
-      console.log('getObjectivesByModule response:', response);
       
-      if (response.success && response.data) {
-        // Handle both response.data (array) and response.data.objectives (nested)
-        const objectives = response.data.objectives || response.data || [];
-        console.log('Objectives array:', objectives);
-        console.log('Looking for objectiveId:', objectiveId);
-        
+      // First, load the objective to get its details
+      let objectiveResponse;
+      if (subModuleId) {
+        objectiveResponse = await programAPI.getSubModuleObjectives(subModuleId);
+      } else {
+        objectiveResponse = await programAPI.getObjectivesByModule(moduleId);
+      }
+      
+      if (objectiveResponse.success && objectiveResponse.data) {
+        const objectives = objectiveResponse.data.objectives || objectiveResponse.data || [];
         const foundObjective = objectives.find(obj => {
           const objId = String(obj.id || obj._id);
           const targetId = String(objectiveId);
-          const match = objId === targetId;
-          console.log(`Comparing: ${objId} === ${targetId} = ${match}`);
-          return match;
+          return objId === targetId;
         });
         
         if (foundObjective) {
-          console.log('Found objective:', foundObjective);
-          console.log('Objective content:', {
-            resources: foundObjective.resources?.length || 0,
-            assignments: foundObjective.assignments?.length || 0,
-            practiceCodes: foundObjective.practiceCodes?.length || 0,
-            mcqQuestions: foundObjective.mcqQuestions?.length || 0,
-          });
-          
           setObjective(foundObjective);
-          setContent({
-            resources: foundObjective.resources || [],
-            assignments: foundObjective.assignments || [],
-            practiceCodes: foundObjective.practiceCodes || [],
-            mcqQuestions: foundObjective.mcqQuestions || [],
-          });
         } else {
-          console.error('Objective not found. Available objectives:', objectives.map(obj => ({
-            id: obj.id || obj._id,
-            title: obj.title
-          })));
+          console.error('Objective not found');
           toast.error('Objective not found');
+          return;
         }
       } else {
-        console.error('Invalid response structure:', response);
-        toast.error('Failed to load objectives');
+        toast.error('Failed to load objective');
+        return;
+      }
+
+      // Now fetch content from separate collections
+      try {
+        const [resourcesRes, assignmentsRes, practiceCodesRes, mcqsRes] = await Promise.all([
+          programAPI.getResourcesByObjective(objectiveId).catch((err) => {
+            console.error('Error fetching resources:', err);
+            return { success: false, data: { resources: [] } };
+          }),
+          programAPI.getAssignmentsByObjective(objectiveId).catch((err) => {
+            console.error('Error fetching assignments:', err);
+            return { success: false, data: { assignments: [] } };
+          }),
+          programAPI.getPracticeCodesByObjective(objectiveId).catch((err) => {
+            console.error('Error fetching practice codes:', err);
+            return { success: false, data: { practiceCodes: [] } };
+          }),
+          programAPI.getMCQsByObjective(objectiveId).catch((err) => {
+            console.error('Error fetching MCQs:', err);
+            return { success: false, data: { mcqs: [] } };
+          }),
+        ]);
+
+        console.log('Resources response:', resourcesRes);
+        console.log('Assignments response:', assignmentsRes);
+        console.log('Practice Codes response:', practiceCodesRes);
+        console.log('MCQs response:', mcqsRes);
+
+        const resources = resourcesRes.success && resourcesRes.data ? (resourcesRes.data.resources || []) : [];
+        const assignments = assignmentsRes.success && assignmentsRes.data ? (assignmentsRes.data.assignments || []) : [];
+        const practiceCodes = practiceCodesRes.success && practiceCodesRes.data ? (practiceCodesRes.data.practiceCodes || []) : [];
+        const mcqQuestions = mcqsRes.success && mcqsRes.data ? (mcqsRes.data.mcqs || []) : [];
+
+        console.log('Setting content:', { resources, assignments, practiceCodes, mcqQuestions });
+
+        setContent({
+          resources,
+          assignments,
+          practiceCodes,
+          mcqQuestions,
+        });
+      } catch (error) {
+        console.error('Error loading content:', error);
+        toast.error('Failed to load some content');
+        // Set empty arrays as fallback
+        setContent({
+          resources: [],
+          assignments: [],
+          practiceCodes: [],
+          mcqQuestions: [],
+        });
       }
     } catch (error) {
       console.error('Error loading objective:', error);
@@ -180,9 +215,79 @@ const ManageContent = () => {
   const handleSaveItem = async () => {
     if (!editingItem) return;
 
+    // Validate required fields
+    if (editingItem.type === 'resources' && !editingItem.data.title?.trim()) {
+      toast.error('Resource title is required');
+      return;
+    }
+    
+    if (editingItem.type === 'assignments' && !editingItem.data.name?.trim()) {
+      toast.error('Assignment name is required');
+      return;
+    }
+
     try {
       const isNew = editingItem.index === -1;
-      await saveContentToBackend(editingItem.data, editingItem.type, isNew);
+      
+      // Clean up the data before sending (remove file objects, keep only metadata)
+      const cleanedData = { ...editingItem.data };
+      
+      // For resources, clean up and ensure proper structure
+      if (editingItem.type === 'resources') {
+        // Remove file object if present (keep only metadata)
+        delete cleanedData.file;
+        
+        // Ensure proper field mapping
+        if (cleanedData.fileUrl && !cleanedData.url) {
+          cleanedData.url = cleanedData.fileUrl;
+        }
+        if (cleanedData.originalName && !cleanedData.fileName) {
+          cleanedData.fileName = cleanedData.originalName;
+        }
+        
+        // Ensure type and forWhom have defaults
+        if (!cleanedData.type) cleanedData.type = 'DOCUMENT';
+        if (!cleanedData.forWhom) cleanedData.forWhom = 'LEARNER';
+      }
+      
+      // For assignments, clean up resources array and ensure proper structure
+      if (editingItem.type === 'assignments') {
+        // Clean resources array
+        if (cleanedData.resources && Array.isArray(cleanedData.resources)) {
+          cleanedData.resources = cleanedData.resources.map(res => ({
+            type: res.type || 'DATASET',
+            title: res.title || '',
+            url: res.url || '',
+            fileKey: res.fileKey || '',
+            fileName: res.fileName || '',
+            fileSize: res.fileSize || 0,
+            mimeType: res.mimeType || '',
+            description: res.description || '',
+          })).filter(res => res.title || res.url || res.fileKey); // Remove empty resources
+        }
+        
+        // Ensure required fields have defaults
+        if (!cleanedData.name) cleanedData.name = 'Untitled Assignment';
+        if (!cleanedData.difficulty) cleanedData.difficulty = 'BEGINNER';
+        if (!cleanedData.maxMarks) cleanedData.maxMarks = 100;
+        if (!cleanedData.passingMarks) cleanedData.passingMarks = 50;
+        
+        // Remove instructions if it exists (backend doesn't use it, only problemStatement)
+        // But keep it if user wants to store it separately
+        // For now, we'll keep both fields
+      }
+      
+      // Remove any file objects or functions
+      Object.keys(cleanedData).forEach(key => {
+        if (cleanedData[key] && typeof cleanedData[key] === 'object' && !Array.isArray(cleanedData[key])) {
+          if (cleanedData[key] instanceof File) {
+            delete cleanedData[key];
+          }
+        }
+      });
+      
+      console.log('Saving assignment with cleaned data:', cleanedData);
+      await saveContentToBackend(cleanedData, editingItem.type, isNew);
       
       setEditingItem(null);
       toast.success('Content saved successfully');
@@ -200,22 +305,31 @@ const ManageContent = () => {
     }
 
     try {
+      console.log(`Saving ${type} (${isNew ? 'new' : 'update'}):`, { objectiveId, itemData });
+      
       if (isNew) {
         // Create new item
+        let response;
         switch (type) {
           case 'resources':
-            await programAPI.createResource(objectiveId, itemData);
+            response = await programAPI.createResource(objectiveId, itemData);
             break;
           case 'assignments':
-            await programAPI.createObjectiveAssignment(objectiveId, itemData);
+            console.log('Creating assignment with data:', itemData);
+            response = await programAPI.createObjectiveAssignment(objectiveId, itemData);
+            console.log('Assignment creation response:', response);
+            if (!response.success) {
+              throw new Error(response.message || 'Failed to create assignment');
+            }
             break;
           case 'practiceCodes':
-            await programAPI.createPracticeCode(objectiveId, itemData);
+            response = await programAPI.createPracticeCode(objectiveId, itemData);
             break;
           case 'mcq':
-            await programAPI.createMCQ(objectiveId, itemData);
+            response = await programAPI.createMCQ(objectiveId, itemData);
             break;
         }
+        return response;
       } else {
         // Update existing item
         const itemId = itemData.id || itemData._id;
@@ -223,23 +337,35 @@ const ManageContent = () => {
           toast.error('Item ID not found');
           return;
         }
+        let response;
         switch (type) {
           case 'resources':
-            await programAPI.updateResource(itemId, itemData);
+            response = await programAPI.updateResource(itemId, itemData);
             break;
           case 'assignments':
-            await programAPI.updateObjectiveAssignment(itemId, itemData);
+            console.log('Updating assignment with data:', itemData);
+            response = await programAPI.updateObjectiveAssignment(itemId, itemData);
+            console.log('Assignment update response:', response);
+            if (!response.success) {
+              throw new Error(response.message || 'Failed to update assignment');
+            }
             break;
           case 'practiceCodes':
-            await programAPI.updatePracticeCode(itemId, itemData);
+            response = await programAPI.updatePracticeCode(itemId, itemData);
             break;
           case 'mcq':
-            await programAPI.updateMCQ(itemId, itemData);
+            response = await programAPI.updateMCQ(itemId, itemData);
             break;
         }
+        return response;
       }
     } catch (error) {
       console.error(`Error saving ${type}:`, error);
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response,
+        data: error.data,
+      });
       throw error;
     }
   };
@@ -583,13 +709,26 @@ const ManageContent = () => {
         breadcrumbs={[
           { label: 'Programs', path: '/program-manager/programs' },
           { label: 'Modules', path: `/program-manager/programs/${programId}/modules` },
-          { label: 'Objectives', path: `/program-manager/programs/${programId}/modules/${moduleId}/objectives` },
+          { label: subModuleId ? 'Sub-Modules' : 'Objectives', path: subModuleId 
+            ? `/program-manager/programs/${programId}/modules/${moduleId}/submodules`
+            : `/program-manager/programs/${programId}/modules/${moduleId}/objectives` 
+          },
+          { label: 'Objectives', path: subModuleId 
+            ? `/program-manager/programs/${programId}/modules/${moduleId}/submodules/${subModuleId}/objectives`
+            : `/program-manager/programs/${programId}/modules/${moduleId}/objectives` 
+          },
           { label: 'Manage Content' },
         ]}
         actions={
           <Button
             variant="ghost"
-            onClick={() => navigate(`/program-manager/programs/${programId}/modules/${moduleId}/objectives`)}
+            onClick={() => {
+              if (subModuleId) {
+                navigate(`/program-manager/programs/${programId}/modules/${moduleId}/submodules/${subModuleId}/objectives`);
+              } else {
+                navigate(`/program-manager/programs/${programId}/modules/${moduleId}/objectives`);
+              }
+            }}
           >
             <ChevronLeft className="h-4 w-4 mr-2" />
             Back
@@ -811,20 +950,40 @@ const ManageContent = () => {
       return;
     }
 
+    if (!editingItem || !editingItem.data) {
+      toast.error('Please create a resource first');
+      return;
+    }
+
     const key = `resource-${resourceIndex}`;
     setUploadingFiles(prev => ({ ...prev, [key]: true }));
 
     try {
       const response = await uploadAPI.uploadFile(file, 'program-resources');
-      if (response.success) {
+      console.log('Upload response:', response);
+      
+      if (response && (response.success || response.url)) {
         const updated = { ...editingItem.data };
-        updated.url = response.data.url;
-        updated.fileKey = response.data.key;
-        updated.fileName = response.data.originalName;
-        updated.fileSize = response.data.size;
-        updated.mimeType = response.data.mimeType;
+        // Handle different response structures
+        if (response.data) {
+          updated.url = response.data.url || response.data.fileUrl || response.url;
+          updated.fileKey = response.data.key || response.data.fileKey || response.key;
+          updated.fileName = response.data.originalName || response.data.fileName || response.data.name || file.name;
+          updated.fileSize = response.data.size || response.data.fileSize || file.size;
+          updated.mimeType = response.data.mimeType || response.data.contentType || file.type;
+        } else {
+          // Direct response structure
+          updated.url = response.url || '';
+          updated.fileKey = response.key || '';
+          updated.fileName = response.originalName || response.fileName || file.name;
+          updated.fileSize = response.size || file.size;
+          updated.mimeType = response.mimeType || response.contentType || file.type;
+        }
+        
         setEditingItem({ ...editingItem, data: updated });
         toast.success('File uploaded successfully');
+      } else {
+        throw new Error(response?.message || 'Upload failed');
       }
     } catch (error) {
       console.error('Error uploading file:', error);
@@ -834,14 +993,14 @@ const ManageContent = () => {
     }
   };
 
-  const handleUploadMCQImage = async (imageType, file) => {
+  const handleUploadMCQImage = async (imageType, file, optionIndex = null) => {
     if (!file) return;
     if (file.size > 10 * 1024 * 1024) {
       toast.error('Image size must be less than 10MB');
       return;
     }
 
-    const key = `mcq-${imageType}`;
+    const key = optionIndex !== null ? `mcq-option-${optionIndex}` : `mcq-${imageType}`;
     setUploadingFiles(prev => ({ ...prev, [key]: true }));
 
     try {
@@ -854,6 +1013,19 @@ const ManageContent = () => {
         } else if (imageType === 'answer') {
           updated.answerImageUrl = response.data.url;
           updated.answerImageKey = response.data.key;
+        } else if (imageType === 'option' && optionIndex !== null) {
+          // Handle option image upload
+          if (!updated.options) updated.options = [];
+          if (typeof updated.options[optionIndex] === 'string') {
+            updated.options[optionIndex] = { text: updated.options[optionIndex], type: 'image', imageUrl: response.data.url, imageKey: response.data.key };
+          } else {
+            updated.options[optionIndex] = {
+              ...updated.options[optionIndex],
+              type: 'image',
+              imageUrl: response.data.url,
+              imageKey: response.data.key
+            };
+          }
         }
         setEditingItem({ ...editingItem, data: updated });
         toast.success('Image uploaded successfully');
@@ -883,22 +1055,6 @@ const ManageContent = () => {
   const handleDeleteTestCase = (testIndex) => {
     const updated = { ...editingItem.data };
     updated.testCases = updated.testCases.filter((_, i) => i !== testIndex);
-    setEditingItem({ ...editingItem, data: updated });
-  };
-
-  const handleAddAssignmentResource = () => {
-    const updated = { ...editingItem.data };
-    if (!updated.resources) updated.resources = [];
-    updated.resources.push({
-      type: 'DATASET',
-      title: '',
-      description: '',
-      url: '',
-      fileKey: '',
-      fileName: '',
-      fileSize: 0,
-      mimeType: '',
-    });
     setEditingItem({ ...editingItem, data: updated });
   };
 
@@ -1220,22 +1376,44 @@ const ManageContent = () => {
               <div>
                 <label className="text-sm font-semibold text-textMuted">Options</label>
                 <div className="space-y-2 mt-2">
-                  {data.options.map((opt, idx) => (
-                    <div key={idx} className="p-2 bg-gray-50 rounded border">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-semibold">{String.fromCharCode(65 + idx)}.</span>
-                        {typeof opt === 'object' && opt.imageUrl ? (
-                          <img src={opt.imageUrl} alt={`Option ${idx + 1}`} className="h-16 w-16 object-cover rounded" />
-                        ) : (
-                          <span className="text-text">{typeof opt === 'object' ? opt.text : opt}</span>
-                        )}
-                        {(data.correctAnswer === (typeof opt === 'object' ? opt.text : opt) || 
-                          (data.correctAnswers && data.correctAnswers.includes(typeof opt === 'object' ? opt.text : opt))) && (
-                          <span className="ml-auto px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs">Correct</span>
-                        )}
+                  {data.options.map((opt, idx) => {
+                    const optObj = typeof opt === 'object' ? opt : { text: opt, type: 'text', imageUrl: '', imageKey: '' };
+                    const optType = optObj.type || 'text';
+                    const optText = optObj.text || '';
+                    const optImageUrl = optObj.imageUrl || '';
+                    const optImageKey = optObj.imageKey || '';
+                    const optValue = optType === 'image' ? optImageUrl : optText;
+                    
+                    const isCorrect = data.questionType === 'SINGLE_CHOICE'
+                      ? (data.correctAnswer === optText || data.correctAnswer === optImageUrl)
+                      : (data.correctAnswers && (data.correctAnswers.includes(optText) || data.correctAnswers.includes(optImageUrl)));
+                    
+                    return (
+                      <div key={idx} className="p-2 bg-gray-50 rounded border">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold">{String.fromCharCode(65 + idx)}.</span>
+                          {optType === 'image' && optImageUrl ? (
+                            <div className="flex items-center gap-2">
+                              <img 
+                                src={getProxyUrl(optImageUrl, optImageKey)} 
+                                alt={`Option ${String.fromCharCode(65 + idx)}`} 
+                                className="h-20 w-auto object-contain rounded border"
+                                onError={(e) => {
+                                  e.target.src = optImageUrl;
+                                }}
+                              />
+                              <span className="text-xs text-textMuted">(Image)</span>
+                            </div>
+                          ) : (
+                            <span className="text-text">{optText || 'Empty option'}</span>
+                          )}
+                          {isCorrect && (
+                            <span className="ml-auto px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-semibold">✓ Correct</span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -1252,6 +1430,23 @@ const ManageContent = () => {
         return <div>Unknown content type</div>;
     }
   }
+
+  const handleAddAssignmentResource = () => {
+    const updated = { ...editingItem.data };
+    if (!updated.resources) updated.resources = [];
+    updated.resources.push({
+      type: 'DATASET',
+      title: '',
+      description: '',
+      url: '',
+      file: null,
+      fileKey: '',
+      fileName: '',
+      fileSize: 0,
+      mimeType: '',
+    });
+    setEditingItem({ ...editingItem, data: updated });
+  };
 
   // Render edit content (editable form)
   function renderEditContent(item) {
@@ -2024,31 +2219,130 @@ const ManageContent = () => {
                   </Button>
                 </div>
                 {(data.options || []).map((opt, idx) => {
-                  const optText = typeof opt === 'object' ? opt.text : opt;
+                  const optObj = typeof opt === 'object' ? opt : { text: opt, type: 'text', imageUrl: '', imageKey: '' };
+                  const optText = optObj.text || '';
+                  const optType = optObj.type || 'text';
+                  const optImageUrl = optObj.imageUrl || '';
+                  const optImageKey = optObj.imageKey || '';
+                  
+                  // For correct answer matching, use text or imageUrl
+                  const optValue = optType === 'image' ? optImageUrl : optText;
                   const isCorrect = data.questionType === 'SINGLE_CHOICE'
-                    ? (data.correctAnswer === optText)
-                    : ((data.correctAnswers || []).includes(optText));
+                    ? (data.correctAnswer === optText || data.correctAnswer === optImageUrl)
+                    : ((data.correctAnswers || []).includes(optText) || (data.correctAnswers || []).includes(optImageUrl));
                   
                   return (
                     <div key={idx} className="border rounded-lg p-3 space-y-2">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-semibold w-6">{String.fromCharCode(65 + idx)}</span>
-                        <input
-                          type="text"
-                          value={optText}
+                        
+                        {/* Option Type Toggle */}
+                        <select
+                          value={optType}
                           onChange={(e) => {
                             const updated = { ...data };
                             if (!updated.options) updated.options = [];
-                            if (typeof updated.options[idx] === 'object') {
-                              updated.options[idx].text = e.target.value;
-                            } else {
-                              updated.options[idx] = { text: e.target.value, type: 'text', imageUrl: '', imageKey: '' };
-                            }
+                            updated.options[idx] = {
+                              ...optObj,
+                              type: e.target.value,
+                              text: e.target.value === 'text' ? optText : '',
+                              imageUrl: e.target.value === 'image' ? optImageUrl : '',
+                              imageKey: e.target.value === 'image' ? optImageKey : ''
+                            };
                             setEditingItem({ ...item, data: updated });
                           }}
-                          className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
-                          placeholder={`Option ${String.fromCharCode(65 + idx)}`}
-                        />
+                          className="px-2 py-1 border border-gray-300 rounded text-xs"
+                        >
+                          <option value="text">Text</option>
+                          <option value="image">Image</option>
+                        </select>
+
+                        {/* Text Input (shown when type is text) */}
+                        {optType === 'text' && (
+                          <input
+                            type="text"
+                            value={optText}
+                            onChange={(e) => {
+                              const updated = { ...data };
+                              if (!updated.options) updated.options = [];
+                              updated.options[idx] = {
+                                ...optObj,
+                                text: e.target.value
+                              };
+                              setEditingItem({ ...item, data: updated });
+                            }}
+                            className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
+                            placeholder={`Option ${String.fromCharCode(65 + idx)}`}
+                          />
+                        )}
+
+                        {/* Image Upload (shown when type is image) */}
+                        {optType === 'image' && (
+                          <div className="flex-1">
+                            {optImageUrl ? (
+                              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded border">
+                                <img 
+                                  src={getProxyUrl(optImageUrl, optImageKey)} 
+                                  alt={`Option ${String.fromCharCode(65 + idx)}`}
+                                  className="h-12 w-auto rounded"
+                                  onError={(e) => {
+                                    e.target.src = optImageUrl;
+                                  }}
+                                />
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    const updated = { ...data };
+                                    if (!updated.options) updated.options = [];
+                                    updated.options[idx] = {
+                                      ...optObj,
+                                      imageUrl: '',
+                                      imageKey: ''
+                                    };
+                                    setEditingItem({ ...item, data: updated });
+                                  }}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <>
+                                <input
+                                  type="file"
+                                  id={`mcq-option-image-${idx}`}
+                                  onChange={(e) => {
+                                    const file = e.target.files[0];
+                                    if (file) {
+                                      handleUploadMCQImage('option', file, idx);
+                                      e.target.value = '';
+                                    }
+                                  }}
+                                  className="hidden"
+                                  accept="image/*"
+                                  disabled={uploadingFiles[`mcq-option-${idx}`]}
+                                />
+                                <label
+                                  htmlFor={`mcq-option-image-${idx}`}
+                                  className="flex items-center gap-2 px-2 py-1 border border-gray-300 rounded text-xs cursor-pointer hover:bg-gray-50"
+                                >
+                                  {uploadingFiles[`mcq-option-${idx}`] ? (
+                                    <>
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                      Uploading...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <ImageIcon className="h-3 w-3" />
+                                      Upload Image
+                                    </>
+                                  )}
+                                </label>
+                              </>
+                            )}
+                          </div>
+                        )}
+
                         <label className="flex items-center gap-1 text-xs cursor-pointer">
                           <input
                             type={data.questionType === 'MULTIPLE_CHOICE' ? 'checkbox' : 'radio'}
@@ -2057,13 +2351,13 @@ const ManageContent = () => {
                             onChange={(e) => {
                               const updated = { ...data };
                               if (data.questionType === 'SINGLE_CHOICE') {
-                                updated.correctAnswer = optText;
+                                updated.correctAnswer = optValue;
                               } else {
                                 if (!updated.correctAnswers) updated.correctAnswers = [];
                                 if (e.target.checked) {
-                                  updated.correctAnswers.push(optText);
+                                  updated.correctAnswers.push(optValue);
                                 } else {
-                                  updated.correctAnswers = updated.correctAnswers.filter(a => a !== optText);
+                                  updated.correctAnswers = updated.correctAnswers.filter(a => a !== optValue);
                                 }
                               }
                               setEditingItem({ ...item, data: updated });

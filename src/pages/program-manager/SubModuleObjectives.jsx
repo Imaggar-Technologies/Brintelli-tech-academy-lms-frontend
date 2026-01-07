@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { ChevronLeft, Plus, Target, Edit2, Trash2, Save } from 'lucide-react';
+import { ChevronLeft, Plus, Target, Edit2, Trash2, Save, FileText } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
 import Modal from '../../components/Modal';
@@ -194,6 +194,15 @@ const SubModuleObjectives = () => {
                     )}
                   </div>
                   <div className="flex items-center gap-2">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => navigate(`/program-manager/programs/${programId}/modules/${moduleId}/submodules/${subModuleId}/objectives/${objective.id || objective._id}/content`)}
+                      className="gap-1.5"
+                    >
+                      <FileText className="h-3.5 w-3.5" />
+                      Manage Content
+                    </Button>
                     <Button
                       variant="ghost"
                       size="sm"

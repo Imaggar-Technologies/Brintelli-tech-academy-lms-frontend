@@ -154,11 +154,11 @@ const Batches = () => {
       />
 
       {/* Batches Table */}
-      <div className="rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft p-6">
+      <div className="rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft p-4">
         {/* Search and Filters */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4">
           <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-textMuted" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-textMuted" />
             <input
               type="text"
               placeholder="Search batches..."
@@ -167,17 +167,17 @@ const Batches = () => {
                 setSearchTerm(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full pl-10 pr-4 py-2 rounded-xl border border-brintelli-border bg-brintelli-baseAlt text-sm focus:border-brand-500 focus:outline-none"
+              className="w-full pl-9 pr-3 py-1.5 rounded-lg border border-brintelli-border bg-brintelli-baseAlt text-xs focus:border-brand-500 focus:outline-none"
             />
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-1.5">
             <select
               value={filters.status}
               onChange={(e) => {
                 setFilters({ ...filters, status: e.target.value });
                 setCurrentPage(1);
               }}
-              className="px-4 py-2 border border-brintelli-border rounded-lg bg-brintelli-card text-text focus:outline-none focus:ring-2 focus:ring-brand-500/20 text-sm"
+              className="px-3 py-1.5 border border-brintelli-border rounded-lg bg-brintelli-card text-text focus:outline-none focus:ring-2 focus:ring-brand-500/20 text-xs"
             >
               <option value="">All Statuses</option>
               <option value="UPCOMING">Upcoming</option>
@@ -192,7 +192,7 @@ const Batches = () => {
                 setFilters({ ...filters, courseId: e.target.value });
                 setCurrentPage(1);
               }}
-              className="px-4 py-2 border border-brintelli-border rounded-lg bg-brintelli-card text-text focus:outline-none focus:ring-2 focus:ring-brand-500/20 text-sm"
+              className="px-3 py-1.5 border border-brintelli-border rounded-lg bg-brintelli-card text-text focus:outline-none focus:ring-2 focus:ring-brand-500/20 text-xs"
             >
               <option value="">All Programs</option>
               {programs.map((program) => (
@@ -209,34 +209,35 @@ const Batches = () => {
                 setSearchTerm('');
                 setCurrentPage(1);
               }}
+              className="px-2.5 py-1.5 text-xs"
             >
               Clear
             </Button>
-            <Button variant="ghost" size="sm" onClick={fetchBatches}>
-              <RefreshCw className="h-4 w-4" />
+            <Button variant="ghost" size="sm" onClick={fetchBatches} className="px-2.5 py-1.5">
+              <RefreshCw className="h-3.5 w-3.5" />
             </Button>
           </div>
         </div>
 
         {/* Table */}
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-brand-500"></div>
-            <span className="ml-3 text-textMuted">Loading batches...</span>
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-brand-500"></div>
+            <span className="ml-3 text-xs text-textMuted">Loading batches...</span>
           </div>
         ) : filteredBatches.length === 0 ? (
-          <div className="text-center py-12">
-            <Users className="h-12 w-12 text-textMuted mx-auto mb-4" />
-            <p className="text-textMuted">
+          <div className="text-center py-8">
+            <Users className="h-8 w-8 text-textMuted mx-auto mb-3" />
+            <p className="text-xs text-textMuted">
               {searchTerm ? "No batches match your search." : "No batches found. Create your first batch!"}
             </p>
             {!searchTerm && (
               <Button
                 variant="secondary"
-                className="mt-4"
+                className="mt-3 text-xs px-3 py-1.5"
                 onClick={() => navigate('/program-manager/batches/create')}
               >
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="h-3 w-3 mr-1.5" />
                 Create Batch
               </Button>
             )}
@@ -246,19 +247,19 @@ const Batches = () => {
             <table className="w-full divide-y divide-brintelli-border">
               <thead className="bg-brintelli-baseAlt/50">
                 <tr>
-                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Batch Name</th>
-                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Program</th>
-                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Start Date</th>
-                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">End Date</th>
-                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Enrolled</th>
-                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Status</th>
-                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Actions</th>
+                  <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-textMuted">Batch Name</th>
+                  <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-textMuted">Program</th>
+                  <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-textMuted">Start Date</th>
+                  <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-textMuted">End Date</th>
+                  <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-textMuted">Enrolled</th>
+                  <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-textMuted">Status</th>
+                  <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-textMuted">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-brintelli-border/30">
                 {paginatedBatches.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-16 text-center">
+                    <td colSpan={7} className="px-4 py-12 text-center">
                       <div className="flex flex-col items-center justify-center">
                         <p className="text-sm font-medium text-textMuted">
                           {searchTerm ? "No batches match your search." : "No batches found."}
@@ -272,42 +273,42 @@ const Batches = () => {
                       key={batch.id || batch._id} 
                       className="transition-colors duration-150 hover:bg-brintelli-baseAlt/30"
                     >
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-text">{batch.name || 'N/A'}</div>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="text-[11px] font-medium text-text">{batch.name || 'N/A'}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-text">{getProgramName(batch.courseId)}</div>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="text-[11px] text-text">{getProgramName(batch.courseId)}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-text">{formatDate(batch.startDate)}</div>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="text-[11px] text-text">{formatDate(batch.startDate)}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-text">{formatDate(batch.endDate)}</div>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="text-[11px] text-text">{formatDate(batch.endDate)}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-text">
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="text-[11px] font-medium text-text">
                           {batch.enrolled || batch.students?.length || 0} / {batch.capacity || 30}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${getStatusColor(batch.status)}`}>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${getStatusColor(batch.status)}`}>
                           {batch.status || 'N/A'}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-3">
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
                           <button
                             onClick={() => handleViewStudents(batch)}
-                            className="text-sm font-medium text-brand-600 hover:text-brand-700 flex items-center gap-1.5 transition-colors"
+                            className="text-[10px] font-medium text-brand-600 hover:text-brand-700 flex items-center gap-1 transition-colors"
                           >
-                            <Users className="h-4 w-4" />
+                            <Users className="h-3 w-3" />
                             Students ({batch.students?.length || batch.enrolled || 0})
                           </button>
                           <button
                             onClick={() => navigate(`/program-manager/batches/${batch.id || batch._id}/sessions`)}
-                            className="text-sm font-medium text-brand-600 hover:text-brand-700 flex items-center gap-1.5 transition-colors"
+                            className="text-[10px] font-medium text-brand-600 hover:text-brand-700 flex items-center gap-1 transition-colors"
                           >
-                            <Calendar className="h-4 w-4" />
+                            <Calendar className="h-3 w-3" />
                             Sessions
                           </button>
                         </div>

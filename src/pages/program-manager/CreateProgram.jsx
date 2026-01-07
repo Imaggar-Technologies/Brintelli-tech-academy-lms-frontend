@@ -61,12 +61,12 @@ const CreateProgram = () => {
           status: program.status || 'DRAFT',
         });
 
-        // Load modules
+        // Load modules (which now includes sub-modules from backend)
         const modulesResponse = await programAPI.getModulesByProgram(programId);
         if (modulesResponse.success && modulesResponse.data.modules) {
           setModules(modulesResponse.data.modules.map(m => ({
             ...m,
-            objectives: m.objectives || []
+            subModules: m.subModules || []
           })));
         }
       }
@@ -150,7 +150,7 @@ const CreateProgram = () => {
       if (modulesResponse.success && modulesResponse.data.modules) {
         setModules(modulesResponse.data.modules.map(m => ({
           ...m,
-          objectives: m.objectives || []
+          subModules: m.subModules || []
         })));
       }
     } catch (error) {
@@ -210,9 +210,30 @@ const CreateProgram = () => {
       return;
     }
 
+    // Validate that each module has at least one sub-module with objectives
     for (const module of modules) {
-      if (!module.objectives || module.objectives.length === 0) {
-        toast.error(`Module "${module.name}" must have at least one learning objective`);
+      if (!module.subModules || module.subModules.length === 0) {
+        toast.error(`Module "${module.name}" must have at least one sub-module`);
+        return;
+      }
+
+      // Check if at least one sub-module has objectives
+      // We'll check by fetching objectives for each sub-module
+      let hasObjectives = false;
+      for (const subModule of module.subModules) {
+        try {
+          const objectivesResponse = await programAPI.getSubModuleObjectives(subModule.id || subModule._id);
+          if (objectivesResponse.success && objectivesResponse.data.objectives && objectivesResponse.data.objectives.length > 0) {
+            hasObjectives = true;
+            break;
+          }
+        } catch (error) {
+          console.error(`Error checking objectives for sub-module ${subModule.id}:`, error);
+        }
+      }
+
+      if (!hasObjectives) {
+        toast.error(`Module "${module.name}" must have at least one sub-module with learning objectives`);
         return;
       }
     }
@@ -232,9 +253,10 @@ const CreateProgram = () => {
 
   const calculateStats = () => {
     const totalModules = modules.length;
-    const totalObjectives = modules.reduce((sum, m) => sum + (m.objectives?.length || 0), 0);
+    const totalSubModules = modules.reduce((sum, m) => sum + (m.subModules?.length || 0), 0);
+    // Note: Total objectives would require fetching from each sub-module, so we'll show sub-modules count instead
     const totalDuration = modules.reduce((sum, m) => sum + (m.duration || 0), 0);
-    return { totalModules, totalObjectives, totalDuration };
+    return { totalModules, totalSubModules, totalDuration };
   };
 
   const stats = calculateStats();
@@ -442,8 +464,8 @@ const CreateProgram = () => {
                     <span className="font-medium">{stats.totalModules} Modules</span>
                   </span>
                   <span className="flex items-center gap-2 text-textMuted">
-                    <BookOpen className="h-4 w-4" />
-                    <span className="font-medium">{stats.totalObjectives} Objectives</span>
+                    <Layers3 className="h-4 w-4" />
+                    <span className="font-medium">{stats.totalSubModules} Sub-Modules</span>
                   </span>
                   <span className="flex items-center gap-2 text-textMuted">
                     <FileText className="h-4 w-4" />

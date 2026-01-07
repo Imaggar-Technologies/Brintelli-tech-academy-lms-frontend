@@ -139,7 +139,13 @@ import SubModuleObjectives from "../pages/program-manager/SubModuleObjectives";
 import SubModules from "../pages/program-manager/SubModules";
 import ObjectiveDetails from "../pages/program-manager/ObjectiveDetails";
 import ManageContent from "../pages/program-manager/ManageContent";
+import Content from "../pages/program-manager/Content";
+import ProgramManagerAssessments from "../pages/program-manager/Assessments";
 import Assignments from "../pages/program-manager/Assignments";
+import Resources from "../pages/program-manager/Resources";
+import CodingChallenges from "../pages/program-manager/CodingChallenges";
+import MCQAssessments from "../pages/program-manager/MCQAssessments";
+import AllAssignments from "../pages/program-manager/AllAssignments";
 import S3Status from "../pages/program-manager/S3Status";
 import Curriculum from "../pages/program-manager/Curriculum";
 import Batches from "../pages/program-manager/Batches";
@@ -150,6 +156,13 @@ import TutorAssign from "../pages/program-manager/TutorAssign";
 import TutorPerformance from "../pages/program-manager/TutorPerformance";
 import ProgramManagerTutorSchedule from "../pages/program-manager/TutorSchedule";
 import SessionDetails from "../pages/program-manager/SessionDetails";
+import CalendarPage from "../pages/program-manager/Calendar";
+import BatchHealth from "../pages/program-manager/BatchHealth";
+import BatchSchedule from "../pages/program-manager/BatchSchedule";
+import ProgramManagerProfile from "../pages/program-manager/Profile";
+import Workshops from "../pages/program-manager/Workshops";
+import Feedbacks from "../pages/program-manager/Feedbacks";
+import WorkloadBalancer from "../pages/program-manager/WorkloadBalancer";
 import FinanceDashboard from "../pages/finance/Dashboard";
 import FinanceDeals from "../pages/finance/Deals";
 import Scholarships from "../pages/finance/Scholarships";
@@ -463,6 +476,7 @@ const AppRouter = () => {
             <Route path="programs/:programId/modules/:moduleId/submodules/new" element={<SubModuleDetails />} />
             <Route path="programs/:programId/modules/:moduleId/submodules/:subModuleId" element={<SubModuleDetails />} />
             <Route path="programs/:programId/modules/:moduleId/submodules/:subModuleId/objectives" element={<SubModuleObjectives />} />
+            <Route path="programs/:programId/modules/:moduleId/submodules/:subModuleId/objectives/:objectiveId/content" element={<ManageContent />} />
             {/* Redirect old objectives route to sub-modules */}
             <Route path="programs/:programId/modules/:moduleId/objectives" element={<SubModules />} />
             <Route path="programs/:programId/add-modules" element={<AddModules />} />
@@ -470,16 +484,29 @@ const AppRouter = () => {
             <Route path="modules/:programId/assignments/:moduleId" element={<Assignments />} />
             <Route path="s3-status" element={<S3Status />} />
             <Route path="curriculum" element={<Curriculum />} />
+            <Route path="content" element={<Content />} />
+            <Route path="assessments" element={<ProgramManagerAssessments />} />
+            <Route path="resources" element={<Resources />} />
+            <Route path="coding-challenges" element={<CodingChallenges />} />
+            <Route path="mcq-assessments" element={<MCQAssessments />} />
+            <Route path="all-assignments" element={<AllAssignments />} />
             <Route path="batches" element={<Batches />} />
             <Route path="batches/:batchId/sessions" element={<BatchSessions />} />
             <Route path="batches/create" element={<CreateBatch />} />
             <Route path="batches/create/:programId" element={<CreateBatch />} />
+            <Route path="batch-health" element={<BatchHealth />} />
+            <Route path="batch-schedule" element={<BatchSchedule />} />
             <Route path="tutors" element={<Tutors />} />
             <Route path="tutors/assign" element={<TutorAssign />} />
             <Route path="tutor-performance" element={<TutorPerformance />} />
             <Route path="tutor-schedule" element={<ProgramManagerTutorSchedule />} />
+            <Route path="calendar" element={<CalendarPage />} />
             <Route path="sessions/:sessionId" element={<SessionDetails />} />
             <Route path="sessions/:sessionId/live" element={<TutorLiveSessionRoom />} />
+            <Route path="profile" element={<ProgramManagerProfile />} />
+            <Route path="workshops" element={<Workshops />} />
+            <Route path="feedbacks" element={<Feedbacks />} />
+            <Route path="workload-balancer" element={<WorkloadBalancer />} />
           </Route>
 
           <Route path="finance">

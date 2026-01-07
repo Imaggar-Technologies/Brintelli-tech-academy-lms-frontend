@@ -239,7 +239,7 @@ const Programs = () => {
     };
     const config = statusConfig[status] || statusConfig.DRAFT;
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
+      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${config.bg} ${config.text}`}>
         {config.label}
       </span>
     );
@@ -266,11 +266,11 @@ const Programs = () => {
 
       {/* Programs Table */}
       <div className="rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft">
-        <div className="border-b border-brintelli-border p-4">
+        <div className="border-b border-brintelli-border p-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-text">All Programs</h3>
+            <h3 className="text-base font-semibold text-text">All Programs</h3>
             <div className="relative w-64">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-textMuted" />
+              <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-textMuted" />
               <input
                 type="text"
                 placeholder="Search programs..."
@@ -279,35 +279,35 @@ const Programs = () => {
                   setSearchTerm(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="w-full rounded-xl border border-brintelli-border bg-brintelli-baseAlt px-10 py-2 text-sm focus:border-brand-500 focus:outline-none"
+                className="w-full rounded-lg border border-brintelli-border bg-brintelli-baseAlt px-9 py-1.5 text-xs focus:border-brand-500 focus:outline-none"
               />
             </div>
           </div>
         </div>
         <div>
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <RefreshCw className="h-6 w-6 animate-spin text-brand" />
-              <span className="ml-3 text-textMuted">Loading programs...</span>
+            <div className="flex items-center justify-center py-8">
+              <RefreshCw className="h-5 w-5 animate-spin text-brand" />
+              <span className="ml-3 text-xs text-textMuted">Loading programs...</span>
             </div>
           ) : (
             <table className="w-full divide-y divide-brintelli-border">
               <thead className="bg-brintelli-baseAlt/50">
                 <tr>
-                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Program Name</th>
-                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Code</th>
-                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Duration</th>
-                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Price</th>
-                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Status</th>
-                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Modules</th>
-                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Assigned To</th>
-                  <th className="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">Actions</th>
+                  <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-textMuted">Program Name</th>
+                  <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-textMuted">Code</th>
+                  <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-textMuted">Duration</th>
+                  <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-textMuted">Price</th>
+                  <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-textMuted">Status</th>
+                  <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-textMuted">Modules</th>
+                  <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-textMuted">Assigned To</th>
+                  <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-textMuted">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-brintelli-border/30">
                 {paginatedPrograms.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-6 py-16 text-center">
+                    <td colSpan={8} className="px-4 py-12 text-center">
                       <div className="flex flex-col items-center justify-center">
                         <p className="text-sm font-medium text-textMuted">
                           {searchTerm ? "No programs match your search." : "No programs found."}
@@ -333,47 +333,47 @@ const Programs = () => {
                         key={programId} 
                         className="transition-colors duration-150 hover:bg-brintelli-baseAlt/30"
                       >
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-4 py-3 whitespace-nowrap">
                           <div>
-                            <div className="font-semibold text-text">{program.name || '—'}</div>
+                            <div className="font-semibold text-xs text-text">{program.name || '—'}</div>
                             {program.description && (
-                              <div className="text-xs text-textMuted mt-0.5 line-clamp-1 max-w-xs">
+                              <div className="text-[10px] text-textMuted mt-0.5 line-clamp-1 max-w-xs">
                                 {program.description}
                               </div>
                             )}
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="font-mono text-sm text-textMuted">{program.code || '—'}</span>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className="font-mono text-[11px] text-textMuted">{program.code || '—'}</span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-sm text-text">
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className="text-[11px] text-text">
                             {program.duration ? `${program.duration} months` : '—'}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="font-semibold text-text">
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className="font-semibold text-[11px] text-text">
                             ₹{program.price ? program.price.toLocaleString('en-IN') : '0'}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-4 py-3 whitespace-nowrap">
                           {getStatusBadge(program.status || 'DRAFT')}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <Layers3 className="h-4 w-4 text-textMuted" />
-                            <span className="text-sm text-text">
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <div className="flex items-center gap-1.5">
+                            <Layers3 className="h-3 w-3 text-textMuted" />
+                            <span className="text-[11px] text-text">
                               {program.modulesCount || 0} modules
                             </span>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-sm text-text">
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className="text-[11px] text-text">
                             {program.createdByEmail || program.createdBy || program.assignedTo || '—'}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <div className="flex items-center gap-1.5">
                             <Button
                               variant="ghost"
                               size="sm"
@@ -383,7 +383,7 @@ const Programs = () => {
                                   navigate(`/program-manager/modules/${programId}`);
                                 }
                               }}
-                              className="gap-1"
+                              className="gap-1 px-2 py-1 text-[10px]"
                             >
                               <Eye className="h-3 w-3" />
                               View
@@ -397,7 +397,7 @@ const Programs = () => {
                                   navigate(`/program-manager/programs/create/${programId}`);
                                 }
                               }}
-                              className="gap-1"
+                              className="gap-1 px-2 py-1 text-[10px]"
                             >
                               <Edit2 className="h-3 w-3" />
                               Edit

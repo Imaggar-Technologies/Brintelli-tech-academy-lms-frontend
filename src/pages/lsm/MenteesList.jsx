@@ -32,15 +32,15 @@ const LsmMenteesList = () => {
       
       // Fetch risk data for all students
       const riskResponse = await lsmAPI.getRiskStudents({});
-      const riskData = riskResponse.success ? (riskResponse.data?.riskStudents || riskResponse.data || []) : [];
+      const riskData = riskResponse.success ? (riskResponse.data || []) : [];
       
       // Fetch readiness data
       const readinessResponse = await lsmAPI.getReadiness({});
-      const readinessData = readinessResponse.success ? (readinessResponse.data?.readiness || readinessResponse.data || []) : [];
+      const readinessData = readinessResponse.success ? (readinessResponse.data || []) : [];
       
       // Fetch progress data
       const progressResponse = await lsmAPI.getProgress({});
-      const progressData = progressResponse.success ? (progressResponse.data?.progress || progressResponse.data || []) : [];
+      const progressData = progressResponse.success ? (progressResponse.data || []) : [];
 
       // Map students to mentees with enriched data
       const menteesData = students.map((student) => {

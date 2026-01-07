@@ -3,20 +3,19 @@ FROM node:20 AS builder
 
 WORKDIR /app
 
-# 🔒 FORCE devDependencies (CRITICAL)
+# 🔒 Force devDependencies
 ENV NODE_ENV=development
-ENV NPM_CONFIG_PRODUCTION=false
 
 COPY package.json package-lock.json ./
 
-# ✅ npm ci is fine AFTER forcing dev deps
-RUN npm ci
+# ✅ THIS IS THE KEY LINE (DO NOT USE npm ci)
+RUN npm install --no-audit --no-fund
 
 COPY . .
 
 ENV NODE_OPTIONS=--max-old-space-size=4096
 
-# ✅ npm script uses local vite
+# ✅ vite WILL exist now
 RUN npm run build
 
 # ===== RUN STAGE =====
@@ -29,3 +28,4 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
+    

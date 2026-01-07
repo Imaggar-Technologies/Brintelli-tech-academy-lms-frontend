@@ -21,10 +21,15 @@
     "react-router-dom": "^7.9.6",
     "redux-persist": "^6.0.0",
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     "socket.io-client": "^4.8.3",
     "uuid": "^13.0.0",
     "vite": "^7.2.4",
     "@vitejs/plugin-react": "^5.1.1"
+=======
+    "socket.io-client": "^4.8.1",
+    "xlsx": "^0.18.5"
+>>>>>>> Stashed changes
 =======
     "socket.io-client": "^4.8.1",
     "xlsx": "^0.18.5"

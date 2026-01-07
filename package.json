@@ -22,8 +22,6 @@
     "redux-persist": "^6.0.0",
     "socket.io-client": "^4.8.3",
     "uuid": "^13.0.0",
-
-    // 🔑 BUILD TOOLS MUST BE HERE
     "vite": "^7.2.4",
     "@vitejs/plugin-react": "^5.1.1"
   },

@@ -164,10 +164,10 @@ const BulkMCQUploadModal = ({ isOpen, onClose, objectiveId: propObjectiveId, onS
 
         if (validationErrors.length > 0) {
           setErrors(validationErrors);
-          toast.error(Found ${validationErrors.length} validation errors. Please check the preview.);
+          toast.error(`Found ${validationErrors.length} validation errors. Please check the preview.`);
         } else {
           setErrors([]);
-          toast.success(Successfully parsed ${questions.length} questions);
+          toast.success(`Successfully parsed ${questions.length} questions`);
         }
 
         setParsedData(questions);
@@ -196,7 +196,7 @@ const BulkMCQUploadModal = ({ isOpen, onClose, objectiveId: propObjectiveId, onS
       const answers = (row[19] || '').toString().trim(); // Column T (index 19)
 
       if (!question) {
-        errors.push(Row ${rowNumber}: Question is required);
+        errors.push(`Row ${rowNumber}: Question is required`);
         return null;
       }
 
@@ -222,7 +222,7 @@ const BulkMCQUploadModal = ({ isOpen, onClose, objectiveId: propObjectiveId, onS
       }
 
       if (options.length === 0) {
-        errors.push(Row ${rowNumber}: At least one option is required);
+        errors.push(`Row ${rowNumber}: At least one option is required`);
         return null;
       }
 
@@ -249,7 +249,7 @@ const BulkMCQUploadModal = ({ isOpen, onClose, objectiveId: propObjectiveId, onS
       }
 
       if (correctAnswers.length === 0 && questionTypeEnum !== 'ONE_WORD') {
-        errors.push(Row ${rowNumber}: At least one correct answer is required);
+        errors.push(`Row ${rowNumber}: At least one correct answer is required`);
         return null;
       }
 
@@ -265,7 +265,7 @@ const BulkMCQUploadModal = ({ isOpen, onClose, objectiveId: propObjectiveId, onS
         rowNumber,
       };
     } catch (error) {
-      errors.push(Row ${rowNumber}: Error parsing row - ${error.message});
+      errors.push(`Row ${rowNumber}: Error parsing row - ${error.message}`);
       return null;
     }
   };
@@ -302,18 +302,18 @@ const BulkMCQUploadModal = ({ isOpen, onClose, objectiveId: propObjectiveId, onS
           setUploadProgress({ current: i + 1, total: parsedData.length });
         } catch (error) {
           failCount++;
-          uploadErrors.push(Row ${question.rowNumber}: ${error.message || 'Failed to create'});
-          console.error(Error creating MCQ for row ${question.rowNumber}:, error);
+          uploadErrors.push(`Row ${question.rowNumber}: ${error.message || 'Failed to create'}`);
+          console.error(`Error creating MCQ for row ${question.rowNumber}:`, error);
         }
       }
 
     setUploading(false);
 
     if (successCount > 0) {
-      toast.success(Successfully created ${successCount} MCQ question(s));
+      toast.success(`Successfully created ${successCount} MCQ question(s)`);
     }
     if (failCount > 0) {
-      toast.error(Failed to create ${failCount} question(s). Check console for details.);
+      toast.error(`Failed to create ${failCount} question(s). Check console for details.`);
       setErrors([...errors, ...uploadErrors]);
     }
 
@@ -529,10 +529,10 @@ const BulkMCQUploadModal = ({ isOpen, onClose, objectiveId: propObjectiveId, onS
               </span>
             </div>
             <div className="w-full bg-blue-200 rounded-full h-2">
-              <div
-                className="bg-blue-600 h-2 rounded-full transition-all"
-                style={{ width: ${(uploadProgress.current / uploadProgress.total) * 100}% }}
-              />
+                <div
+                  className="bg-blue-600 h-2 rounded-full transition-all"
+                  style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
+                />
             </div>
           </div>
         )}

@@ -3,19 +3,19 @@ FROM node:20 AS builder
 
 WORKDIR /app
 
-# 🔒 Force devDependencies
+# Force devDependencies
 ENV NODE_ENV=development
 
 COPY package.json package-lock.json ./
 
-# ✅ THIS IS THE KEY LINE (DO NOT USE npm ci)
+# ✅ MUST use npm install (not npm ci)
 RUN npm install --no-audit --no-fund
 
 COPY . .
 
 ENV NODE_OPTIONS=--max-old-space-size=4096
 
-# ✅ vite WILL exist now
+# vite will now exist
 RUN npm run build
 
 # ===== RUN STAGE =====
@@ -28,4 +28,3 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
-    

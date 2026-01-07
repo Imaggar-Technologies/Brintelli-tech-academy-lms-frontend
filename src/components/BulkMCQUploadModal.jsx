@@ -271,7 +271,6 @@ const BulkMCQUploadModal = ({ isOpen, onClose, objectiveId: propObjectiveId, onS
   };
 
   const handleUpload = async () => {
-    const finalObjectiveId = propObjectiveId || selectedObjectiveId;
     if (!finalObjectiveId) {
       toast.error('Please select an objective');
       return;

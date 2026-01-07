@@ -3,19 +3,24 @@ FROM node:20 AS builder
 
 WORKDIR /app
 
-# 🔑 FORCE devDependencies (do NOT rely on defaults)
+# 🔒 HARD OVERRIDE — never skip devDependencies
 ENV NODE_ENV=development
-ENV npm_config_production=false
+ENV NPM_CONFIG_PRODUCTION=false
 
 COPY package.json package-lock.json ./
-RUN npm ci --prefer-offline --no-audit
+
+# 🔒 Use npm install (not npm ci) to FORCE dev deps
+RUN npm install --no-audit --no-fund
+
+# 🔍 VERIFY vite exists (this line is intentional)
+RUN ls -la node_modules/.bin | grep vite
 
 COPY . .
 
 ENV NODE_OPTIONS=--max-old-space-size=4096
 
-# 🔑 Use npx so vite is resolved explicitly
-RUN npx vite build
+# 🔒 Run vite explicitly
+RUN ./node_modules/.bin/vite build
 
 # ===== RUN STAGE =====
 FROM nginx:alpine

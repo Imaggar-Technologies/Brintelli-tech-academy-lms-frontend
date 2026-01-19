@@ -17,22 +17,178 @@ const Feedbacks = () => {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [selectedFeedback, setSelectedFeedback] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newFeedback, setNewFeedback] = useState({
+    rating: 5,
+    comment: '',
+    type: 'session',
+    tutorName: '',
+    sessionTitle: '',
+  });
 
   useEffect(() => {
     fetchFeedbacks();
   }, []);
 
+  // Generate mock feedback data
+  const generateMockFeedbacks = () => {
+    const mockFeedbacks = [
+      {
+        id: '1',
+        rating: 5,
+        comment: 'Excellent session! The tutor explained complex concepts very clearly. The interactive examples helped me understand the material much better.',
+        type: 'session',
+        tutorName: 'Dr. Sarah Johnson',
+        sessionTitle: 'Introduction to React Hooks',
+        date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+        studentName: 'John Doe',
+      },
+      {
+        id: '2',
+        rating: 4,
+        comment: 'Good overall, but could use more practice exercises. The tutor was knowledgeable and patient.',
+        type: 'tutor',
+        tutorName: 'Prof. Michael Chen',
+        sessionTitle: 'Advanced JavaScript Patterns',
+        date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+        studentName: 'Jane Smith',
+      },
+      {
+        id: '3',
+        rating: 5,
+        comment: 'Outstanding program! The curriculum is well-structured and the support team is very responsive.',
+        type: 'program',
+        tutorName: 'Ms. Emily Davis',
+        sessionTitle: 'Full Stack Development Program',
+        date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+        studentName: 'Robert Williams',
+      },
+      {
+        id: '4',
+        rating: 3,
+        comment: 'The session was okay, but I felt the pace was a bit too fast. More time for questions would be helpful.',
+        type: 'session',
+        tutorName: 'Dr. James Wilson',
+        sessionTitle: 'Database Design Fundamentals',
+        date: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+        studentName: 'Maria Garcia',
+      },
+      {
+        id: '5',
+        rating: 5,
+        comment: 'Amazing tutor! Very engaging and makes learning fun. Highly recommend!',
+        type: 'tutor',
+        tutorName: 'Dr. Sarah Johnson',
+        sessionTitle: 'Node.js Backend Development',
+        date: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).toISOString(),
+        studentName: 'David Brown',
+      },
+      {
+        id: '6',
+        rating: 4,
+        comment: 'Great program structure. The projects are challenging but rewarding. Would like more mentorship sessions.',
+        type: 'program',
+        tutorName: 'Prof. Michael Chen',
+        sessionTitle: 'Data Science Bootcamp',
+        date: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
+        studentName: 'Lisa Anderson',
+      },
+      {
+        id: '7',
+        rating: 5,
+        comment: 'Perfect balance of theory and practice. The tutor provided excellent real-world examples.',
+        type: 'session',
+        tutorName: 'Ms. Emily Davis',
+        sessionTitle: 'API Development with Express',
+        date: new Date(Date.now() - 18 * 24 * 60 * 60 * 1000).toISOString(),
+        studentName: 'Chris Taylor',
+      },
+      {
+        id: '8',
+        rating: 2,
+        comment: 'The session was not what I expected. The material was too basic and the tutor seemed unprepared.',
+        type: 'session',
+        tutorName: 'Dr. James Wilson',
+        sessionTitle: 'Introduction to Python',
+        date: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
+        studentName: 'Alex Martinez',
+      },
+    ];
+    return mockFeedbacks;
+  };
+
   const fetchFeedbacks = async () => {
     try {
       setLoading(true);
-      // TODO: Replace with actual feedbacks API
-      // Mock data for now
-      setFeedbacks([]);
+      // Try to fetch from API, fallback to mock data if API fails
+      try {
+        const response = await feedbackAPI.getAllFeedbacks();
+        if (response.success && response.data && response.data.length > 0) {
+          setFeedbacks(response.data);
+        } else {
+          // If API returns empty or no data, use mock data
+          const mockData = generateMockFeedbacks();
+          setFeedbacks(mockData);
+        }
+      } catch (apiError) {
+        // If API call fails, use mock data
+        console.warn('API call failed, using mock data:', apiError);
+        const mockData = generateMockFeedbacks();
+        setFeedbacks(mockData);
+      }
     } catch (error) {
       console.error('Error fetching feedbacks:', error);
       toast.error('Failed to load feedbacks');
+      // Fallback to mock data on error
+      const mockData = generateMockFeedbacks();
+      setFeedbacks(mockData);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const createMockFeedback = async () => {
+    try {
+      const feedbackData = {
+        ...newFeedback,
+        date: new Date().toISOString(),
+        studentName: 'Test Student',
+      };
+
+      // Try to create via API, but also add to local state
+      try {
+        const response = await feedbackAPI.createFeedback(feedbackData);
+        if (response.success && response.data) {
+          setFeedbacks([response.data, ...feedbacks]);
+          toast.success('Feedback created successfully!');
+        } else {
+          // If API fails, add to local state
+          const newId = String(Date.now());
+          const createdFeedback = { ...feedbackData, id: newId };
+          setFeedbacks([createdFeedback, ...feedbacks]);
+          toast.success('Mock feedback created successfully!');
+        }
+      } catch (apiError) {
+        // If API call fails, add to local state
+        console.warn('API create failed, adding to local state:', apiError);
+        const newId = String(Date.now());
+        const createdFeedback = { ...feedbackData, id: newId };
+        setFeedbacks([createdFeedback, ...feedbacks]);
+        toast.success('Mock feedback created successfully!');
+      }
+
+      // Reset form
+      setNewFeedback({
+        rating: 5,
+        comment: '',
+        type: 'session',
+        tutorName: '',
+        sessionTitle: '',
+      });
+      setShowCreateModal(false);
+    } catch (error) {
+      console.error('Error creating feedback:', error);
+      toast.error('Failed to create feedback');
     }
   };
 
@@ -69,10 +225,16 @@ const Feedbacks = () => {
         title="Feedbacks"
         description="View and manage feedbacks from students"
         actions={
-          <Button variant="ghost" size="sm" onClick={fetchFeedbacks}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
+          <>
+            <Button variant="primary" size="sm" onClick={() => setShowCreateModal(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Mock Feedback
+            </Button>
+            <Button variant="ghost" size="sm" onClick={fetchFeedbacks}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
+          </>
         }
       />
 

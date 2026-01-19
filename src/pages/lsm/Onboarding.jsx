@@ -76,17 +76,34 @@ const Onboarding = () => {
       }
       
       if (batchesRes.success) {
-        const batchesData = (batchesRes.data.batches || []).map(batch => ({
+        // Handle different response structures - same as LSM Batches page
+        const batchesData = (batchesRes.data?.batches || batchesRes.batches || []).map(batch => ({
           ...batch,
           // Normalize ID to ensure it's always a string
           id: (batch.id || batch._id)?.toString(),
           _id: (batch._id || batch.id)?.toString(),
+          // Ensure all fields have defaults
+          courseId: batch.courseId || batch.programId || null,
+          programId: batch.programId || batch.courseId || null,
+          programName: batch.programName || null,
+          startDate: batch.startDate || null,
+          endDate: batch.endDate || null,
+          status: batch.status || 'UPCOMING',
+          capacity: batch.capacity || 0,
+          enrolled: batch.enrolled || 0,
         }));
-        console.log('Loaded batches:', batchesData.length);
+        console.log('=== Batch Loading Debug ===');
+        console.log('Batches API Response:', batchesRes);
+        console.log('Batches data structure:', batchesRes.data);
+        console.log('Loaded batches count:', batchesData.length);
+        console.log('First batch sample:', batchesData[0]);
+        console.log('All batch IDs:', batchesData.map(b => ({ id: b.id, name: b.name, status: b.status })));
+        console.log('=== End Batch Loading Debug ===');
         setBatches(batchesData);
       } else {
         console.error('Failed to load batches:', batchesRes);
         toast.error(batchesRes.message || 'Failed to load batches');
+        setBatches([]); // Ensure batches is set to empty array on error
       }
       
       if (mentorsRes.success) {
@@ -110,6 +127,7 @@ const Onboarding = () => {
       console.error('Error fetching data:', error);
       toast.error(error.message || 'Failed to load data');
       setEnrollments([]);
+      setBatches([]); // Ensure batches is set to empty array on error
     } finally {
       setLoading(false);
     }
@@ -147,11 +165,36 @@ const Onboarding = () => {
   };
 
   const handleAllocateBatch = (enrollment) => {
+    console.log('=== Opening Batch Modal ===');
+    console.log('Current batches state:', batches);
+    console.log('Batches count:', batches.length);
+    console.log('Enrollment:', enrollment);
     setSelectedEnrollment(enrollment);
     setBatchData({
       batchId: enrollment.batchId || '',
     });
     setShowBatchModal(true);
+    
+    // If batches are empty, try to fetch them again
+    if (batches.length === 0) {
+      console.log('Batches are empty, fetching again...');
+      lsmAPI.getAllBatches().then(batchesRes => {
+        if (batchesRes.success) {
+          const batchesData = (batchesRes.data?.batches || batchesRes.batches || []).map(batch => ({
+            ...batch,
+            id: (batch.id || batch._id)?.toString(),
+            _id: (batch._id || batch.id)?.toString(),
+            courseId: batch.courseId || batch.programId || null,
+            programId: batch.programId || batch.courseId || null,
+            status: batch.status || 'UPCOMING',
+            capacity: batch.capacity || 0,
+            enrolled: batch.enrolled || 0,
+          }));
+          console.log('Refetched batches:', batchesData.length);
+          setBatches(batchesData);
+        }
+      });
+    }
   };
 
   const handleSuggestMentors = (enrollment) => {
@@ -838,62 +881,45 @@ const Onboarding = () => {
                 >
                   <option value="">Select Batch</option>
                   {(() => {
-                    // Get enrollment courseId from multiple possible sources
-                    const enrollmentCourseId = selectedEnrollment?.courseId 
-                      || selectedEnrollment?.offer?.courseId
-                      || null;
+                    console.log('=== Rendering Batch Dropdown ===');
+                    console.log('Batches state:', batches);
+                    console.log('Batches is array?', Array.isArray(batches));
+                    console.log('Batches length:', batches?.length);
                     
-                    console.log('=== Batch Filtering Debug ===');
-                    console.log('Enrollment courseId:', enrollmentCourseId);
-                    console.log('Total batches:', batches.length);
-                    console.log('Batch courseIds:', batches.map(b => ({ 
-                      name: b.name, 
-                      courseId: b.courseId?.toString() || b.courseId,
-                      status: b.status,
-                      enrolled: b.enrolled,
-                      capacity: b.capacity
-                    })));
-                    
-                    // Filter batches by courseId if available
-                    let relevantBatches = batches;
-                    if (enrollmentCourseId) {
-                      const enrollmentCourseIdStr = String(enrollmentCourseId).trim();
-                      relevantBatches = batches.filter(b => {
-                        const batchCourseId = String(b.courseId || '').trim();
-                        const matches = batchCourseId === enrollmentCourseIdStr;
-                        if (matches) {
-                          console.log('✓ Matched batch:', b.name, 'courseId:', batchCourseId);
-                        }
-                        return matches;
-                      });
-                      console.log('Relevant batches (matching courseId):', relevantBatches.length);
-                    } else {
-                      console.log('No courseId found, showing all batches');
-                    }
-                    
-                    // Filter by status and capacity
-                    const availableBatches = relevantBatches.filter(b => {
-                      const hasCapacity = (b.enrolled || 0) < (b.capacity || 0);
-                      const isActive = b.status === 'UPCOMING' || b.status === 'ACTIVE';
-                      return isActive && hasCapacity;
-                    });
-                    
-                    console.log('Available batches (status + capacity):', availableBatches.length);
-                    console.log('=== End Debug ===');
-                    
-                    if (availableBatches.length === 0) {
+                    // Ensure batches is an array
+                    if (!Array.isArray(batches)) {
+                      console.error('Batches is not an array!', batches);
                       return (
                         <option value="" disabled>
-                          No available batches found
+                          Error: Batches data is invalid
                         </option>
                       );
                     }
                     
-                    return availableBatches.map(batch => (
-                      <option key={batch.id || batch._id} value={batch.id || batch._id}>
-                        {batch.name} ({batch.enrolled || 0}/{batch.capacity || 0}) - {batch.status}
-                      </option>
-                    ));
+                    if (batches.length === 0) {
+                      console.warn('No batches in state');
+                      return (
+                        <option value="" disabled>
+                          No batches available. Please create batches first.
+                        </option>
+                      );
+                    }
+                    
+                    // TEMPORARY: Show ALL batches without filtering for debugging
+                    console.log('Showing ALL batches (no filtering):', batches.length);
+                    
+                    return batches.map(batch => {
+                      const hasCapacity = (batch.enrolled || 0) < (batch.capacity || 0);
+                      const capacityText = hasCapacity 
+                        ? `${batch.enrolled || 0}/${batch.capacity || 0}` 
+                        : `FULL (${batch.enrolled || 0}/${batch.capacity || 0})`;
+                      
+                      return (
+                        <option key={batch.id || batch._id} value={batch.id || batch._id}>
+                          {batch.name || 'Unnamed Batch'} - {capacityText} - {batch.status || 'N/A'}
+                        </option>
+                      );
+                    });
                   })()}
                 </select>
                 {(() => {

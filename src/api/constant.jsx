@@ -5,7 +5,7 @@
 const DEFAULT_DEV_API_BASE_URL = 'http://localhost:3000';
 const DEFAULT_PROD_API_BASE_URL = 'https://app.brintellitechacademy.in';
 // Using production API URL
-export const API_BASE_URL ='http://localhost:3000';
+export const API_BASE_URL  'https://app.brintellitechacademy.in';
  
 
 // Helper function to get full API URL for endpoints
@@ -92,6 +92,14 @@ export const API_ENDPOINTS = {
     DELETE: (interviewId) => `/api/interviews/${interviewId}`,
     GET_ROUNDS: (interviewId) => `/api/interviews/${interviewId}/rounds`,
     UPDATE_ROUND: (interviewId, roundId) => `/api/interviews/${interviewId}/rounds/${roundId}`,
+  },
+  // Feedbacks
+  FEEDBACKS: {
+    GET_ALL: '/api/feedbacks',
+    GET_ONE: (feedbackId) => `/api/feedbacks/${feedbackId}`,
+    CREATE: '/api/feedbacks',
+    UPDATE: (feedbackId) => `/api/feedbacks/${feedbackId}`,
+    DELETE: (feedbackId) => `/api/feedbacks/${feedbackId}`,
   },
 };
 

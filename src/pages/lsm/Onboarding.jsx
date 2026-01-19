@@ -67,6 +67,7 @@ const Onboarding = () => {
         // Filter out enrollments without lead data (shouldn't happen, but just in case)
         const validEnrollments = enrollments.filter(e => e.lead);
         console.log('Loaded enrollments:', validEnrollments.length, 'out of', enrollments.length);
+        console.log('Sample enrollment data:', validEnrollments[0]);
         setEnrollments(validEnrollments);
       } else {
         console.error('Failed to load enrollments:', enrollmentsRes);
@@ -268,12 +269,15 @@ const Onboarding = () => {
     {
       key: 'lead',
       title: 'Student Name',
-      render: (row) => {
-        const lastCallNote = getLastCallNote(row?.lead?.callNotes);
+      render: (value, row) => {
+        // Table component passes (value, row, rowIndex) where value = row[column.key]
+        // For 'lead' key, value is row.lead, but we need the full row object
+        const enrollment = row || {};
+        const lastCallNote = getLastCallNote(enrollment?.lead?.callNotes);
         const tooltipText = formatCallNoteTooltip(lastCallNote);
         return (
           <div className="flex items-center gap-2">
-            <span>{row?.lead?.name || 'N/A'}</span>
+            <span>{enrollment?.lead?.name || 'N/A'}</span>
             {lastCallNote && (
               <div className="group relative">
                 <MessageSquare className="h-4 w-4 text-blue-500 cursor-help" />
@@ -288,28 +292,39 @@ const Onboarding = () => {
       },
     },
     {
-      key: 'lead',
+      key: 'phone',
       title: 'Phone',
-      render: (row) => row?.lead?.phone || 'N/A',
+      render: (value, row) => {
+        // Table component passes (value, row, rowIndex)
+        const enrollment = row || {};
+        return enrollment?.lead?.phone || 'N/A';
+      },
     },
     {
       key: 'batchId',
       title: 'Batch',
-      render: (row) => (
-        <span className={row?.batchId ? 'text-green-600 font-semibold' : 'text-amber-600'}>
-          {row?.batchId ? 'Assigned' : 'Not Assigned'}
-        </span>
-      ),
+      render: (value, row) => {
+        // Table component passes (value, row, rowIndex)
+        const enrollment = row || {};
+        return (
+          <span className={enrollment?.batchId ? 'text-green-600 font-semibold' : 'text-amber-600'}>
+            {enrollment?.batchId ? 'Assigned' : 'Not Assigned'}
+          </span>
+        );
+      },
     },
     {
       key: 'courseId',
       title: 'Course',
-      render: (row) => {
-        const courseId = row?.courseId || row?.offer?.courseId;
-        const programName = getProgramName(courseId);
+      render: (value, row) => {
+        // Table component passes (value, row, rowIndex)
+        const enrollment = row || {};
+        // Use programName directly from API response, fallback to lookup if not available
+        const programName = enrollment?.programName || getProgramName(enrollment?.courseId || enrollment?.offer?.courseId);
+        const courseId = enrollment?.courseId || enrollment?.offer?.courseId;
         return (
           <span className={courseId ? 'text-green-600 font-semibold' : 'text-amber-600'}>
-            {courseId ? programName : 'Not Assigned'}
+            {programName && programName !== 'N/A' ? programName : 'Not Assigned'}
           </span>
         );
       },
@@ -317,85 +332,99 @@ const Onboarding = () => {
     {
       key: 'mentorId',
       title: 'Mentor',
-      render: (row) => (
-        <span className={row?.mentorId ? 'text-green-600 font-semibold' : 'text-amber-600'}>
-          {row?.mentorId ? 'Assigned' : 'Not Assigned'}
-        </span>
-      ),
+      render: (value, row) => {
+        // Table component passes (value, row, rowIndex)
+        const enrollment = row || {};
+        return (
+          <span className={enrollment?.mentorId ? 'text-green-600 font-semibold' : 'text-amber-600'}>
+            {enrollment?.mentorId ? 'Assigned' : 'Not Assigned'}
+          </span>
+        );
+      },
     },
     {
       key: 'actions',
       title: 'Actions',
-      render: (row) => (
-        <div className="flex gap-2 items-center" onClick={(e) => e.stopPropagation()}>
-          {!row?.batchId && (
+      render: (value, row) => {
+        // Table component passes (value, row, rowIndex)
+        const enrollment = row || {};
+        // Safety check: if row is undefined or doesn't have an id, return empty div
+        if (!enrollment || !enrollment.id) {
+          return <div className="text-textMuted text-sm">N/A</div>;
+        }
+        
+        const rowId = enrollment.id || enrollment._id;
+        
+        return (
+          <div className="flex gap-2 items-center" onClick={(e) => e.stopPropagation()}>
+            {!enrollment?.batchId && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleAllocateBatch(enrollment);
+                }}
+              >
+                Allocate Batch
+              </Button>
+            )}
+            {enrollment?.batchId && !enrollment?.mentorId && (
             <Button
               variant="secondary"
               size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleAllocateBatch(row);
-              }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleSuggestMentors(enrollment);
+                }}
             >
-              Allocate Batch
+                Suggest Mentors
             </Button>
-          )}
-          {row?.batchId && !row?.mentorId && (
-          <Button
-            variant="secondary"
-            size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleSuggestMentors(row);
-              }}
-          >
-              Suggest Mentors
-          </Button>
-          )}
-          {row?.batchId && row?.mentorId && (
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleCompleteOnboarding(row?.id);
-              }}
-            >
-              Complete
-            </Button>
-          )}
-          {/* Dropdown Menu */}
-          <div className="relative dropdown-menu">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setExpandedRows(prev => {
-                  const newSet = new Set(prev);
-                  if (newSet.has(row.id)) {
-                    newSet.delete(row.id);
-                  } else {
-                    newSet.add(row.id);
-                  }
-                  return newSet;
-                });
-              }}
-              className="p-1.5 rounded hover:bg-brintelli-baseAlt transition-colors"
-              aria-label="More options"
-            >
-              <MoreVertical className="h-4 w-4 text-textMuted" />
-            </button>
-            {expandedRows.has(row.id) && (
+            )}
+            {enrollment?.batchId && enrollment?.mentorId && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleCompleteOnboarding(rowId);
+                }}
+              >
+                Complete
+              </Button>
+            )}
+            {/* Dropdown Menu */}
+            <div className="relative dropdown-menu">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setExpandedRows(prev => {
+                    const newSet = new Set(prev);
+                    if (newSet.has(rowId)) {
+                      newSet.delete(rowId);
+                    } else {
+                      newSet.add(rowId);
+                    }
+                    return newSet;
+                  });
+                }}
+                className="p-1.5 rounded hover:bg-brintelli-baseAlt transition-colors"
+                aria-label="More options"
+              >
+                <MoreVertical className="h-4 w-4 text-textMuted" />
+              </button>
+              {expandedRows.has(rowId) && (
               <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-brintelli-border rounded-lg shadow-lg z-50 dropdown-menu">
                 <button
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setSelectedEnrollmentForDetails(row);
+                    setSelectedEnrollmentForDetails(enrollment);
                     setShowDetailsModal(true);
                     setExpandedRows(prev => {
                       const newSet = new Set(prev);
-                      newSet.delete(row.id);
+                      newSet.delete(rowId);
                       return newSet;
                     });
                   }}
@@ -408,11 +437,11 @@ const Onboarding = () => {
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setSelectedEnrollmentForDetails(row);
+                    setSelectedEnrollmentForDetails(enrollment);
                     setShowDetailsModal(true);
                     setExpandedRows(prev => {
                       const newSet = new Set(prev);
-                      newSet.delete(row.id);
+                      newSet.delete(rowId);
                       return newSet;
                     });
                   }}
@@ -425,11 +454,11 @@ const Onboarding = () => {
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setSelectedLeadForCallNotes(row.leadId);
+                    setSelectedLeadForCallNotes(enrollment?.leadId);
                     setShowCallNotesModal(true);
                     setExpandedRows(prev => {
                       const newSet = new Set(prev);
-                      newSet.delete(row.id);
+                      newSet.delete(rowId);
                       return newSet;
                     });
                   }}
@@ -442,7 +471,8 @@ const Onboarding = () => {
             )}
           </div>
         </div>
-      ),
+        );
+      },
     },
   ];
 

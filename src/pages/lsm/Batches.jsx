@@ -63,29 +63,49 @@ const LsmBatches = () => {
     try {
       setLoading(true);
       const response = await lsmAPI.getAllBatches(filters);
+      console.log('Batches API Response:', response);
+      
       if (response.success) {
-        const batchesData = (response.data.batches || []).map(batch => ({
+        const batchesData = (response.data?.batches || response.batches || []).map(batch => ({
           ...batch,
           // Normalize ID to ensure it's always a string
           id: (batch.id || batch._id)?.toString(),
           _id: (batch._id || batch.id)?.toString(),
+          // Ensure all fields have defaults
+          courseId: batch.courseId || batch.programId || null,
+          programId: batch.programId || batch.courseId || null,
+          programName: batch.programName || null,
+          startDate: batch.startDate || null,
+          endDate: batch.endDate || null,
+          status: batch.status || 'UPCOMING',
+          capacity: batch.capacity || 0,
+          enrolled: batch.enrolled || 0,
         }));
         console.log('Loaded batches:', batchesData.length);
-        console.log('Batch IDs:', batchesData.map(b => ({ name: b.name, id: b.id, courseId: b.courseId?.toString() || b.courseId })));
+        console.log('Batch sample:', batchesData[0]);
         setBatches(batchesData);
       } else {
+        console.error('Failed to load batches:', response);
         toast.error(response.message || 'Failed to load batches');
+        setBatches([]);
       }
     } catch (error) {
       console.error('Error fetching batches:', error);
       toast.error(error.message || 'Failed to load batches');
+      setBatches([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const getProgramName = (courseId) => {
+  const getProgramName = (batch) => {
     try {
+      // First, try to use programName if available from batch
+      if (batch?.programName) {
+        return batch.programName;
+      }
+      
+      const courseId = batch?.courseId || batch?.programId;
       if (!courseId) {
         return 'N/A';
       }
@@ -131,7 +151,7 @@ const LsmBatches = () => {
       return 'N/A';
     } catch (error) {
       console.error('Error in getProgramName:', error, { 
-        courseId, 
+        batch, 
         programsLength: programs?.length,
         programsType: typeof programs,
       });
@@ -204,7 +224,7 @@ const LsmBatches = () => {
     {
       key: 'courseId',
       title: 'Program',
-      render: (row) => getProgramName(row?.courseId),
+      render: (row) => getProgramName(row),
     },
     {
       key: 'startDate',
@@ -224,11 +244,14 @@ const LsmBatches = () => {
     {
       key: 'status',
       title: 'Status',
-      render: (row) => (
-        <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(row?.status)}`}>
-          {row?.status || 'N/A'}
-        </span>
-      ),
+      render: (row) => {
+        const status = row?.status || 'UPCOMING';
+        return (
+          <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(status)}`}>
+            {status}
+          </span>
+        );
+      },
     },
     {
       key: 'actions',

@@ -2,7 +2,7 @@
 // Recommended: set VITE_API_BASE_URL in an env file (e.g. `.env.local`) to avoid surprises.
 // In local dev (Vite), default to localhost; in prod builds, default to the deployed API.
 // Backend dev server defaults to 3000 (see backend `server.js`)
-const DEFAULT_DEV_API_BASE_URL = 'https://app.brintellitechacademy.in';
+const DEFAULT_DEV_API_BASE_URL = 'http://localhost:3000';
 const DEFAULT_PROD_API_BASE_URL = 'https://app.brintellitechacademy.in';
 // leo
 export const API_BASE_URL =
@@ -83,6 +83,16 @@ export const API_ENDPOINTS = {
     DELETE: (leadId) => `/api/leads/${leadId}`,
     ASSIGN: (leadId) => `/api/leads/${leadId}/assign`,
     PRE_SCREENING: (leadId) => `/api/leads/${leadId}/pre-screening`,
+  },
+  // Interviews
+  INTERVIEWS: {
+    GET_ALL: '/api/interviews',
+    GET_ONE: (interviewId) => `/api/interviews/${interviewId}`,
+    CREATE: '/api/interviews',
+    UPDATE: (interviewId) => `/api/interviews/${interviewId}`,
+    DELETE: (interviewId) => `/api/interviews/${interviewId}`,
+    GET_ROUNDS: (interviewId) => `/api/interviews/${interviewId}/rounds`,
+    UPDATE_ROUND: (interviewId, roundId) => `/api/interviews/${interviewId}/rounds/${roundId}`,
   },
 };
 

@@ -48,7 +48,14 @@ const CalendarPage = () => {
       // Get all batches
       const batchesResponse = await lsmAPI.getAllBatches();
       if (batchesResponse.success && batchesResponse.data) {
-        const batches = batchesResponse.data;
+        const batches = batchesResponse.data.batches || batchesResponse.data || [];
+        
+        // Ensure batches is an array
+        if (!Array.isArray(batches)) {
+          console.error('Batches is not an array:', batches);
+          setSessions([]);
+          return;
+        }
         
         // Filter batches by program if selected
         const filteredBatches = selectedProgramId
@@ -219,6 +226,23 @@ const CalendarPage = () => {
   const calendarDays = getDaysInMonth(currentDate);
   const selectedDateSessions = selectedDate ? getSessionsForDate(selectedDate) : [];
 
+  // Calculate sessions for current month
+  const currentMonthSessions = useMemo(() => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    
+    return sessions.filter(session => {
+      if (!session.scheduledDate) return false;
+      try {
+        const sessionDate = new Date(session.scheduledDate);
+        if (isNaN(sessionDate.getTime())) return false;
+        return sessionDate.getFullYear() === year && sessionDate.getMonth() === month;
+      } catch (error) {
+        return false;
+      }
+    });
+  }, [sessions, currentDate]);
+
   // Group sessions by program for the modal
   const sessionsByProgram = useMemo(() => {
     const grouped = {};
@@ -291,7 +315,7 @@ const CalendarPage = () => {
                 <div>
                   <h3 className="text-xl font-bold text-text">{getMonthName(currentDate)}</h3>
                   <p className="text-sm text-textMuted">
-                    {sessions.length} total session{sessions.length !== 1 ? 's' : ''} this month
+                    {currentMonthSessions.length} total session{currentMonthSessions.length !== 1 ? 's' : ''} this month
                   </p>
                 </div>
               </div>

@@ -447,6 +447,110 @@ const Feedbacks = () => {
           </div>
         )}
       </Modal>
+
+      {/* Create Feedback Modal */}
+      <Modal
+        isOpen={showCreateModal}
+        onClose={() => {
+          setShowCreateModal(false);
+          setNewFeedback({
+            rating: 5,
+            comment: '',
+            type: 'session',
+            tutorName: '',
+            sessionTitle: '',
+          });
+        }}
+        title="Create Mock Feedback"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold mb-1">Type</label>
+            <select
+              value={newFeedback.type}
+              onChange={(e) => setNewFeedback({ ...newFeedback, type: e.target.value })}
+              className="w-full px-3 py-2 border border-brintelli-border rounded-lg bg-brintelli-card text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+            >
+              <option value="session">Session Feedback</option>
+              <option value="tutor">Tutor Feedback</option>
+              <option value="program">Program Feedback</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold mb-1">Rating</label>
+            <div className="flex items-center gap-2">
+              {[1, 2, 3, 4, 5].map((rating) => (
+                <button
+                  key={rating}
+                  type="button"
+                  onClick={() => setNewFeedback({ ...newFeedback, rating })}
+                  className="focus:outline-none"
+                >
+                  <Star
+                    className={`h-6 w-6 ${
+                      rating <= newFeedback.rating
+                        ? 'fill-yellow-400 text-yellow-400'
+                        : 'text-gray-300'
+                    }`}
+                  />
+                </button>
+              ))}
+              <span className="ml-2 text-sm text-textMuted">({newFeedback.rating} / 5)</span>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold mb-1">Tutor Name</label>
+            <input
+              type="text"
+              value={newFeedback.tutorName}
+              onChange={(e) => setNewFeedback({ ...newFeedback, tutorName: e.target.value })}
+              placeholder="Enter tutor name"
+              className="w-full px-3 py-2 border border-brintelli-border rounded-lg bg-brintelli-card text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold mb-1">Session Title</label>
+            <input
+              type="text"
+              value={newFeedback.sessionTitle}
+              onChange={(e) => setNewFeedback({ ...newFeedback, sessionTitle: e.target.value })}
+              placeholder="Enter session title"
+              className="w-full px-3 py-2 border border-brintelli-border rounded-lg bg-brintelli-card text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold mb-1">Comment</label>
+            <textarea
+              value={newFeedback.comment}
+              onChange={(e) => setNewFeedback({ ...newFeedback, comment: e.target.value })}
+              placeholder="Enter feedback comment"
+              rows={4}
+              className="w-full px-3 py-2 border border-brintelli-border rounded-lg bg-brintelli-card text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-4 border-t">
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setShowCreateModal(false);
+                setNewFeedback({
+                  rating: 5,
+                  comment: '',
+                  type: 'session',
+                  tutorName: '',
+                  sessionTitle: '',
+                });
+              }}
+            >
+              Cancel
+            </Button>
+            <Button variant="primary" onClick={createMockFeedback}>
+              Create Feedback
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </>
   );
 };

@@ -5,7 +5,7 @@
 const DEFAULT_DEV_API_BASE_URL = 'http://localhost:3000';
 const DEFAULT_PROD_API_BASE_URL = 'https://app.brintellitechacademy.in';
 // Using production API URL
-export const API_BASE_URL = 'https://app.brintellitechacademy.in';
+export const API_BASE_URL ='http://localhost:3000';
  
 
 // Helper function to get full API URL for endpoints

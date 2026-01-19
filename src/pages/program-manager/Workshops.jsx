@@ -5,8 +5,9 @@ import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
 import Modal from '../../components/Modal';
 import Pagination from '../../components/Pagination';
-import lsmAPI from '../../api/lsm';
+import workshopAPI from '../../api/workshop';
 import programAPI from '../../api/program';
+import { apiRequest } from '../../api/apiClient';
 
 const Workshops = () => {
   const [loading, setLoading] = useState(true);
@@ -38,6 +39,15 @@ const Workshops = () => {
     fetchPrograms();
   }, []);
 
+  // Refetch workshops when search term changes
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      fetchWorkshops();
+    }, 300); // Debounce search
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
+
   useEffect(() => {
     if (formData.programId) {
       fetchModules();
@@ -47,16 +57,17 @@ const Workshops = () => {
   const fetchWorkshops = async () => {
     try {
       setLoading(true);
-      // TODO: Replace with actual workshops API
-      // For now, using sessions API as placeholder
-      const response = await lsmAPI.getAllBatches();
+      const response = await workshopAPI.getAllWorkshops({ search: searchTerm });
       if (response.success) {
-        // Mock workshops data - replace with actual API call
+        setWorkshops(response.data.workshops || []);
+      } else {
+        toast.error(response.message || 'Failed to load workshops');
         setWorkshops([]);
       }
     } catch (error) {
       console.error('Error fetching workshops:', error);
-      toast.error('Failed to load workshops');
+      toast.error(error.message || 'Failed to load workshops');
+      setWorkshops([]);
     } finally {
       setLoading(false);
     }
@@ -64,10 +75,19 @@ const Workshops = () => {
 
   const fetchTutors = async () => {
     try {
-      // TODO: Replace with actual tutors API
-      setTutors([]);
+      const response = await apiRequest('/api/users/role/tutor');
+      if (response.success && response.data?.users) {
+        const normalizedTutors = response.data.users.map((tutor) => ({
+          ...tutor,
+          id: tutor.id || tutor._id?.toString(),
+          _id: tutor._id?.toString() || tutor.id,
+          name: tutor.fullName || tutor.name || tutor.email?.split('@')[0] || 'Unknown',
+        }));
+        setTutors(normalizedTutors);
+      }
     } catch (error) {
       console.error('Error fetching tutors:', error);
+      setTutors([]);
     }
   };
 
@@ -97,45 +117,84 @@ const Workshops = () => {
 
   const handleSubmit = async () => {
     try {
-      // TODO: Implement API call to create/update workshop
-      toast.success(editingWorkshop ? 'Workshop updated successfully' : 'Workshop created successfully');
-      setShowModal(false);
-      setEditingWorkshop(null);
-      setFormData({
-        title: '',
-        description: '',
-        date: '',
-        time: '',
-        duration: '',
-        maxParticipants: '',
-        tutorId: '',
-        programId: '',
-        moduleId: '',
-        meetingLink: '',
-      });
-      fetchWorkshops();
+      // Validation
+      if (!formData.title) {
+        toast.error('Title is required');
+        return;
+      }
+      if (!formData.date) {
+        toast.error('Date is required');
+        return;
+      }
+      if (!formData.time) {
+        toast.error('Time is required');
+        return;
+      }
+
+      const workshopData = {
+        title: formData.title,
+        description: formData.description || '',
+        date: formData.date,
+        time: formData.time,
+        duration: formData.duration || 60,
+        maxParticipants: formData.maxParticipants || 50,
+        tutorId: formData.tutorId || null,
+        programId: formData.programId || null,
+        moduleId: formData.moduleId || null,
+        meetingLink: formData.meetingLink || null,
+      };
+
+      let response;
+      if (editingWorkshop) {
+        response = await workshopAPI.updateWorkshop(editingWorkshop.id || editingWorkshop._id, workshopData);
+      } else {
+        response = await workshopAPI.createWorkshop(workshopData);
+      }
+
+      if (response.success) {
+        toast.success(editingWorkshop ? 'Workshop updated successfully' : 'Workshop created successfully');
+        setShowModal(false);
+        setEditingWorkshop(null);
+        setFormData({
+          title: '',
+          description: '',
+          date: '',
+          time: '',
+          duration: '',
+          maxParticipants: '',
+          tutorId: '',
+          programId: '',
+          moduleId: '',
+          meetingLink: '',
+        });
+        fetchWorkshops();
+      } else {
+        toast.error(response.message || 'Failed to save workshop');
+      }
     } catch (error) {
       console.error('Error saving workshop:', error);
-      toast.error('Failed to save workshop');
+      toast.error(error.message || 'Failed to save workshop');
     }
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this workshop?')) return;
     try {
-      // TODO: Implement API call to delete workshop
-      toast.success('Workshop deleted successfully');
-      fetchWorkshops();
+      const response = await workshopAPI.deleteWorkshop(id);
+      if (response.success) {
+        toast.success('Workshop deleted successfully');
+        fetchWorkshops();
+      } else {
+        toast.error(response.message || 'Failed to delete workshop');
+      }
     } catch (error) {
       console.error('Error deleting workshop:', error);
-      toast.error('Failed to delete workshop');
+      toast.error(error.message || 'Failed to delete workshop');
     }
   };
 
-  const filteredWorkshops = workshops.filter(workshop =>
-    workshop.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    workshop.description?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Workshops are already filtered by search term from API
+  const filteredWorkshops = workshops;
 
   const totalPages = Math.ceil(filteredWorkshops.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -248,14 +307,25 @@ const Workshops = () => {
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="flex items-center gap-1 text-[11px] text-textMuted">
                           <Users className="h-3 w-3" />
-                          {workshop.participantsCount || 0} / {workshop.maxParticipants || '—'}
+                          {workshop.participantsCount || workshop.participants?.length || 0} / {workshop.maxParticipants || '—'}
                         </div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="flex items-center gap-1.5">
                           <Button variant="ghost" size="sm" onClick={() => {
                             setEditingWorkshop(workshop);
-                            setFormData(workshop);
+                            setFormData({
+                              title: workshop.title || '',
+                              description: workshop.description || '',
+                              date: workshop.date || '',
+                              time: workshop.time || '',
+                              duration: workshop.duration || '',
+                              maxParticipants: workshop.maxParticipants || '',
+                              tutorId: workshop.tutorId?.toString() || workshop.tutorId || '',
+                              programId: workshop.programId?.toString() || workshop.programId || '',
+                              moduleId: workshop.moduleId?.toString() || workshop.moduleId || '',
+                              meetingLink: workshop.meetingLink || '',
+                            });
                             setShowModal(true);
                           }} className="px-2 py-1 text-[10px]">
                             <Edit2 className="h-3 w-3" />

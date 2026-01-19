@@ -224,28 +224,48 @@ const LsmBatches = () => {
     {
       key: 'courseId',
       title: 'Program',
-      render: (row) => getProgramName(row),
+      render: (value, row) => {
+        // Table component passes (value, row, rowIndex) where value = row[column.key]
+        // For 'courseId' key, value is row.courseId, but we need the full row object
+        const batch = row || {};
+        // Use programName directly from API response if available
+        return batch.programName || getProgramName(batch);
+      },
     },
     {
       key: 'startDate',
       title: 'Start Date',
-      render: (row) => formatDate(row?.startDate),
+      render: (value, row) => {
+        // Table component passes (value, row, rowIndex)
+        const batch = row || {};
+        return formatDate(batch?.startDate);
+      },
     },
     {
       key: 'endDate',
       title: 'End Date',
-      render: (row) => formatDate(row?.endDate),
+      render: (value, row) => {
+        // Table component passes (value, row, rowIndex)
+        const batch = row || {};
+        return formatDate(batch?.endDate);
+      },
     },
     {
       key: 'enrolled',
       title: 'Enrolled',
-      render: (row) => `${row?.enrolled || 0}/${row?.capacity || 0}`,
+      render: (value, row) => {
+        // Table component passes (value, row, rowIndex)
+        const batch = row || {};
+        return `${batch?.enrolled || 0}/${batch?.capacity || 0}`;
+      },
     },
     {
       key: 'status',
       title: 'Status',
-      render: (row) => {
-        const status = row?.status || 'UPCOMING';
+      render: (value, row) => {
+        // Table component passes (value, row, rowIndex)
+        const batch = row || {};
+        const status = batch?.status || 'UPCOMING';
         return (
           <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(status)}`}>
             {status}
@@ -256,17 +276,19 @@ const LsmBatches = () => {
     {
       key: 'actions',
       title: 'Actions',
-      render: (row) => {
-        const batchId = (row?.id || row?._id)?.toString();
+      render: (value, row) => {
+        // Table component passes (value, row, rowIndex)
+        const batch = row || {};
+        const batchId = (batch?.id || batch?._id)?.toString();
         return (
           <div className="flex gap-2">
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => handleViewStudents(row)}
+              onClick={() => handleViewStudents(batch)}
             >
               <Users className="h-4 w-4 mr-1" />
-              Students ({row?.students?.length || row?.enrolled || 0})
+              Students ({batch?.students?.length || batch?.enrolled || 0})
             </Button>
             <Button
               variant="ghost"
@@ -274,7 +296,7 @@ const LsmBatches = () => {
               onClick={() => {
                 if (!batchId || batchId === 'undefined') {
                   toast.error('Invalid batch ID. Cannot navigate to sessions.');
-                  console.error('Invalid batch ID:', row);
+                  console.error('Invalid batch ID:', batch);
                   return;
                 }
                 navigate(`/lsm/batches/${batchId}/sessions`);

@@ -881,10 +881,14 @@ const Onboarding = () => {
                 >
                   <option value="">Select Batch</option>
                   {(() => {
-                    console.log('=== Rendering Batch Dropdown ===');
-                    console.log('Batches state:', batches);
-                    console.log('Batches is array?', Array.isArray(batches));
-                    console.log('Batches length:', batches?.length);
+                    // Get enrollment courseId from multiple possible sources
+                    const enrollmentCourseId = selectedEnrollment?.courseId 
+                      || selectedEnrollment?.offer?.courseId
+                      || null;
+                    
+                    console.log('=== Batch Filtering Debug ===');
+                    console.log('Enrollment courseId:', enrollmentCourseId);
+                    console.log('Total batches:', batches.length);
                     
                     // Ensure batches is an array
                     if (!Array.isArray(batches)) {
@@ -905,10 +909,70 @@ const Onboarding = () => {
                       );
                     }
                     
-                    // TEMPORARY: Show ALL batches without filtering for debugging
-                    console.log('Showing ALL batches (no filtering):', batches.length);
+                    // Filter batches by courseId/programId if available
+                    let relevantBatches = batches;
+                    if (enrollmentCourseId) {
+                      const enrollmentCourseIdStr = String(enrollmentCourseId).trim();
+                      
+                      // Try to match by courseId or programId (check both fields)
+                      relevantBatches = batches.filter(b => {
+                        const batchCourseId = String(b.courseId || '').trim();
+                        const batchProgramId = String(b.programId || '').trim();
+                        const matches = batchCourseId === enrollmentCourseIdStr || batchProgramId === enrollmentCourseIdStr;
+                        if (matches) {
+                          console.log('✓ Matched batch:', b.name, {
+                            courseId: batchCourseId,
+                            programId: batchProgramId,
+                            enrollmentCourseId: enrollmentCourseIdStr
+                          });
+                        }
+                        return matches;
+                      });
+                      
+                      console.log('Relevant batches (matching courseId/programId):', relevantBatches.length);
+                      
+                      if (relevantBatches.length === 0) {
+                        console.log('No batches match courseId/programId, showing all batches as fallback');
+                        relevantBatches = batches; // Show all if no match found
+                      }
+                    } else {
+                      console.log('No courseId found, showing all batches');
+                    }
                     
-                    return batches.map(batch => {
+                    // Filter by status - show ACTIVE, UPCOMING, and ONGOING batches
+                    const availableBatches = relevantBatches.filter(b => {
+                      const isActive = ['UPCOMING', 'ACTIVE', 'ONGOING'].includes(b.status);
+                      return isActive;
+                    });
+                    
+                    console.log('Available batches (status filter):', availableBatches.length);
+                    console.log('Batch details:', availableBatches.map(b => ({
+                      name: b.name,
+                      courseId: b.courseId || b.programId,
+                      status: b.status,
+                      enrolled: b.enrolled,
+                      capacity: b.capacity
+                    })));
+                    console.log('=== End Debug ===');
+                    
+                    if (availableBatches.length === 0) {
+                      return (
+                        <option value="" disabled>
+                          No available batches found for this program. Please create a batch first.
+                        </option>
+                      );
+                    }
+                    
+                    // Sort batches: available capacity first, then by name
+                    const sortedBatches = [...availableBatches].sort((a, b) => {
+                      const aHasCapacity = (a.enrolled || 0) < (a.capacity || 0);
+                      const bHasCapacity = (b.enrolled || 0) < (b.capacity || 0);
+                      if (aHasCapacity && !bHasCapacity) return -1;
+                      if (!aHasCapacity && bHasCapacity) return 1;
+                      return (a.name || '').localeCompare(b.name || '');
+                    });
+                    
+                    return sortedBatches.map(batch => {
                       const hasCapacity = (batch.enrolled || 0) < (batch.capacity || 0);
                       const capacityText = hasCapacity 
                         ? `${batch.enrolled || 0}/${batch.capacity || 0}` 
@@ -927,12 +991,17 @@ const Onboarding = () => {
                   const programName = getProgramName(enrollmentCourseId);
                   
                   if (enrollmentCourseId) {
-                    const availableBatches = batches.filter(b => {
+                    // Filter batches matching the enrollment's courseId/programId
+                    const enrollmentCourseIdStr = String(enrollmentCourseId).trim();
+                    const relevantBatches = batches.filter(b => {
                       const batchCourseId = String(b.courseId || '').trim();
-                      const enrollmentCourseIdStr = String(enrollmentCourseId).trim();
-                      return batchCourseId === enrollmentCourseIdStr 
-                        && (b.status === 'UPCOMING' || b.status === 'ACTIVE') 
-                        && (b.enrolled || 0) < (b.capacity || 0);
+                      const batchProgramId = String(b.programId || '').trim();
+                      return batchCourseId === enrollmentCourseIdStr || batchProgramId === enrollmentCourseIdStr;
+                    });
+                    
+                    // Filter by status
+                    const availableBatches = relevantBatches.filter(b => {
+                      return ['UPCOMING', 'ACTIVE', 'ONGOING'].includes(b.status);
                     });
                     
                     return (
@@ -940,9 +1009,19 @@ const Onboarding = () => {
                         <p className="text-xs text-textMuted mt-1">
                           Showing batches for: <strong>{programName}</strong>
                         </p>
-                        {availableBatches.length === 0 && (
+                        {availableBatches.length === 0 && relevantBatches.length > 0 && (
                           <p className="text-xs text-amber-600 mt-1">
-                            No available batches found for this program. You may need to create a batch first.
+                            Found {relevantBatches.length} batch(es) for this program, but none are currently available (all may be COMPLETED or CANCELLED).
+                          </p>
+                        )}
+                        {availableBatches.length === 0 && relevantBatches.length === 0 && (
+                          <p className="text-xs text-amber-600 mt-1">
+                            No batches found for this program. You may need to create a batch first.
+                          </p>
+                        )}
+                        {availableBatches.length > 0 && (
+                          <p className="text-xs text-green-600 mt-1">
+                            Found {availableBatches.length} available batch(es) for this program.
                           </p>
                         )}
                       </>

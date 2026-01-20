@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import { Settings, User, Mail, Phone, BookOpen, Users, Save, AlertCircle } from 'lucide-react';
+import { Settings, User, Mail, Phone, BookOpen, Users, Save, AlertCircle, Calendar, CheckCircle, Clock } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
 import mentorAPI from '../../api/mentor';
@@ -10,6 +10,7 @@ const Profile = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [programs, setPrograms] = useState([]);
+  const [stats, setStats] = useState(null);
   const [profileData, setProfileData] = useState({
     name: '',
     email: '',
@@ -40,11 +41,12 @@ const Profile = () => {
   const fetchProfile = async () => {
     try {
       setLoading(true);
-      // Get mentor profile from mentees endpoint (which includes mentor info)
-      const response = await mentorAPI.getMentees();
+      const response = await mentorAPI.getProfile();
       
-      if (response.success && response.data.mentor) {
+      if (response.success && response.data) {
         const mentor = response.data.mentor;
+        const mentorStats = response.data.stats;
+        
         setProfileData({
           name: mentor.name || '',
           email: mentor.email || '',
@@ -55,8 +57,16 @@ const Profile = () => {
           specialization: mentor.specialization || [],
           isActive: mentor.isActive !== false,
         });
+        
+        setStats(mentorStats);
+        
+        // If specialization programs are provided, use them to pre-select programs
+        if (mentor.specializationPrograms && mentor.specializationPrograms.length > 0) {
+          // The specialization array contains program IDs
+          // We'll use it as is for the form
+        }
       } else {
-        // Try to get from user context or localStorage
+        // Fallback: Try to get from user context or localStorage
         const userStr = localStorage.getItem('user');
         if (userStr) {
           try {
@@ -70,10 +80,11 @@ const Profile = () => {
             console.error('Error parsing user data:', e);
           }
         }
+        toast.error(response.message || 'Failed to load profile');
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
-      toast.error('Failed to load profile');
+      toast.error(error.message || 'Failed to load profile');
     } finally {
       setLoading(false);
     }
@@ -87,12 +98,18 @@ const Profile = () => {
 
     try {
       setSaving(true);
-      // Save to localStorage for now (backend endpoint can be added later)
-      localStorage.setItem('mentorProfile', JSON.stringify(profileData));
-      toast.success('Profile saved successfully');
+      const response = await mentorAPI.updateProfile(profileData);
+      
+      if (response.success) {
+        toast.success('Profile saved successfully');
+        // Refresh profile data
+        await fetchProfile();
+      } else {
+        toast.error(response.message || 'Failed to save profile');
+      }
     } catch (error) {
       console.error('Error saving profile:', error);
-      toast.error('Failed to save profile');
+      toast.error(error.message || 'Failed to save profile');
     } finally {
       setSaving(false);
     }
@@ -126,6 +143,50 @@ const Profile = () => {
         </div>
       ) : (
         <div className="space-y-6">
+          {/* Stats Cards */}
+          {stats && (
+            <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4 mb-6">
+              <div className="rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-textMuted mb-1">Total Mentees</p>
+                    <p className="text-3xl font-bold text-brand-600">{stats.totalMentees}</p>
+                    <p className="text-xs text-textMuted mt-1">
+                      {stats.availableSlots} slots available
+                    </p>
+                  </div>
+                  <Users className="h-12 w-12 text-brand-600 opacity-20" />
+                </div>
+              </div>
+              <div className="rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-textMuted mb-1">Pending Meetings</p>
+                    <p className="text-3xl font-bold text-amber-600">{stats.pendingMeetings}</p>
+                  </div>
+                  <Clock className="h-12 w-12 text-amber-600 opacity-20" />
+                </div>
+              </div>
+              <div className="rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-textMuted mb-1">Scheduled Meetings</p>
+                    <p className="text-3xl font-bold text-blue-600">{stats.scheduledMeetings}</p>
+                  </div>
+                  <Calendar className="h-12 w-12 text-blue-600 opacity-20" />
+                </div>
+              </div>
+              <div className="rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-textMuted mb-1">Completed Meetings</p>
+                    <p className="text-3xl font-bold text-green-600">{stats.completedMeetings}</p>
+                  </div>
+                  <CheckCircle className="h-12 w-12 text-green-600 opacity-20" />
+                </div>
+              </div>
+            </div>
+          )}
           {/* Basic Information */}
           <div className="rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft p-6">
             <h3 className="text-lg font-semibold text-text mb-4 flex items-center gap-2">

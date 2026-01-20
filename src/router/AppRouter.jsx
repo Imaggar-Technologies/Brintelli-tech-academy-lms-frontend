@@ -29,6 +29,7 @@ import StudentDoubtHistory from "../pages/student/DoubtHistory";
 import StudentProfile from "../pages/student/Profile";
 import StudentSettings from "../pages/student/Settings";
 import StudentMCQPractice from "../pages/student/MCQPractice";
+import StudentMCQTest from "../pages/student/MCQTest";
 import StudentCertifications from "../pages/student/CertificationsMock";
 import StudentCodePlayground from "../pages/student/CodePlayground";
 import StudentPlacementAssistance from "../pages/student/PlacementAssistance";
@@ -46,6 +47,10 @@ import StudentProjects from "../pages/student/Projects";
 import StudentProjectTemplates from "../pages/student/ProjectTemplates";
 import StudentPortfolio from "../pages/student/Portfolio";
 import StudentMentorSessions from "../pages/student/MentorSessions";
+import StudentScheduleMeet from "../pages/student/mentor/ScheduleMeet";
+import StudentMentorResources from "../pages/student/mentor/Resources";
+import StudentMentorLogs from "../pages/student/mentor/Logs";
+import StudentMentorNotes from "../pages/student/mentor/Notes";
 import StudentPerformance from "../pages/student/Performance";
 import StudentAnalytics from "../pages/student/Analytics";
 import StudentAchievements from "../pages/student/Achievements";
@@ -368,6 +373,7 @@ const AppRouter = () => {
 
             {/* Practice & Coding */}
             <Route path="mcq-practice" element={<StudentMCQPractice />} />
+            <Route path="mcq-practice/:testId" element={<StudentMCQTest />} />
             <Route path="certifications" element={<StudentCertifications />} />
             <Route path="code-playground" element={<StudentCodePlayground />} />
             <Route path="challenges" element={<StudentChallengesList />} />

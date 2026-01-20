@@ -13,6 +13,8 @@ import {
   Briefcase,
   Clock,
   Bookmark,
+  Video,
+  CalendarClock,
 } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
@@ -48,7 +50,19 @@ const StudentOnboarding = () => {
       }
 
       if (batchesRes.success) {
-        setAvailableBatches(batchesRes.data.batches || []);
+        const batches = batchesRes.data.batches || [];
+        setAvailableBatches(batches);
+        
+        // Log for debugging
+        if (batches.length === 0) {
+          console.warn('No batches available:', {
+            message: batchesRes.data.message,
+            enrollment: enroll?.courseId || enroll?.programId,
+          });
+        }
+      } else {
+        console.error('Failed to fetch batches:', batchesRes);
+        setAvailableBatches([]);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -189,7 +203,14 @@ const StudentOnboarding = () => {
           {enrollment.batchConfirmed && currentBatch ? (
             <div className="space-y-3">
               <div className="p-4 rounded-lg bg-white border border-green-200">
-                <h4 className="font-semibold text-text mb-2">{currentBatch.name}</h4>
+                <div className="flex items-start justify-between mb-2">
+                  <h4 className="font-semibold text-text">{currentBatch.name}</h4>
+                  {enrollment.batchConfirmedBy === 'LSM' || enrollment.batchConfirmedBy === 'MENTOR' ? (
+                    <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                      Selected by Mentor
+                    </span>
+                  ) : null}
+                </div>
                 <div className="space-y-1 text-sm text-textMuted">
                   {currentBatch.startDate && (
                     <p>Start: {new Date(currentBatch.startDate).toLocaleDateString()}</p>
@@ -211,10 +232,34 @@ const StudentOnboarding = () => {
             <div className="space-y-4">
               {currentBatch ? (
                 <div className="p-4 rounded-lg bg-brintelli-baseAlt border border-brintelli-border">
-                  <h4 className="font-semibold text-text mb-2">Assigned Batch: {currentBatch.name}</h4>
-                  <p className="text-sm text-textMuted mb-4">
-                    You have been assigned to this batch. Confirm to proceed or select a different batch.
-                  </p>
+                  <div className="flex items-start justify-between mb-2">
+                    <h4 className="font-semibold text-text">Assigned Batch: {currentBatch.name}</h4>
+                    {enrollment.batchConfirmedBy === 'LSM' || enrollment.batchConfirmedBy === 'MENTOR' ? (
+                      <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                        Selected by Mentor
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="space-y-1 text-sm text-textMuted mb-3">
+                    {currentBatch.startDate && (
+                      <p>Start: {new Date(currentBatch.startDate).toLocaleDateString()}</p>
+                    )}
+                    {currentBatch.endDate && (
+                      <p>End: {new Date(currentBatch.endDate).toLocaleDateString()}</p>
+                    )}
+                    <p>Capacity: {currentBatch.enrolled || 0} / {currentBatch.capacity || 'N/A'}</p>
+                  </div>
+                  {enrollment.batchConfirmedBy === 'LSM' || enrollment.batchConfirmedBy === 'MENTOR' ? (
+                    <div className="mb-3 p-2 bg-blue-50 rounded border border-blue-200">
+                      <p className="text-xs text-blue-700">
+                        Your mentor has selected this batch for you. You can confirm it or choose a different one.
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-textMuted mb-4">
+                      You have been assigned to this batch. Confirm to proceed or select a different batch.
+                    </p>
+                  )}
                   <div className="flex gap-2">
                     <Button
                       onClick={() => handleConfirmBatch(enrollment.batchId)}
@@ -275,28 +320,86 @@ const StudentOnboarding = () => {
           {enrollment.mentorId ? (
             <div className="space-y-3">
               {(() => {
-                const selectedMentor = enrollment.suggestedMentors?.find(m => m.id === enrollment.mentorId);
-                if (!selectedMentor) return null;
+                const selectedMentor = enrollment.suggestedMentors?.find(m => m.id === enrollment.mentorId) ||
+                                      enrollment.bookedCalls?.find(c => c.mentorId === enrollment.mentorId);
+                const isPendingApproval = enrollment.mentorSelectionStatus === 'PENDING_APPROVAL';
+                const isApproved = enrollment.mentorSelectionStatus === 'APPROVED';
+                const isRejected = enrollment.mentorSelectionStatus === 'REJECTED';
+                
                 return (
-                  <div className="p-4 rounded-lg bg-white border border-green-200">
+                  <div className={`p-4 rounded-lg border ${
+                    isApproved ? 'bg-white border-green-200' :
+                    isPendingApproval ? 'bg-amber-50 border-amber-200' :
+                    isRejected ? 'bg-red-50 border-red-200' :
+                    'bg-white border-green-200'
+                  }`}>
                     <div className="flex items-center gap-3 mb-2">
                       <div className="h-10 w-10 rounded-full bg-gradient-to-br from-brand-500/20 to-accent-500/20 flex items-center justify-center">
                         <User className="h-5 w-5 text-brand-600" />
                       </div>
-                      <div>
-                        <h4 className="font-semibold text-text">{selectedMentor.name}</h4>
-                        <p className="text-xs text-textMuted">{selectedMentor.experience}</p>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-semibold text-text">
+                            {selectedMentor?.name || 'Mentor Selected'}
+                          </h4>
+                          {isPendingApproval && (
+                            <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-medium">
+                              Pending LSM Approval
+                            </span>
+                          )}
+                          {isApproved && (
+                            <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                              Approved
+                            </span>
+                          )}
+                          {isRejected && (
+                            <span className="px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">
+                              Rejected
+                            </span>
+                          )}
+                        </div>
+                        {selectedMentor?.experience && (
+                          <p className="text-xs text-textMuted">{selectedMentor.experience}</p>
+                        )}
                       </div>
                     </div>
+                    {isPendingApproval && (
+                      <div className="mt-2 p-2 bg-amber-50 rounded border border-amber-200">
+                        <p className="text-xs text-amber-700">
+                          ⏳ Your mentor selection is pending approval from your Learning Success Manager.
+                        </p>
+                      </div>
+                    )}
+                    {isRejected && (
+                      <div className="mt-2 p-2 bg-red-50 rounded border border-red-200">
+                        <p className="text-xs text-red-700">
+                          ❌ Your mentor selection was rejected.
+                          {enrollment.mentorSelectionRejectionReason && (
+                            <span className="block mt-1">Reason: {enrollment.mentorSelectionRejectionReason}</span>
+                          )}
+                        </p>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => setShowMentorModal(true)}
+                          className="mt-2"
+                        >
+                          Select Different Mentor
+                        </Button>
+                      </div>
+                    )}
+                    {isApproved && (
+                      <Button
+                        variant="secondary"
+                        onClick={() => setShowMentorModal(true)}
+                        className="mt-2"
+                      >
+                        Change Mentor
+                      </Button>
+                    )}
                   </div>
                 );
               })()}
-              <Button
-                variant="secondary"
-                onClick={() => setShowMentorModal(true)}
-              >
-                Change Mentor
-              </Button>
             </div>
           ) : (
             <div className="space-y-4">
@@ -326,12 +429,18 @@ const StudentOnboarding = () => {
                             </div>
                           </div>
                           {hasCall && (
-                            <div className="mb-2 p-2 bg-blue-50 rounded text-xs text-blue-700">
-                              {callInfo?.status === 'PENDING' && 'Call request sent'}
+                            <div className={`mb-2 p-2 rounded text-xs ${
+                              callInfo?.status === 'COMPLETED' 
+                                ? 'bg-green-50 text-green-700' 
+                                : callInfo?.status === 'SCHEDULED'
+                                ? 'bg-blue-50 text-blue-700'
+                                : 'bg-amber-50 text-amber-700'
+                            }`}>
+                              {callInfo?.status === 'PENDING' && '⏳ Call request sent - waiting for mentor to schedule'}
                               {callInfo?.status === 'SCHEDULED' && callInfo?.scheduledDate && (
-                                <>Scheduled: {new Date(callInfo.scheduledDate).toLocaleString()}</>
+                                <>📅 Scheduled: {new Date(callInfo.scheduledDate).toLocaleString()}</>
                               )}
-                              {callInfo?.status === 'COMPLETED' && 'Call completed ✓'}
+                              {callInfo?.status === 'COMPLETED' && '✓ Call completed - Ready to select!'}
                             </div>
                           )}
                           <div className="flex gap-2">
@@ -342,6 +451,7 @@ const StudentOnboarding = () => {
                                 onClick={() => handleBookCall(mentor.id)}
                                 className="flex-1 text-xs"
                               >
+                                <Phone className="h-3 w-3 mr-1" />
                                 Request Call
                               </Button>
                             ) : hasCompleted ? (
@@ -350,6 +460,7 @@ const StudentOnboarding = () => {
                                 onClick={() => handleSelectMentor(mentor.id)}
                                 className="flex-1 text-xs"
                               >
+                                <CheckCircle2 className="h-3 w-3 mr-1" />
                                 Select Mentor
                               </Button>
                             ) : (
@@ -359,7 +470,7 @@ const StudentOnboarding = () => {
                                 disabled
                                 className="flex-1 text-xs"
                               >
-                                Call Pending
+                                {callInfo?.status === 'SCHEDULED' ? 'Call Scheduled' : 'Call Pending'}
                               </Button>
                             )}
                             <Button
@@ -415,37 +526,67 @@ const StudentOnboarding = () => {
 
             <div className="space-y-3">
               {availableBatches.length === 0 ? (
-                <p className="text-textMuted text-center py-8">No batches available for your program.</p>
+                <div className="text-center py-8">
+                  <AlertCircle className="h-12 w-12 text-textMuted mx-auto mb-3" />
+                  <p className="text-textMuted font-medium mb-2">No batches available for your program.</p>
+                  <p className="text-sm text-textMuted">
+                    {enrollment?.courseId || enrollment?.programId
+                      ? 'Please contact your Learning Success Manager to assign a batch.'
+                      : 'Please wait for your program assignment.'}
+                  </p>
+                </div>
               ) : (
-                availableBatches.map((batch) => (
-                  <div
-                    key={batch.id}
-                    className={`p-4 rounded-lg border cursor-pointer transition ${
-                      selectedBatchId === batch.id
-                        ? 'border-brand-500 bg-brand-50'
-                        : 'border-brintelli-border bg-brintelli-baseAlt hover:border-brand-300'
-                    }`}
-                    onClick={() => setSelectedBatchId(batch.id)}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-text mb-1">{batch.name}</h4>
-                        <div className="space-y-1 text-sm text-textMuted">
-                          {batch.startDate && (
-                            <p>Start: {new Date(batch.startDate).toLocaleDateString()}</p>
-                          )}
-                          {batch.endDate && (
-                            <p>End: {new Date(batch.endDate).toLocaleDateString()}</p>
-                          )}
-                          <p>Available: {batch.availableSlots} slots</p>
+                availableBatches.map((batch) => {
+                  const isCurrentBatch = enrollment.batchId === batch.id;
+                  const isMentorSelected = isCurrentBatch && (enrollment.batchConfirmedBy === 'LSM' || enrollment.batchConfirmedBy === 'MENTOR');
+                  
+                  return (
+                    <div
+                      key={batch.id}
+                      className={`p-4 rounded-lg border cursor-pointer transition ${
+                        selectedBatchId === batch.id
+                          ? 'border-brand-500 bg-brand-50'
+                          : isMentorSelected
+                          ? 'border-blue-300 bg-blue-50/50'
+                          : 'border-brintelli-border bg-brintelli-baseAlt hover:border-brand-300'
+                      }`}
+                      onClick={() => setSelectedBatchId(batch.id)}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="font-semibold text-text">{batch.name}</h4>
+                            {isMentorSelected && (
+                              <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                                Mentor Selected
+                              </span>
+                            )}
+                            {isCurrentBatch && !isMentorSelected && (
+                              <span className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">
+                                Current
+                              </span>
+                            )}
+                          </div>
+                          <div className="space-y-1 text-sm text-textMuted">
+                            {batch.startDate && (
+                              <p>Start: {new Date(batch.startDate).toLocaleDateString()}</p>
+                            )}
+                            {batch.endDate && (
+                              <p>End: {new Date(batch.endDate).toLocaleDateString()}</p>
+                            )}
+                            <p>Available: {batch.availableSlots || (batch.capacity - (batch.enrolled || 0))} slots</p>
+                            {batch.enrolled !== undefined && batch.capacity && (
+                              <p className="text-xs">Enrolled: {batch.enrolled} / {batch.capacity}</p>
+                            )}
+                          </div>
                         </div>
+                        {selectedBatchId === batch.id && (
+                          <CheckCircle2 className="h-5 w-5 text-brand-500" />
+                        )}
                       </div>
-                      {selectedBatchId === batch.id && (
-                        <CheckCircle2 className="h-5 w-5 text-brand-500" />
-                      )}
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
 
@@ -545,13 +686,25 @@ const StudentOnboarding = () => {
                   return (
                     <div className="pt-4 border-t border-brintelli-border">
                       {hasCall && (
-                        <div className="mb-4 p-3 bg-blue-50 rounded border border-blue-200">
-                          <p className="text-sm text-blue-600">
-                            {callInfo?.status === 'PENDING' && 'Call request sent. Waiting for mentor to schedule.'}
+                        <div className={`mb-4 p-3 rounded border ${
+                          callInfo?.status === 'COMPLETED' 
+                            ? 'bg-green-50 border-green-200' 
+                            : callInfo?.status === 'SCHEDULED'
+                            ? 'bg-blue-50 border-blue-200'
+                            : 'bg-amber-50 border-amber-200'
+                        }`}>
+                          <p className={`text-sm ${
+                            callInfo?.status === 'COMPLETED' 
+                              ? 'text-green-700' 
+                              : callInfo?.status === 'SCHEDULED'
+                              ? 'text-blue-700'
+                              : 'text-amber-700'
+                          }`}>
+                            {callInfo?.status === 'PENDING' && '⏳ Call request sent. Waiting for mentor to schedule.'}
                             {callInfo?.status === 'SCHEDULED' && callInfo?.scheduledDate && (
-                              <>Scheduled for: {new Date(callInfo.scheduledDate).toLocaleString()}</>
+                              <>📅 Scheduled for: {new Date(callInfo.scheduledDate).toLocaleString()}</>
                             )}
-                            {callInfo?.status === 'COMPLETED' && 'Call completed. You can now select this mentor.'}
+                            {callInfo?.status === 'COMPLETED' && '✓ Call completed. You can now select this mentor.'}
                           </p>
                         </div>
                       )}
@@ -566,6 +719,7 @@ const StudentOnboarding = () => {
                               setShowMentorModal(false);
                             }}
                           >
+                            <Phone className="h-4 w-4 mr-2" />
                             Request Call
                           </Button>
                         ) : hasCompleted ? (
@@ -577,6 +731,7 @@ const StudentOnboarding = () => {
                               setShowMentorModal(false);
                             }}
                           >
+                            <CheckCircle2 className="h-4 w-4 mr-2" />
                             Select as My Mentor
                           </Button>
                         ) : (
@@ -585,7 +740,7 @@ const StudentOnboarding = () => {
                             className="flex-1"
                             disabled
                           >
-                            Call Pending
+                            {callInfo?.status === 'SCHEDULED' ? 'Call Scheduled' : 'Call Pending'}
                           </Button>
                         )}
                       </div>
@@ -622,13 +777,25 @@ const StudentOnboarding = () => {
                         </div>
 
                         {hasCall && (
-                          <div className="mb-3 p-2 bg-blue-50 rounded border border-blue-200">
-                            <p className="text-xs text-blue-700">
-                              {callInfo?.status === 'PENDING' && 'Call request sent'}
+                          <div className={`mb-3 p-2 rounded border ${
+                            callInfo?.status === 'COMPLETED' 
+                              ? 'bg-green-50 border-green-200' 
+                              : callInfo?.status === 'SCHEDULED'
+                              ? 'bg-blue-50 border-blue-200'
+                              : 'bg-amber-50 border-amber-200'
+                          }`}>
+                            <p className={`text-xs ${
+                              callInfo?.status === 'COMPLETED' 
+                                ? 'text-green-700' 
+                                : callInfo?.status === 'SCHEDULED'
+                                ? 'text-blue-700'
+                                : 'text-amber-700'
+                            }`}>
+                              {callInfo?.status === 'PENDING' && '⏳ Call request sent'}
                               {callInfo?.status === 'SCHEDULED' && callInfo?.scheduledDate && (
-                                <>Scheduled: {new Date(callInfo.scheduledDate).toLocaleString()}</>
+                                <>📅 Scheduled: {new Date(callInfo.scheduledDate).toLocaleString()}</>
                               )}
-                              {callInfo?.status === 'COMPLETED' && 'Call completed ✓'}
+                              {callInfo?.status === 'COMPLETED' && '✓ Call completed - Ready to select!'}
                             </p>
                           </div>
                         )}
@@ -641,6 +808,7 @@ const StudentOnboarding = () => {
                               onClick={() => handleBookCall(mentor.id)}
                               className="flex-1"
                             >
+                              <Phone className="h-3 w-3 mr-1" />
                               Request Call
                             </Button>
                           ) : hasCompleted ? (
@@ -649,6 +817,7 @@ const StudentOnboarding = () => {
                               onClick={() => handleSelectMentor(mentor.id)}
                               className="flex-1"
                             >
+                              <CheckCircle2 className="h-3 w-3 mr-1" />
                               Select Mentor
                             </Button>
                           ) : (
@@ -658,7 +827,7 @@ const StudentOnboarding = () => {
                               disabled
                               className="flex-1"
                             >
-                              Call Pending
+                              {callInfo?.status === 'SCHEDULED' ? 'Call Scheduled' : 'Call Pending'}
                             </Button>
                           )}
                           <Button
@@ -679,6 +848,126 @@ const StudentOnboarding = () => {
                 )}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Scheduled Calls Section */}
+      {enrollment?.bookedCalls && enrollment.bookedCalls.length > 0 && (
+        <div className="rounded-2xl border border-brintelli-border bg-brintelli-card p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <CalendarClock className="h-5 w-5 text-brand-600" />
+            <h3 className="text-lg font-semibold text-text">Scheduled Mentor Calls</h3>
+          </div>
+          <p className="text-sm text-textMuted mb-4">
+            All your scheduled calls with mentors. Complete a call before selecting a mentor.
+          </p>
+          <div className="space-y-3">
+            {enrollment.bookedCalls
+              .sort((a, b) => {
+                // Sort by status: SCHEDULED first, then PENDING, then COMPLETED
+                const statusOrder = { SCHEDULED: 1, PENDING: 2, COMPLETED: 3, CANCELLED: 4 };
+                const aOrder = statusOrder[a.status] || 5;
+                const bOrder = statusOrder[b.status] || 5;
+                if (aOrder !== bOrder) return aOrder - bOrder;
+                // If same status, sort by date
+                if (a.scheduledDate && b.scheduledDate) {
+                  return new Date(a.scheduledDate) - new Date(b.scheduledDate);
+                }
+                return 0;
+              })
+              .map((call) => {
+                const mentor = enrollment.suggestedMentors?.find(m => m.id === call.mentorId);
+                const isScheduled = call.status === 'SCHEDULED';
+                const isCompleted = call.status === 'COMPLETED';
+                const isPending = call.status === 'PENDING';
+                
+                return (
+                  <div
+                    key={call.id || call._id}
+                    className={`p-4 rounded-lg border ${
+                      isCompleted
+                        ? 'border-green-200 bg-green-50/30'
+                        : isScheduled
+                        ? 'border-blue-200 bg-blue-50/30'
+                        : 'border-amber-200 bg-amber-50/30'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <User className="h-4 w-4 text-brand-600" />
+                          <h4 className="font-semibold text-text">
+                            {mentor?.name || 'Mentor'}
+                          </h4>
+                        </div>
+                        {mentor?.experience && (
+                          <p className="text-xs text-textMuted mb-2">{mentor.experience}</p>
+                        )}
+                        {isScheduled && call.scheduledDate && (
+                          <div className="flex items-center gap-2 text-sm text-textMuted mb-2">
+                            <Clock className="h-4 w-4" />
+                            <span>
+                              {new Date(call.scheduledDate).toLocaleString('en-US', {
+                                weekday: 'short',
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </span>
+                            {call.duration && <span>• {call.duration} minutes</span>}
+                          </div>
+                        )}
+                        {isPending && (
+                          <p className="text-sm text-amber-700">
+                            Waiting for mentor to schedule the call...
+                          </p>
+                        )}
+                        {isCompleted && (
+                          <p className="text-sm text-green-700 font-medium">
+                            ✓ Call completed! You can now select this mentor.
+                          </p>
+                        )}
+                      </div>
+                      <span
+                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                          isCompleted
+                            ? 'bg-green-100 text-green-700'
+                            : isScheduled
+                            ? 'bg-blue-100 text-blue-700'
+                            : 'bg-amber-100 text-amber-700'
+                        }`}
+                      >
+                        {call.status}
+                      </span>
+                    </div>
+                    {isScheduled && call.meetingLink && (
+                      <a
+                        href={call.meetingLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-2 text-sm text-brand hover:underline bg-white px-4 py-2 rounded-lg border border-brand-200 font-medium mb-2"
+                      >
+                        <Video className="h-4 w-4" />
+                        Join Meeting
+                      </a>
+                    )}
+                    {isCompleted && !enrollment.mentorId && (
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        onClick={() => handleSelectMentor(call.mentorId)}
+                        className="w-full"
+                      >
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        Select as My Mentor
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
           </div>
         </div>
       )}
@@ -718,7 +1007,9 @@ const StudentOnboarding = () => {
           <div className="mt-4 p-4 rounded-lg bg-yellow-50 border border-yellow-200">
             <p className="text-sm text-yellow-800">
               <AlertCircle className="h-4 w-4 inline mr-2" />
-              Please complete both steps to access sessions and assignments.
+              {enrollment.mentorId 
+                ? 'Please complete batch confirmation to access sessions and assignments.'
+                : 'Please schedule and complete a call with a mentor before selecting them. Then complete both steps to access sessions and assignments.'}
             </p>
           </div>
         )}

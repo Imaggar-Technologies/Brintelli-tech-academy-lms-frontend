@@ -61,6 +61,19 @@ export const mentorAPI = {
   getMenteesEngagement: async () => {
     return apiRequest('/api/mentors/mentees/engagement');
   },
+
+  // Get mentor's profile
+  getProfile: async () => {
+    return apiRequest('/api/mentors/profile');
+  },
+
+  // Update mentor's profile
+  updateProfile: async (profileData) => {
+    return apiRequest('/api/mentors/profile', {
+      method: 'PUT',
+      body: JSON.stringify(profileData),
+    });
+  },
 };
 
 export default mentorAPI;

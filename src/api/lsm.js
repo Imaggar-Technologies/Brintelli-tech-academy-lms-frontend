@@ -420,6 +420,18 @@ export const lsmAPI = {
       body: JSON.stringify({ feedback, authorId }),
     });
   },
+
+  // ==================== MENTOR SELECTION APPROVAL ====================
+  getPendingMentorSelections: async () => {
+    return apiRequest('/api/lsm/mentor-selections/pending');
+  },
+
+  approveMentorSelection: async (enrollmentId, approved, rejectionReason = null) => {
+    return apiRequest(`/api/lsm/enrollments/${enrollmentId}/approve-mentor-selection`, {
+      method: 'POST',
+      body: JSON.stringify({ approved, rejectionReason }),
+    });
+  },
 };
 
 export default lsmAPI;

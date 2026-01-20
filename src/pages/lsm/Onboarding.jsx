@@ -4,6 +4,7 @@ import { UserPlus, Calendar, GraduationCap, UserCheck, CheckCircle2, Clock, Aler
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
 import Table from '../../components/Table';
+import Modal from '../../components/Modal';
 import lsmAPI from '../../api/lsm';
 import leadAPI from '../../api/lead';
 import programAPI from '../../api/program';
@@ -31,10 +32,49 @@ const Onboarding = () => {
   const [callNoteText, setCallNoteText] = useState('');
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedEnrollmentForDetails, setSelectedEnrollmentForDetails] = useState(null);
+  const [pendingMentorSelections, setPendingMentorSelections] = useState([]);
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
+  const [selectedMentorSelection, setSelectedMentorSelection] = useState(null);
+  const [rejectionReason, setRejectionReason] = useState('');
 
   useEffect(() => {
     fetchData();
+    fetchPendingMentorSelections();
   }, []);
+
+  const fetchPendingMentorSelections = async () => {
+    try {
+      const response = await lsmAPI.getPendingMentorSelections();
+      if (response.success) {
+        setPendingMentorSelections(response.data.pendingSelections || []);
+      }
+    } catch (error) {
+      console.error('Error fetching pending mentor selections:', error);
+    }
+  };
+
+  const handleApproveMentorSelection = async (enrollmentId, approved) => {
+    try {
+      const response = await lsmAPI.approveMentorSelection(
+        enrollmentId,
+        approved,
+        approved ? null : rejectionReason
+      );
+      if (response.success) {
+        toast.success(approved ? 'Mentor selection approved' : 'Mentor selection rejected');
+        setShowApprovalModal(false);
+        setSelectedMentorSelection(null);
+        setRejectionReason('');
+        fetchData();
+        fetchPendingMentorSelections();
+      } else {
+        toast.error(response.message || 'Failed to process approval');
+      }
+    } catch (error) {
+      console.error('Error approving mentor selection:', error);
+      toast.error(error.message || 'Failed to process approval');
+    }
+  };
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -82,6 +122,7 @@ const Onboarding = () => {
           // Normalize ID to ensure it's always a string
           id: (batch.id || batch._id)?.toString(),
           _id: (batch._id || batch.id)?.toString(),
+
           // Ensure all fields have defaults
           courseId: batch.courseId || batch.programId || null,
           programId: batch.programId || batch.courseId || null,
@@ -617,6 +658,76 @@ const Onboarding = () => {
         title="Student Onboarding"
         description="Allocate batches, courses, and mentors for paid students"
       />
+
+      {/* Pending Mentor Selections Section */}
+      {pendingMentorSelections.length > 0 && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50/30 p-6 mb-6 shadow-soft">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-semibold text-text flex items-center gap-2">
+                <UserCheck className="h-5 w-5 text-amber-600" />
+                Pending Mentor Selections
+              </h3>
+              <p className="text-sm text-textMuted mt-1">
+                {pendingMentorSelections.length} student(s) waiting for mentor selection approval
+              </p>
+            </div>
+            <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-medium">
+              {pendingMentorSelections.length} pending
+            </span>
+          </div>
+          <div className="space-y-3">
+            {pendingMentorSelections.map((selection) => (
+              <div
+                key={selection.enrollmentId}
+                className="p-4 rounded-lg border border-amber-200 bg-white"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <User className="h-5 w-5 text-brand-600" />
+                      <div>
+                        <h4 className="font-semibold text-text">{selection.studentName}</h4>
+                        <p className="text-xs text-textMuted">{selection.studentEmail}</p>
+                      </div>
+                    </div>
+                    <div className="ml-8 space-y-1 text-sm">
+                      <p className="text-textMuted">
+                        <strong>Program:</strong> {selection.programName}
+                      </p>
+                      {selection.batchName && (
+                        <p className="text-textMuted">
+                          <strong>Batch:</strong> {selection.batchName}
+                        </p>
+                      )}
+                      <p className="text-textMuted">
+                        <strong>Selected Mentor:</strong> {selection.mentorName} ({selection.mentorEmail})
+                      </p>
+                      {selection.mentorSelectedAt && (
+                        <p className="text-xs text-textMuted">
+                          Selected on: {new Date(selection.mentorSelectedAt).toLocaleString()}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      onClick={() => {
+                        setSelectedMentorSelection(selection);
+                        setShowApprovalModal(true);
+                      }}
+                    >
+                      Review
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid gap-5 md:grid-cols-3 mb-6">
@@ -1337,7 +1448,86 @@ const Onboarding = () => {
           </div>
         </div>
         );
-      })()}
+      })(      )}
+
+      {/* Mentor Selection Approval Modal */}
+      {showApprovalModal && selectedMentorSelection && (
+        <Modal
+          isOpen={showApprovalModal}
+          onClose={() => {
+            setShowApprovalModal(false);
+            setSelectedMentorSelection(null);
+            setRejectionReason('');
+          }}
+          title="Review Mentor Selection"
+          size="lg"
+        >
+          <div className="space-y-4">
+            <div className="p-4 bg-brintelli-baseAlt rounded-lg">
+              <h4 className="font-semibold text-text mb-2">Student Information</h4>
+              <p className="text-sm text-textMuted">{selectedMentorSelection.studentName}</p>
+              <p className="text-sm text-textMuted">{selectedMentorSelection.studentEmail}</p>
+              <p className="text-sm text-textMuted mt-2">
+                <strong>Program:</strong> {selectedMentorSelection.programName}
+              </p>
+              {selectedMentorSelection.batchName && (
+                <p className="text-sm text-textMuted">
+                  <strong>Batch:</strong> {selectedMentorSelection.batchName}
+                </p>
+              )}
+            </div>
+
+            <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <h4 className="font-semibold text-text mb-2">Selected Mentor</h4>
+              <p className="text-sm text-text">{selectedMentorSelection.mentorName}</p>
+              <p className="text-sm text-textMuted">{selectedMentorSelection.mentorEmail}</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-text mb-2">
+                Rejection Reason (if rejecting)
+              </label>
+              <textarea
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                placeholder="Optional: Provide reason for rejection..."
+                rows={3}
+                className="w-full px-4 py-2 border border-brintelli-border rounded-lg bg-white text-text focus:outline-none focus:ring-2 focus:ring-brand-500"
+              />
+            </div>
+
+            <div className="flex gap-3 pt-4 border-t">
+              <Button
+                variant="primary"
+                onClick={() => handleApproveMentorSelection(selectedMentorSelection.enrollmentId, true)}
+                className="flex-1"
+              >
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                Approve
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => handleApproveMentorSelection(selectedMentorSelection.enrollmentId, false)}
+                className="flex-1"
+                disabled={!rejectionReason.trim()}
+              >
+                <AlertCircle className="h-4 w-4 mr-2" />
+                Reject
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setShowApprovalModal(false);
+                  setSelectedMentorSelection(null);
+                  setRejectionReason('');
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </>
   );
 };

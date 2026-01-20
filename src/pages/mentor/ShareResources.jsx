@@ -29,7 +29,14 @@ const ShareResources = () => {
       const response = await mentorAPI.getMentees();
       
       if (response.success) {
-        setMentees(response.data.mentees || []);
+        const menteesData = (response.data.mentees || []).map(mentee => ({
+          ...mentee,
+          id: mentee.id || mentee.enrollmentId,
+          enrollmentId: mentee.enrollmentId || mentee.id,
+        }));
+        console.log('Loaded mentees:', menteesData.length, menteesData);
+        setMentees(menteesData);
+        
         // Load shared resources from localStorage (or could be from backend)
         const saved = localStorage.getItem('mentorSharedResources');
         if (saved) {
@@ -40,6 +47,7 @@ const ShareResources = () => {
           }
         }
       } else {
+        console.error('Failed to load mentees:', response);
         toast.error(response.message || 'Failed to load mentees');
         setMentees([]);
       }
@@ -161,7 +169,10 @@ const ShareResources = () => {
         ) : mentees.length === 0 ? (
           <div className="text-center py-12">
             <AlertCircle className="h-12 w-12 text-textMuted mx-auto mb-4" />
-            <p className="text-textMuted">No mentees assigned yet</p>
+            <p className="text-textMuted font-medium mb-2">No mentees assigned yet</p>
+            <p className="text-sm text-textMuted">
+              Students need to select you as their mentor and get LSM approval before they appear here.
+            </p>
           </div>
         ) : (
           <div className="space-y-6">
@@ -245,21 +256,41 @@ const ShareResources = () => {
             <label className="block text-sm font-medium text-text mb-2">
               Select Mentee <span className="text-red-500">*</span>
             </label>
-            <select
-              value={selectedMentee?.id || selectedMentee?.enrollmentId || ''}
-              onChange={(e) => {
-                const mentee = mentees.find(m => (m.id || m.enrollmentId) === e.target.value);
-                setSelectedMentee(mentee);
-              }}
-              className="w-full px-4 py-2 border border-brintelli-border rounded-lg bg-white text-text focus:outline-none focus:ring-2 focus:ring-brand-500"
-            >
-              <option value="">Select a mentee...</option>
-              {mentees.map((mentee) => (
-                <option key={mentee.id || mentee.enrollmentId} value={mentee.id || mentee.enrollmentId}>
-                  {mentee.studentName} ({mentee.studentEmail})
-                </option>
-              ))}
-            </select>
+            {mentees.length === 0 ? (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-sm text-amber-700">
+                  No mentees assigned yet. Students need to select you as their mentor and get LSM approval.
+                </p>
+              </div>
+            ) : (
+              <select
+                value={selectedMentee?.id || selectedMentee?.enrollmentId || ''}
+                onChange={(e) => {
+                  const mentee = mentees.find(m => {
+                    const menteeId = m.id || m.enrollmentId;
+                    const value = e.target.value;
+                    return String(menteeId) === String(value);
+                  });
+                  setSelectedMentee(mentee || null);
+                }}
+                className="w-full px-4 py-2 border border-brintelli-border rounded-lg bg-white text-text focus:outline-none focus:ring-2 focus:ring-brand-500"
+              >
+                <option value="">Select a mentee...</option>
+                {mentees.map((mentee) => {
+                  const menteeId = mentee.id || mentee.enrollmentId;
+                  const statusBadge = mentee.mentorSelectionStatus === 'PENDING_APPROVAL' 
+                    ? ' (Pending Approval)' 
+                    : mentee.mentorSelectionStatus === 'APPROVED'
+                    ? ' (Approved)'
+                    : '';
+                  return (
+                    <option key={menteeId} value={menteeId}>
+                      {mentee.studentName} ({mentee.studentEmail}){statusBadge}
+                    </option>
+                  );
+                })}
+              </select>
+            )}
           </div>
 
           <div>

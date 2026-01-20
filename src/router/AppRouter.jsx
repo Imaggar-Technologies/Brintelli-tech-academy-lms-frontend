@@ -360,6 +360,14 @@ const AppRouter = () => {
             {/* Mentors */}
             <Route path="mentors" element={<StudentMentorSessions />} />
             <Route path="mentors/book" element={<StudentMentorSessions />} />
+            {/* Mentor Connector */}
+            <Route path="mentor-connector">
+              <Route path="my-mentor" element={<StudentMentorSessions />} />
+              <Route path="schedule-meet" element={<StudentScheduleMeet />} />
+              <Route path="resources" element={<StudentMentorResources />} />
+              <Route path="logs" element={<StudentMentorLogs />} />
+              <Route path="notes" element={<StudentMentorNotes />} />
+            </Route>
 
             {/* Community */}
             <Route path="forum" element={<StudentForum />} />

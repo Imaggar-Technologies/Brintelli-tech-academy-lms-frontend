@@ -6,11 +6,6 @@ const AuthImageCarousel = () => {
   
   // Images from public/authImages folder
   const images = [
-    "/authImages/1 (1).jpg",
-    "/authImages/1 (2).jpg",
-    "/authImages/1 (3).jpg",
-    "/authImages/1 (4).jpg",
-    "/authImages/1 (5).jpg",
     "/authImages/1 (1) - Copy.jpg",
     "/authImages/1 (2) - Copy.jpg",
     "/authImages/1 (3) - Copy.jpg",

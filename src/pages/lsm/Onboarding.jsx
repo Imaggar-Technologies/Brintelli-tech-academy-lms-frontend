@@ -107,12 +107,26 @@ const Onboarding = () => {
       }
       
       if (mentorsRes.success) {
-        const mentorsData = mentorsRes.data.mentors || [];
-        console.log('Loaded mentors:', mentorsData.length);
+        // Handle different response structures
+        const mentorsData = (mentorsRes.data?.mentors || mentorsRes.mentors || []).map(mentor => ({
+          ...mentor,
+          id: (mentor.id || mentor._id)?.toString(),
+          _id: (mentor._id || mentor.id)?.toString(),
+          specialization: mentor.specialization || [],
+          availableSlots: mentor.availableSlots || Math.max((mentor.maxStudents || 0) - (mentor.currentStudents || 0), 0),
+          isActive: mentor.isActive !== false,
+        }));
+        console.log('=== Mentor Loading Debug ===');
+        console.log('Mentors API Response:', mentorsRes);
+        console.log('Mentors data structure:', mentorsRes.data);
+        console.log('Loaded mentors count:', mentorsData.length);
+        console.log('First mentor sample:', mentorsData[0]);
+        console.log('=== End Mentor Loading Debug ===');
         setMentors(mentorsData);
       } else {
         console.error('Failed to load mentors:', mentorsRes);
         toast.error(mentorsRes.message || 'Failed to load mentors');
+        setMentors([]); // Ensure mentors is set to empty array on error
       }
 
       if (programsRes.success) {
@@ -198,11 +212,38 @@ const Onboarding = () => {
   };
 
   const handleSuggestMentors = (enrollment) => {
+    console.log('=== Opening Mentor Modal ===');
+    console.log('Current mentors state:', mentors);
+    console.log('Mentors count:', mentors.length);
+    console.log('Enrollment:', enrollment);
     setSelectedEnrollment(enrollment);
+    
+    // Pre-populate with existing suggestions if mentors have already been suggested
+    const existingSuggestions = enrollment?.suggestedMentors || [];
+    
     setMentorData({
-      suggestedMentors: [], // Reset suggested mentors
+      suggestedMentors: existingSuggestions.map(String), // Pre-populate if already suggested
     });
     setShowMentorModal(true);
+    
+    // If mentors are empty, try to fetch them again
+    if (mentors.length === 0) {
+      console.log('Mentors are empty, fetching again...');
+      lsmAPI.getAllMentors({ isActive: true }).then(mentorsRes => {
+        if (mentorsRes.success) {
+          const mentorsData = (mentorsRes.data?.mentors || mentorsRes.mentors || []).map(mentor => ({
+            ...mentor,
+            id: (mentor.id || mentor._id)?.toString(),
+            _id: (mentor._id || mentor.id)?.toString(),
+            specialization: mentor.specialization || [],
+            availableSlots: mentor.availableSlots || Math.max((mentor.maxStudents || 0) - (mentor.currentStudents || 0), 0),
+            isActive: mentor.isActive !== false,
+          }));
+          console.log('Refetched mentors:', mentorsData.length);
+          setMentors(mentorsData);
+        }
+      });
+    }
   };
 
   const handleSubmitBatch = async () => {
@@ -238,7 +279,10 @@ const Onboarding = () => {
         suggestedMentors: mentorData.suggestedMentors,
       });
       if (response.success) {
-        toast.success('Mentors suggested successfully. Student will choose one.');
+        const isUpdate = selectedEnrollment?.suggestedMentors?.length > 0 || selectedEnrollment?.mentorSuggestedAt;
+        toast.success(isUpdate 
+          ? 'Mentor suggestions updated successfully. Student will choose one.'
+          : 'Mentors suggested successfully. Student will choose one.');
         setShowMentorModal(false);
         fetchData();
       }
@@ -289,7 +333,19 @@ const Onboarding = () => {
     }
 
     try {
-      const response = await leadAPI.addCallNotes(selectedLeadForCallNotes, {
+      // Ensure leadId is a string
+      const leadId = typeof selectedLeadForCallNotes === 'string' 
+        ? selectedLeadForCallNotes 
+        : selectedLeadForCallNotes?.toString() || selectedLeadForCallNotes;
+
+      if (!leadId) {
+        toast.error('Lead ID is missing. Please try again.');
+        return;
+      }
+
+      console.log('Adding call notes for leadId:', leadId);
+      
+      const response = await leadAPI.addCallNotes(leadId, {
         notes: callNoteText.trim(),
         callDate: new Date().toISOString().split('T')[0],
         callTime: new Date().toTimeString().slice(0, 5),
@@ -301,6 +357,8 @@ const Onboarding = () => {
         setShowCallNotesModal(false);
         setSelectedLeadForCallNotes(null);
         fetchData(); // Refresh to get updated call notes
+      } else {
+        toast.error(response.message || 'Failed to add call notes');
       }
     } catch (error) {
       console.error('Error adding call notes:', error);
@@ -421,7 +479,9 @@ const Onboarding = () => {
                   handleSuggestMentors(enrollment);
                 }}
             >
-                Suggest Mentors
+                {(enrollment?.suggestedMentors && enrollment.suggestedMentors.length > 0) || enrollment?.mentorSuggestedAt
+                  ? 'Change Suggestions'
+                  : 'Suggest Mentors'}
             </Button>
             )}
             {enrollment?.batchId && enrollment?.mentorId && (
@@ -497,7 +557,18 @@ const Onboarding = () => {
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setSelectedLeadForCallNotes(enrollment?.leadId);
+                    // Ensure we get the leadId correctly - try multiple sources
+                    const leadId = enrollment?.leadId 
+                      || enrollment?.lead?.id 
+                      || (enrollment?.lead?._id?.toString ? enrollment.lead._id.toString() : enrollment?.lead?._id);
+                    
+                    if (!leadId) {
+                      toast.error('Unable to find lead ID. Please refresh the page.');
+                      return;
+                    }
+                    
+                    console.log('Opening call notes modal for leadId:', leadId, 'enrollment:', enrollment);
+                    setSelectedLeadForCallNotes(leadId);
                     setShowCallNotesModal(true);
                     setExpandedRows(prev => {
                       const newSet = new Set(prev);
@@ -705,10 +776,29 @@ const Onboarding = () => {
       </div>
 
       {/* Call Notes Modal */}
-      {showCallNotesModal && selectedLeadForCallNotes && (
+      {showCallNotesModal && selectedLeadForCallNotes && (() => {
+        // Find the enrollment to show student name
+        const enrollment = enrollments.find(e => {
+          const eLeadId = e?.leadId || e?.lead?.id || (e?.lead?._id?.toString ? e.lead._id.toString() : e?.lead?._id);
+          const selectedId = typeof selectedLeadForCallNotes === 'string' 
+            ? selectedLeadForCallNotes 
+            : selectedLeadForCallNotes?.toString() || selectedLeadForCallNotes;
+          return eLeadId === selectedId;
+        });
+        
+        return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowCallNotesModal(false)}>
-          <div className="bg-brintelli-card rounded-2xl p-6 max-w-2xl w-full mx-4" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-brintelli-card rounded-2xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-xl font-semibold mb-4">Add Call Notes</h3>
+            {enrollment?.lead && (
+              <div className="mb-4 p-3 bg-brintelli-baseAlt rounded-lg">
+                <p className="text-sm font-semibold text-text">Student: {enrollment.lead.name}</p>
+                <p className="text-xs text-textMuted">{enrollment.lead.email}</p>
+                {enrollment.lead.phone && (
+                  <p className="text-xs text-textMuted">Phone: {enrollment.lead.phone}</p>
+                )}
+              </div>
+            )}
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-text mb-2">
@@ -717,9 +807,12 @@ const Onboarding = () => {
                 <textarea
                   value={callNoteText}
                   onChange={(e) => setCallNoteText(e.target.value)}
-                  className="w-full px-4 py-2 border border-brintelli-border rounded-lg bg-brintelli-card text-text min-h-[150px]"
-                  placeholder="Enter call notes..."
+                  className="w-full px-4 py-2 border border-brintelli-border rounded-lg bg-white text-text focus:outline-none focus:ring-2 focus:ring-brand-500 min-h-[150px]"
+                  placeholder="Enter call notes about your conversation with the student..."
                 />
+                <p className="text-xs text-textMuted mt-1">
+                  Add notes about your call with the student during onboarding process.
+                </p>
               </div>
             </div>
             <div className="flex gap-3 mt-6">
@@ -743,7 +836,8 @@ const Onboarding = () => {
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Details Modal */}
       {showDetailsModal && selectedEnrollmentForDetails && (
@@ -979,9 +1073,9 @@ const Onboarding = () => {
                         : `FULL (${batch.enrolled || 0}/${batch.capacity || 0})`;
                       
                       return (
-                        <option key={batch.id || batch._id} value={batch.id || batch._id}>
+                      <option key={batch.id || batch._id} value={batch.id || batch._id}>
                           {batch.name || 'Unnamed Batch'} - {capacityText} - {batch.status || 'N/A'}
-                        </option>
+                      </option>
                       );
                     });
                   })()}
@@ -992,7 +1086,7 @@ const Onboarding = () => {
                   
                   if (enrollmentCourseId) {
                     // Filter batches matching the enrollment's courseId/programId
-                    const enrollmentCourseIdStr = String(enrollmentCourseId).trim();
+                      const enrollmentCourseIdStr = String(enrollmentCourseId).trim();
                     const relevantBatches = batches.filter(b => {
                       const batchCourseId = String(b.courseId || '').trim();
                       const batchProgramId = String(b.programId || '').trim();
@@ -1080,14 +1174,30 @@ const Onboarding = () => {
       )}
 
       {/* Mentor Suggestions Modal */}
-      {showMentorModal && selectedEnrollment && (
+      {showMentorModal && selectedEnrollment && (() => {
+        const existingSuggestions = selectedEnrollment?.suggestedMentors || [];
+        const hasBeenSuggested = existingSuggestions.length > 0 || selectedEnrollment?.mentorSuggestedAt;
+        const isUpdate = hasBeenSuggested;
+        
+        return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowMentorModal(false)}>
           <div className="bg-brintelli-card rounded-2xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-xl font-semibold mb-4">Suggest Mentors</h3>
+            <h3 className="text-xl font-semibold mb-4">
+              {isUpdate ? 'Change Mentor Suggestions' : 'Suggest Mentors'}
+            </h3>
             <p className="text-textMuted mb-6">
               Student: <strong>{selectedEnrollment.lead?.name}</strong>
               <br />
-              <span className="text-sm">Select up to 4 mentors. The student will choose one.</span>
+              <span className="text-sm">
+                {isUpdate 
+                  ? 'Update your mentor suggestions. Select up to 4 mentors. The student will choose one.'
+                  : 'Select up to 4 mentors. The student will choose one.'}
+              </span>
+              {isUpdate && selectedEnrollment?.mentorSuggestedAt && (
+                <span className="text-xs text-textMuted block mt-1">
+                  Previously suggested on: {new Date(selectedEnrollment.mentorSuggestedAt).toLocaleDateString()}
+                </span>
+              )}
             </p>
 
             <div className="space-y-4">
@@ -1098,25 +1208,70 @@ const Onboarding = () => {
                 </label>
                 <div className="space-y-2 max-h-64 overflow-y-auto border border-brintelli-border rounded-lg p-3">
                   {(() => {
-                    // Filter mentors by the enrollment's courseId (program) if available
-                    const enrollmentCourseId = selectedEnrollment?.courseId;
-                    const relevantMentors = enrollmentCourseId
-                      ? mentors.filter(m => {
-                          // Match by courseId if mentor has courseId
-                          const mentorCourseId = m.courseId?.toString() || m.courseId;
-                          const enrollmentCourseIdStr = enrollmentCourseId?.toString() || enrollmentCourseId;
-                          return !mentorCourseId || mentorCourseId === enrollmentCourseIdStr;
-                        })
-                      : mentors; // If no courseId, show all mentors
+                    console.log('=== Mentor Filtering Debug ===');
+                    console.log('Total mentors:', mentors.length);
+                    console.log('Mentors sample:', mentors.slice(0, 2));
                     
+                    // Get enrollment courseId from multiple sources
+                    const enrollmentCourseId = selectedEnrollment?.courseId 
+                      || selectedEnrollment?.offer?.courseId
+                      || null;
+                    
+                    console.log('Enrollment courseId:', enrollmentCourseId);
+                    
+                    // Filter mentors by specialization (mentors have specialization array with courseIds)
+                    let relevantMentors = mentors;
+                    if (enrollmentCourseId) {
+                      const enrollmentCourseIdStr = String(enrollmentCourseId).trim();
+                      
+                      // Mentors have a specialization array that contains courseIds
+                      relevantMentors = mentors.filter(m => {
+                        // If mentor has no specialization or empty specialization, show them (they can mentor any program)
+                        if (!m.specialization || m.specialization.length === 0) {
+                          console.log('✓ Mentor with no specialization (can mentor any):', m.name);
+                          return true;
+                        }
+                        
+                        // Check if mentor's specialization includes the enrollment's courseId
+                        const hasSpecialization = m.specialization.some(spec => {
+                          const specId = String(spec || '').trim();
+                          const matches = specId === enrollmentCourseIdStr;
+                          if (matches) {
+                            console.log('✓ Matched mentor by specialization:', m.name, 'specialization:', m.specialization);
+                          }
+                          return matches;
+                        });
+                        
+                        return hasSpecialization;
+                      });
+                      
+                      console.log('Relevant mentors (matching specialization):', relevantMentors.length);
+                      
+                      // If no matches found, show all mentors as fallback
+                      if (relevantMentors.length === 0) {
+                        console.log('No mentors match specialization, showing all mentors as fallback');
+                        relevantMentors = mentors;
+                      }
+                    } else {
+                      console.log('No courseId found, showing all mentors');
+                    }
+                    
+                    // Filter by active status and available slots
                     const availableMentors = relevantMentors
-                      .filter(m => m.availableSlots > 0)
+                      .filter(m => {
+                        const isActive = m.isActive !== false;
+                        const hasSlots = (m.availableSlots || 0) > 0;
+                        return isActive && hasSlots;
+                      })
                       .slice(0, 10); // Show more options, but user can only select 4
+                    
+                    console.log('Available mentors (active + slots):', availableMentors.length);
+                    console.log('=== End Mentor Filtering Debug ===');
                     
                     if (availableMentors.length === 0) {
                       return (
                         <p className="text-sm text-textMuted text-center py-2">
-                          No available mentors found for this program
+                          No available mentors found for this program. Mentors need to have available slots and match the program specialization.
                         </p>
                       );
                     }
@@ -1170,7 +1325,7 @@ const Onboarding = () => {
                 onClick={handleSubmitMentorSuggestions}
                 disabled={!mentorData.suggestedMentors || mentorData.suggestedMentors.length === 0}
               >
-                Suggest Mentors
+                {isUpdate ? 'Update Suggestions' : 'Suggest Mentors'}
               </Button>
               <Button
                 variant="ghost"
@@ -1181,7 +1336,8 @@ const Onboarding = () => {
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
     </>
   );
 };

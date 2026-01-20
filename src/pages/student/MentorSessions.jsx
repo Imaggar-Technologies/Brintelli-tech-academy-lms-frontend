@@ -12,7 +12,9 @@ import {
   MessageSquare,
   FileText,
   Clock,
-  Award
+  Award,
+  Video,
+  CalendarClock
 } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
@@ -26,6 +28,7 @@ const MentorSessions = () => {
   const [allMentors, setAllMentors] = useState([]);
   const [currentMentor, setCurrentMentor] = useState(null);
   const [selectingMentor, setSelectingMentor] = useState(null);
+  const [scheduledMeetings, setScheduledMeetings] = useState([]);
 
   useEffect(() => {
     fetchData();
@@ -74,6 +77,22 @@ const MentorSessions = () => {
             setCurrentMentor(mentor);
           }
         }
+      }
+
+      // Get scheduled meetings from bookedCalls
+      if (enrollmentData?.bookedCalls) {
+        const scheduled = enrollmentData.bookedCalls
+          .filter(call => call.status === 'SCHEDULED' && call.scheduledDate)
+          .map(call => ({
+            ...call,
+            scheduledDate: call.scheduledDate ? new Date(call.scheduledDate) : null,
+          }))
+          .sort((a, b) => {
+            if (!a.scheduledDate) return 1;
+            if (!b.scheduledDate) return -1;
+            return a.scheduledDate - b.scheduledDate;
+          });
+        setScheduledMeetings(scheduled);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -192,7 +211,64 @@ const MentorSessions = () => {
             </div>
           </div>
 
-          {/* Placeholder for future sections */}
+          {/* Scheduled Meetings Section */}
+          {scheduledMeetings.length > 0 && (
+            <div className="rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <CalendarClock className="h-5 w-5 text-brand-600" />
+                <h3 className="text-lg font-semibold text-text">Scheduled Meetings</h3>
+              </div>
+              <div className="space-y-3">
+                {scheduledMeetings.map((meeting) => (
+                  <div
+                    key={meeting.id}
+                    className="flex flex-col gap-3 rounded-xl border border-brand-200 bg-brand-50/30 p-4"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Clock className="h-4 w-4 text-brand-600" />
+                          <span className="font-semibold text-text">
+                            {meeting.scheduledDate
+                              ? meeting.scheduledDate.toLocaleString('en-US', {
+                                  weekday: 'short',
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })
+                              : 'Date TBD'}
+                          </span>
+                        </div>
+                        {meeting.duration && (
+                          <p className="text-sm text-textMuted ml-6">
+                            Duration: {meeting.duration} minutes
+                          </p>
+                        )}
+                      </div>
+                      <span className="inline-flex rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
+                        Scheduled
+                      </span>
+                    </div>
+                    {meeting.meetingLink && (
+                      <a
+                        href={meeting.meetingLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-2 text-sm text-brand hover:underline bg-white px-4 py-2 rounded-lg border border-brand-200 font-medium"
+                      >
+                        <Video className="h-4 w-4" />
+                        Join Meeting
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Mentor Interaction History */}
           <div className="rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft p-6">
             <h3 className="text-lg font-semibold text-text mb-4">Mentor Interaction History</h3>
             <p className="text-textMuted text-center py-8">

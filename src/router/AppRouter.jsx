@@ -122,8 +122,28 @@ import AdminSettings from "../pages/admin/Settings";
 // Placement role pages
 import PlacementDashboard from "../pages/placement/PlacementDashboard";
 
-// Mentor dashboard
+// Mentor pages
 import MentorDashboard from "../pages/mentor/Dashboard";
+import MentorMentees from "../pages/mentor/Mentees";
+import MentorSchedule from "../pages/mentor/Schedule";
+import MentorSessions from "../pages/mentor/Sessions";
+import MentorSessionLogs from "../pages/mentor/SessionLogs";
+import MentorPrepNotes from "../pages/mentor/PrepNotes";
+import MentorUpcoming from "../pages/mentor/Upcoming";
+import MentorNotes from "../pages/mentor/Notes";
+import MentorShareResources from "../pages/mentor/ShareResources";
+import MentorNudges from "../pages/mentor/Nudges";
+import MentorProgress from "../pages/mentor/Progress";
+import MentorEngagement from "../pages/mentor/Engagement";
+import MentorReports from "../pages/mentor/Reports";
+import MentorInterviewPrep from "../pages/mentor/InterviewPrep";
+import MentorResumeReviews from "../pages/mentor/ResumeReviews";
+import MentorPlacementReadiness from "../pages/mentor/PlacementReadiness";
+import MentorProfile from "../pages/mentor/Profile";
+import MentorFeedback from "../pages/mentor/Feedback";
+import MentorResources from "../pages/mentor/Resources";
+import MentorRiskStudents from "../pages/mentor/RiskStudents";
+import MentorAssignments from "../pages/mentor/Assignments";
 
 // Program manager dashboard
 import ProgramManagerDashboard from "../pages/program-manager/Dashboard";
@@ -458,6 +478,32 @@ const AppRouter = () => {
 
           <Route path="mentor">
             <Route path="dashboard" element={<MentorDashboard />} />
+            {/* Mentees */}
+            <Route path="mentees" element={<MentorMentees />} />
+            <Route path="assignments" element={<MentorAssignments />} />
+            <Route path="risk-students" element={<MentorRiskStudents />} />
+            {/* Sessions & Meetings */}
+            <Route path="schedule" element={<MentorSchedule />} />
+            <Route path="sessions" element={<MentorSessions />} />
+            <Route path="session-logs" element={<MentorSessionLogs />} />
+            <Route path="prep-notes" element={<MentorPrepNotes />} />
+            <Route path="upcoming" element={<MentorUpcoming />} />
+            {/* Resources & Notes */}
+            <Route path="resources" element={<MentorResources />} />
+            <Route path="notes" element={<MentorNotes />} />
+            <Route path="share-resources" element={<MentorShareResources />} />
+            <Route path="nudges" element={<MentorNudges />} />
+            {/* Progress & Engagement */}
+            <Route path="progress" element={<MentorProgress />} />
+            <Route path="engagement" element={<MentorEngagement />} />
+            <Route path="feedback" element={<MentorFeedback />} />
+            <Route path="reports" element={<MentorReports />} />
+            {/* Placement Support */}
+            <Route path="interview-prep" element={<MentorInterviewPrep />} />
+            <Route path="resume-reviews" element={<MentorResumeReviews />} />
+            <Route path="placement-readiness" element={<MentorPlacementReadiness />} />
+            {/* Profile */}
+            <Route path="profile" element={<MentorProfile />} />
           </Route>
 
           <Route path="program-manager">

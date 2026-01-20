@@ -31,7 +31,6 @@ const mentorNav = [
     icon: UsersRound,
     children: [
       { label: "Mentee List", icon: UsersRound, path: "/mentor/mentees", pageId: "mentor-mentees" },
-      { label: "Mentee Profiles", icon: FileText, path: "/mentor/profiles", pageId: "mentor-profiles" },
       { label: "Assignments", icon: ClipboardCheck, path: "/mentor/assignments", pageId: "mentor-assignments" },
       { label: "Risk Students", icon: Target, path: "/mentor/risk-students", pageId: "mentor-risk" },
     ],

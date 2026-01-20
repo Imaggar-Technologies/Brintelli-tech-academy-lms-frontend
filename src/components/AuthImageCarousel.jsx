@@ -11,6 +11,11 @@ const AuthImageCarousel = () => {
     "/authImages/1 (3).jpg",
     "/authImages/1 (4).jpg",
     "/authImages/1 (5).jpg",
+    "/authImages/1 (1) - Copy.jpg",
+    "/authImages/1 (2) - Copy.jpg",
+    "/authImages/1 (3) - Copy.jpg",
+    "/authImages/1 (4) - Copy.jpg",
+    "/authImages/1 (5) - Copy.jpg",
   ];
 
   // Preload images

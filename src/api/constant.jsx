@@ -1,7 +1,7 @@
 // API Base URL - Centralized configuration
 // Recommended: set VITE_API_BASE_URL in an env file (e.g. `.env.local`) to avoid surprises.
 // In local dev (Vite), default to localhost; in prod builds, default to the deployed API.
-const DEFAULT_DEV_API_BASE_URL = 'http://localhost:3000';
+const DEFAULT_DEV_API_BASE_URL = 'https://app.brintellitechacademy.in';
 const DEFAULT_PROD_API_BASE_URL = 'https://app.brintellitechacademy.in';
 
 const envBaseUrl = (import.meta?.env?.VITE_API_BASE_URL || '').trim();

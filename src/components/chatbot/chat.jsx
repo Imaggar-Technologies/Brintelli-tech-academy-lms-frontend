@@ -1,8 +1,11 @@
 import { useEffect, useState, useRef } from "react";
 import { connectSocket, getSocket } from "../../utils/socket";
 import { FiMessageSquare } from "react-icons/fi";
+import { useSelector } from "react-redux";
 
 export default function Chat() {
+  const token = useSelector((state) => state.auth.token);
+
   const [isOpen, setIsOpen] = useState(false);
   const [conversationId, setConversationId] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -10,60 +13,64 @@ export default function Chat() {
   const [lastMessageId, setLastMessageId] = useState(null);
 
   const messagesEndRef = useRef(null);
+  const joinedRef = useRef(false); // ✅ prevent duplicate join
 
-  /* CONNECT SOCKET ONCE */
+  /* ✅ CONNECT SOCKET WHEN TOKEN IS READY */
   useEffect(() => {
-    connectSocket();
-  }, []);
+    if (!token) return;
 
-  /* SOCKET LISTENERS */
+    console.log("🟢 TOKEN READY → CONNECT SOCKET");
+    connectSocket(token);
+  }, [token]);
+
+  /* ✅ SOCKET EVENTS — REGISTER ONCE */
   useEffect(() => {
     const socket = getSocket();
     if (!socket) return;
 
-    socket.emit("conversation:join", { lastMessageId });
+    const onConnect = () => {
+      if (!joinedRef.current) {
+        socket.emit("conversation:join", { lastMessageId });
+        joinedRef.current = true;
+      }
+    };
 
-    socket.on("system", (data) => {
+    const onSystem = (data) => {
       if (data.type === "conversation_joined") {
         setConversationId(data.conversationId);
+
         if (data.messages?.length) {
-          setMessages((prev) => [...prev, ...data.messages]);
-          setLastMessageId(data.messages[data.messages.length - 1]._id);
+          setMessages(data.messages);
+          setLastMessageId(
+            data.messages[data.messages.length - 1]?._id
+          );
         }
       }
-    });
+    };
 
-    socket.on("message", (msg) => {
+    const onMessage = (msg) => {
       setMessages((prev) => [...prev, msg]);
       if (msg._id) setLastMessageId(msg._id);
-    });
+    };
+
+    socket.on("connect", onConnect);
+    socket.on("system", onSystem);
+    socket.on("message", onMessage);
 
     return () => {
-      socket.off("system");
-      socket.off("message");
+      socket.off("connect", onConnect);
+      socket.off("system", onSystem);
+      socket.off("message", onMessage);
+      joinedRef.current = false;
     };
-  }, []);
+  }, [token]);
 
-  /* AUTO SCROLL */
-useEffect(() => {
-  if (isOpen) {
-    // Scroll instantly when chat opens
-    messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
-
-    // Then smooth scroll on new messages
-    const observer = new MutationObserver(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    });
-
-    const container = messagesEndRef.current?.parentNode;
-    if (container) {
-      observer.observe(container, { childList: true, subtree: true });
+  /* ✅ AUTO SCROLL */
+  useEffect(() => {
+    if (isOpen) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
     }
-
-    return () => observer.disconnect();
-  }
-}, [isOpen]);
-
+  }, [messages, isOpen]);
 
 
   /* SEND MESSAGE */

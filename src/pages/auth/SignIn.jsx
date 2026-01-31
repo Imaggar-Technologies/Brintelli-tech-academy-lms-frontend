@@ -167,32 +167,60 @@ const SignIn = () => {
     password: "",
   });
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    setIsLoading(true);
-    
-    try {
-      const { authAPI } = await import('../../api/auth');
-      const data = await authAPI.login(formData.email, formData.password);
+const handleSubmit = async (event) => {
+  event.preventDefault();
+  setIsLoading(true);
 
-      // Store user data in Redux (will be persisted)
-      dispatch(setCredentials({
-        user: data.data.user,
-        token: data.data.token,
-        refreshToken: data.data.refreshToken,
-      }));
-      
-      // Navigate to user's role-specific dashboard
-      const userRole = data.data.user.role;
-      const dashboardRoute = getRoleDashboard(userRole);
-      navigate(dashboardRoute);
-    } catch (error) {
-      console.error("Login error:", error);
-      alert(error.message || "Login failed. Please check your credentials.");
-    } finally {
-      setIsLoading(false);
+  try {
+    const { authAPI } = await import("../../api/auth");
+
+    console.log("📤 Sending login request:", {
+      email: formData.email,
+      password: "******",
+    });
+
+    const response = await authAPI.login(
+      formData.email,
+      formData.password
+    );
+
+    // FULL RESPONSE LOG
+    console.log("✅ LOGIN API FULL RESPONSE:", response);
+
+    // IMPORTANT: depending on your authAPI
+    const loginData = response.data?.data || response.data || response;
+
+    console.log("🟢 LOGIN DATA:", loginData);
+    console.log("🟡 TOKEN:", loginData?.token);
+    console.log("🟣 REFRESH TOKEN:", loginData?.refreshToken);
+    console.log("🔵 USER:", loginData?.user);
+
+    if (!loginData?.token) {
+      throw new Error("JWT token missing from login response");
     }
-  };
+
+    // SAVE TO REDUX
+    dispatch(
+      setCredentials({
+        user: loginData.user,
+        token: loginData.token,
+        refreshToken: loginData.refreshToken,
+      })
+    );
+
+    console.log("✅ TOKEN SAVED TO REDUX");
+
+    // ROLE BASED NAVIGATION
+    const dashboardRoute = getRoleDashboard(loginData.user.role);
+    navigate(dashboardRoute);
+
+  } catch (error) {
+    console.error("❌ LOGIN ERROR:", error);
+    alert(error.message || "Login failed");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleChange = (e) => {
     setFormData({

@@ -30,6 +30,7 @@ import {
   ChartSpline,
   FileSpreadsheet,
   UsersRound,
+  Wrench,
 } from "lucide-react";
 
 export const adminNav = [
@@ -169,6 +170,13 @@ export const adminNav = [
       { label: "EMI Management", icon: CalendarClock, path: "/admin-portal/finance/emi-management", pageId: "finance-emi" },
       { label: "Monthly/Yearly Revenue Analytics", icon: BarChart3, path: "/admin-portal/finance/revenue-analytics", pageId: "finance-analytics" },
     ],
+  },
+  {
+    id: "it-management",
+    label: "IT Management",
+    icon: Wrench,
+    path: "/admin-portal/it-management",
+    pageId: "it-management",
   },
   {
     id: "users",
@@ -1833,6 +1841,39 @@ export const adminModuleConfig = {
           "Drag-and-drop report builder with dimensions and measures.",
           "Apply filters, groupings, and share with stakeholders.",
           "Connect to data warehouse for advanced queries.",
+        ],
+      },
+    ],
+  },
+  "it-management": {
+    title: "IT Management",
+    description: "Manage users, support tickets, and view audit logs for IT operations.",
+    sections: [
+      {
+        title: "User Management",
+        items: [
+          "Create new user accounts for all roles including IT users.",
+          "Update user details, reset passwords, and assign roles.",
+          "Enable or disable user accounts with proper access controls.",
+          "View all users with filtering and search capabilities.",
+        ],
+      },
+      {
+        title: "Support Ticket Management",
+        items: [
+          "View all support tickets across the system with status tracking.",
+          "Assign tickets to IT support engineers for resolution.",
+          "Update ticket status, add comments, and resolve issues.",
+          "Track ticket categories, priorities, and SLA compliance.",
+        ],
+      },
+      {
+        title: "Audit Logs",
+        items: [
+          "View comprehensive audit logs for all system activities.",
+          "Track user creation, role changes, and ticket operations.",
+          "Monitor login attempts and security events.",
+          "Filter logs by user, action, date range, and IP address.",
         ],
       },
     ],

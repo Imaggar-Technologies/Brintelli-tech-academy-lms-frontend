@@ -273,7 +273,7 @@ const StudentLiveClasses = () => {
       render: (_value, row) => {
         if (!row || !row.id) return <span className="text-xs text-textMuted">—</span>;
         
-        const canJoin = (row.status === 'SCHEDULED' || row.status === 'ONGOING') && row.id;
+        const canJoin = (row.status === 'SCHEDULED' || row.status === 'ONGOING') && row.id && row.enabled === true && row.terminated !== true;
         const hasMeetingLink = !!row.meetingLink;
         const isUpcoming = row.scheduledDate && new Date(row.scheduledDate) > new Date();
         
@@ -313,8 +313,22 @@ const StudentLiveClasses = () => {
                 )}
               </>
             )}
-            {!canJoin && row.status === 'SCHEDULED' && !row.id && (
-              <span className="text-xs text-textMuted">Session ID missing</span>
+            {!canJoin && (
+              <>
+                {row.terminated ? (
+                  <span className="text-xs text-red-600 flex items-center gap-1">
+                    <AlertCircle className="h-3.5 w-3.5" />
+                    Class Terminated
+                  </span>
+                ) : row.enabled !== true ? (
+                  <span className="text-xs text-yellow-600 flex items-center gap-1">
+                    <AlertCircle className="h-3.5 w-3.5" />
+                    Not Enabled Yet
+                  </span>
+                ) : row.status === 'SCHEDULED' && !row.id ? (
+                  <span className="text-xs text-textMuted">Session ID missing</span>
+                ) : null}
+              </>
             )}
             {!!row.recordingUrl && (
               <Button

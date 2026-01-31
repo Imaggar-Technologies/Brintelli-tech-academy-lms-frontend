@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import Navigation from "./layout/Navigation";
 import Topbar from "./layout/Topbar";
 import SecureContextBanner from "./SecureContextBanner";
-import Chat from "../components/chatbot/chat";
+import LaunchStatusPopup from "./LaunchStatusPopup";
 
 const getRoleFromPath = (pathname) => {
   // Redirect admin routes to admin portal
@@ -49,6 +49,7 @@ const AppLayout = () => {
 
   return (
     <div className="min-h-screen bg-brintelli-baseAlt text-text">
+      <LaunchStatusPopup />
       {isLiveMeetingPage ? (
         <div className="min-h-screen">
           <SecureContextBanner />
@@ -76,7 +77,6 @@ const AppLayout = () => {
               </div>
             </main>
           </div>
-           <Chat />
         </div>
       )}
     </div>

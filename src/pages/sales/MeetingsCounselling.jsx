@@ -362,14 +362,15 @@ const MeetingsCounselling = () => {
                               <span className="text-text">{formatTime(lead.demoTime)}</span>
                             </div>
                             {lead.demoMeetingLink && (
-                              <a 
-                                href={lead.demoMeetingLink} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="text-xs text-brand-600 hover:underline mt-1 block"
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                className="gap-2 mt-2"
+                                onClick={() => window.open(lead.demoMeetingLink, '_blank', 'noopener,noreferrer')}
                               >
+                                <Video className="h-4 w-4" />
                                 Join Meeting
-                              </a>
+                              </Button>
                             )}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -492,14 +493,15 @@ const MeetingsCounselling = () => {
                               <span className="text-text">{formatTime(lead.counselingTime)}</span>
                             </div>
                             {lead.counselingMeetingLink && (
-                              <a 
-                                href={lead.counselingMeetingLink} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="text-xs text-brand-600 hover:underline mt-1 block"
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                className="gap-2 mt-2"
+                                onClick={() => window.open(lead.counselingMeetingLink, '_blank', 'noopener,noreferrer')}
                               >
+                                <Video className="h-4 w-4" />
                                 Join Meeting
-                              </a>
+                              </Button>
                             )}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">

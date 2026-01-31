@@ -261,6 +261,60 @@ const StudentDashboard = () => {
         </div>
       </div>
 
+      {/* Hemachandran Sir Tribute Section */}
+      <div className="relative rounded-2xl border-2 border-indigo-200 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 p-8 shadow-lg overflow-hidden">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-200/20 rounded-full blur-3xl -mr-48 -mt-48"></div>
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-pink-200/20 rounded-full blur-3xl -ml-48 -mb-48"></div>
+        
+        <div className="relative">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg">
+              <Sparkles className="h-7 w-7" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">Our Esteemed Mentor</h2>
+              <p className="text-sm text-indigo-600 font-medium">Dr. Hemachandran Ravikumar</p>
+            </div>
+          </div>
+
+          <div className="space-y-4 text-gray-700 leading-relaxed">
+            <p className="text-base">
+              We are deeply honored to have <span className="font-semibold text-indigo-700">Dr. Hemachandran Ravikumar</span> as a Mentor, Guide, and Visionary Supporter of Brintelli Tech Academy and Brintelli LMS.
+            </p>
+            
+            <p className="text-base">
+              Dr. Hemachandran Ravikumar is a distinguished Scientist and Research Leader, whose journey, discipline, and commitment to knowledge continue to inspire educators, researchers, and learners across the globe. His guidance goes beyond academics — shaping values, mindset, and purpose-driven learning.
+            </p>
+
+            <div className="bg-white/60 backdrop-blur-sm rounded-xl p-6 border border-indigo-100 mt-6">
+              <h3 className="font-semibold text-gray-900 mb-4 text-lg">As a mentor, he provides us with:</h3>
+              <ul className="space-y-3 text-base text-gray-700">
+                <li className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-2 h-2 rounded-full bg-indigo-500 mt-2"></div>
+                  <span>Strategic guidance and clarity of vision</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-2 h-2 rounded-full bg-indigo-500 mt-2"></div>
+                  <span>Strong emphasis on research, innovation, and real-world impact</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-2 h-2 rounded-full bg-indigo-500 mt-2"></div>
+                  <span>Motivation to build platforms that truly empower learners</span>
+                </li>
+              </ul>
+            </div>
+
+            <p className="text-base mt-6">
+              His encouragement and trust have been a driving force in the launch and growth of Brintelli LMS, helping us align technology with meaningful education.
+            </p>
+
+            <p className="text-base font-medium text-indigo-700 mt-4">
+              We are proud to be guided by a mentor whose life and work reflect excellence, integrity, and a passion for empowering the next generation.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Grid Layout */}
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Left Column - Main Content */}
@@ -308,6 +362,19 @@ const StudentDashboard = () => {
                     </div>
                   </div>
                 </div>
+                  {nextSession.terminated ? (
+                    <div className="w-full p-3 bg-red-50 border border-red-200 rounded-lg text-center">
+                      <p className="text-sm font-medium text-red-700">Class Terminated</p>
+                      {nextSession.terminationReason && (
+                        <p className="text-xs text-red-600 mt-1">{nextSession.terminationReason}</p>
+                      )}
+                    </div>
+                  ) : !nextSession.enabled ? (
+                    <div className="w-full p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
+                      <p className="text-sm font-medium text-yellow-700">Class Not Enabled Yet</p>
+                      <p className="text-xs text-yellow-600 mt-1">Please wait for approval</p>
+                    </div>
+                  ) : (
                   <Button
                   className="w-full"
                   onClick={() => {
@@ -320,6 +387,7 @@ const StudentDashboard = () => {
                 >
                   {nextSession.status === 'ONGOING' ? 'Join Now' : 'View Details'}
                   </Button>
+                  )}
           </div>
         </div>
       )}

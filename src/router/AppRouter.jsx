@@ -5,6 +5,7 @@ import AdminModulePage from "../pages/adminPortal/AdminModulePage";
 import { adminNav } from "../config/adminNav";
 import ProtectedRoute from "../components/ProtectedRoute";
 import PublicRoute from "../components/PublicRoute";
+import LaunchAdmin from "../pages/LaunchAdmin";
 
 // Auth pages
 import SignIn from "../pages/auth/SignIn";
@@ -94,6 +95,7 @@ import LsmDashboard from "../pages/lsm/Dashboard";
 import LsmOnboarding from "../pages/lsm/Onboarding";
 import LsmMenteesList from "../pages/lsm/MenteesList";
 import LsmMenteeProfile from "../pages/lsm/MenteeProfile";
+import LsmProfile from "../pages/lsm/Profile";
 import LsmSessionSchedule from "../pages/lsm/SessionSchedule";
 import LsmProgressReports from "../pages/lsm/ProgressReports";
 import LsmPlacementTracker from "../pages/lsm/PlacementTracker";
@@ -196,6 +198,8 @@ import OutstandingDues from "../pages/finance/Dues";
 
 // Sales imports
 import SalesDashboard from "../pages/sales/SalesDashboard";
+import JoinCall from "../pages/sales/JoinCall";
+import SalesCallPage from "../pages/sales/SalesCallPage";
 import ExecutiveDashboard from "../pages/sales/ExecutiveDashboard";
 import SalesPipeline from "../pages/sales/Pipeline";
 import NewLeadsWrapper from "../pages/sales/NewLeadsWrapper";
@@ -285,6 +289,19 @@ const AppRouter = () => {
         {/* Root route - Redirect to login */}
         <Route path="/" element={<Navigate to="/auth/signin" replace />} />
         <Route path="switch-user" element={<Navigate to="/auth/signin" replace />} />
+
+        {/* App 3: Launch control (protected) */}
+        <Route
+          path="/launch"
+          element={
+            <ProtectedRoute requiredRole={["admin", "super_admin", "it_support", "it_admin"]}>
+              <LaunchAdmin />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Launch control (public page, still requires Launch Admin Key to act) */}
+        <Route path="/launch-control" element={<LaunchAdmin />} />
         
         {/* Auth routes - only accessible when NOT logged in */}
         <Route path="/auth">
@@ -484,6 +501,7 @@ const AppRouter = () => {
             <Route path="weekly-reports" element={<WeeklyReports />} />
             <Route path="readiness" element={<Readiness />} />
             <Route path="interview-prep" element={<InterviewPrep />} />
+            <Route path="profile" element={<LsmProfile />} />
           </Route>
 
           <Route path="placement">
@@ -587,6 +605,8 @@ const AppRouter = () => {
             <Route path="active-leads" element={<ActiveLeads />} />
             <Route path="leads-overview" element={<LeadsOverview />} />
             <Route path="meetings-counselling" element={<MeetingsCounselling />} />
+            <Route path="calls/:id" element={<SalesCallPage />} />
+            <Route path="calls/join/:token" element={<JoinCall />} />
             <Route path="assessments" element={<Assessments />} />
             <Route path="scholarship-and-offers" element={<ScholarshipAndOffers />} />
             <Route path="deals" element={<SalesDeals />} />

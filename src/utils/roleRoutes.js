@@ -6,6 +6,9 @@ export const getRoleDashboard = (role) => {
   const roleMap = {
     // Main roles (matching database roles)
     admin: '/admin-portal/dashboard',
+    super_admin: '/admin-portal/dashboard',
+    it_admin: '/admin-portal/dashboard',
+    it_support: '/admin-portal/dashboard',
     student: '/student/dashboard',
     tutor: '/tutor/dashboard',
     lsm: '/lsm/dashboard',
@@ -14,9 +17,9 @@ export const getRoleDashboard = (role) => {
     programManager: '/program-manager/dashboard',
     finance: '/finance/dashboard',
     sales: '/sales/dashboard',
-  sales_admin: '/sales/dashboard',
-  sales_lead: '/sales/dashboard',
-  sales_agent: '/sales/dashboard',
+    sales_admin: '/sales/dashboard',
+    sales_lead: '/sales/dashboard',
+    sales_agent: '/sales/dashboard',
     marketing: '/marketing/dashboard',
     hr: '/external-hr/dashboard',
     // Alternative role names (from database or different formats)
@@ -38,6 +41,9 @@ export const getRoleDashboard = (role) => {
 export const getRoleLabel = (role) => {
   const labelMap = {
     admin: 'Admin',
+    super_admin: 'Super Admin',
+    it_admin: 'IT Admin',
+    it_support: 'IT Support',
     student: 'Student',
     tutor: 'Tutor',
     lsm: 'Learning Success Manager',

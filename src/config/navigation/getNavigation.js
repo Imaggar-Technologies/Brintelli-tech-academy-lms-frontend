@@ -100,6 +100,9 @@ const roleDomainMap = {
   
   // System roles
   admin: "system",
+  super_admin: "system",
+  it_admin: "system",
+  it_support: "system",
 };
 
 /**

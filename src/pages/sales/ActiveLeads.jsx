@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Sparkles, Search, Filter, Plus, Mail, Phone, Building2, UserPlus, ClipboardList, Users, X, RefreshCw, Eye, ChevronDown, FileText, MoreVertical, User, Video } from "lucide-react";
+import { Sparkles, Search, Filter, Plus, Mail, Phone, Building2, UserPlus, ClipboardList, Users, X, RefreshCw, Eye, ChevronDown, FileText, MoreVertical, User, Video, AlertCircle } from "lucide-react";
 import PageHeader from "../../components/PageHeader";
 import Button from "../../components/Button";
 import StatsCard from "../../components/StatsCard";
@@ -16,6 +16,7 @@ import { selectCurrentUser } from "../../store/slices/authSlice";
 import { fetchSalesTeam, selectSalesTeam, selectSalesTeamLoading, selectSalesTeamError } from "../../store/slices/salesTeamSlice";
 import { AnyPermissionGate } from "../../components/PermissionGate";
 import { PERMISSIONS } from "../../utils/permissions";
+import { useDataFetch } from "../../hooks/useDataFetch";
 
 const ActiveLeads = () => {
   const dispatch = useDispatch();
@@ -23,8 +24,6 @@ const ActiveLeads = () => {
   const salesTeam = useSelector(selectSalesTeam);
   const loadingTeam = useSelector(selectSalesTeamLoading);
   const teamError = useSelector(selectSalesTeamError);
-  const [leads, setLeads] = useState([]);
-  const [loadingLeads, setLoadingLeads] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [stageFilter, setStageFilter] = useState("");
   const [assignedToFilter, setAssignedToFilter] = useState("");
@@ -42,7 +41,6 @@ const ActiveLeads = () => {
   const [demoData, setDemoData] = useState({
     date: "",
     time: "",
-    meetingLink: "",
     notes: "",
   });
   const [bookingLoading, setBookingLoading] = useState(false);
@@ -59,6 +57,50 @@ const ActiveLeads = () => {
   const isSalesAgent = currentUser?.role === 'sales_agent';
   const userEmail = currentUser?.email;
   const [programs, setPrograms] = useState([]);
+
+  // Reusable leads fetching with retry logic and error handling
+  const fetchLeadsData = useCallback(async () => {
+    try {
+      const response = await leadAPI.getAllLeads();
+      if (response.success && response.data.leads) {
+        let activeLeads;
+        
+        if (isSalesAgent && userEmail) {
+          // For sales_agent: Show ONLY leads assigned to them in meet_and_call stage
+          activeLeads = response.data.leads.filter(lead => 
+            lead.assignedTo === userEmail && 
+            lead.pipelineStage === 'meet_and_call'
+          );
+        } else {
+          // For sales_admin/sales_lead: Show all assigned leads
+          activeLeads = response.data.leads.filter(lead => 
+            lead.assignedTo && lead.assignedTo !== ''
+          );
+        }
+        
+        return activeLeads;
+      }
+      return [];
+    } catch (error) {
+      console.error('Error fetching leads:', error);
+      throw error;
+    }
+  }, [isSalesAgent, userEmail]);
+
+  // Use the reusable hook for fetching leads
+  const { 
+    data: leads = [], 
+    loading: loadingLeads, 
+    error: leadsError, 
+    refetch: refetchLeads 
+  } = useDataFetch(fetchLeadsData, {
+    autoFetch: !(isSalesAgent && !userEmail), // Don't auto-fetch if waiting for user
+    dependencies: [isSalesAgent, userEmail],
+    errorMessage: 'Failed to load active leads. Please try again.',
+    maxRetries: 3,
+    retryDelay: 1000,
+    cacheTime: 30000, // Cache for 30 seconds
+  });
 
   // Fetch programs
   useEffect(() => {
@@ -156,32 +198,8 @@ const ActiveLeads = () => {
         notes: preScreeningPayload.notes,
       });
 
-      // Refresh leads list
-      const fetchLeads = async () => {
-        try {
-          const response = await leadAPI.getAllLeads();
-          if (response.success && response.data.leads) {
-            let activeLeads;
-            
-            if (isSalesAgent && userEmail) {
-              activeLeads = response.data.leads.filter(lead => 
-                lead.assignedTo === userEmail && 
-                lead.pipelineStage === 'meet_and_call'
-              );
-            } else {
-              activeLeads = response.data.leads.filter(lead => 
-                lead.assignedTo && lead.assignedTo !== ''
-              );
-            }
-            
-            setLeads(activeLeads);
-          }
-        } catch (error) {
-          console.error('Error refreshing leads:', error);
-        }
-      };
-
-      await fetchLeads();
+      // Refresh leads list using the reusable hook
+      await refetchLeads();
 
       toast.success("Pre-screening data updated successfully");
       
@@ -243,38 +261,37 @@ const ActiveLeads = () => {
 
     setBookingLoading(true);
     try {
-      await leadAPI.bookDemo(selectedLead.id || selectedLead._id, demoData);
+      const response = await leadAPI.bookDemo(selectedLead.id || selectedLead._id, demoData);
       
-      // Refresh leads list
-      const fetchLeads = async () => {
-        try {
-          const response = await leadAPI.getAllLeads();
-          if (response.success && response.data.leads) {
-            let activeLeads;
-            
-            if (isSalesAgent && userEmail) {
-              activeLeads = response.data.leads.filter(lead => 
-                lead.assignedTo === userEmail && 
-                lead.pipelineStage === 'meet_and_call'
+      // Refresh leads list using the reusable hook
+      await refetchLeads();
+      
+      // Show success with auto-generated meeting link
+      const secureLink = response.data?.salesCall?.secureMeetingLink;
+      if (secureLink) {
+        toast.success(
+          (t) => (
+            <div className="space-y-2">
+              <p className="font-semibold">Demo call booked successfully!</p>
+              <p className="text-sm text-gray-600">Meeting link has been auto-generated and sent via email.</p>
+              <a 
+                href={secureLink} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="text-sm text-blue-600 hover:underline block break-all"
+              >
+                {secureLink}
+              </a>
+            </div>
+          ),
+          { duration: 8000 }
               );
             } else {
-              activeLeads = response.data.leads.filter(lead => 
-                lead.assignedTo && lead.assignedTo !== ''
-              );
-            }
-            
-            setLeads(activeLeads);
-          }
-        } catch (error) {
-          console.error('Error refreshing leads:', error);
-        }
-      };
-
-      await fetchLeads();
+        toast.success("Demo call booked successfully!");
+      }
       
-      toast.success("Demo call booked successfully!");
       setShowBookDemoModal(false);
-      setDemoData({ date: "", time: "", meetingLink: "", notes: "" });
+      setDemoData({ date: "", time: "", notes: "" });
       setSelectedLead(null);
     } catch (error) {
       console.error("Error booking demo:", error);
@@ -284,55 +301,14 @@ const ActiveLeads = () => {
     }
   };
 
-  useEffect(() => {
-    const fetchLeads = async () => {
-      try {
-        setLoadingLeads(true);
-        const response = await leadAPI.getAllLeads();
-        if (response.success && response.data.leads) {
-          let activeLeads;
-          
-          if (isSalesAgent && userEmail) {
-            // For sales_agent: Show ONLY leads assigned to them in meet_and_call stage (preliminary talk)
-            activeLeads = response.data.leads.filter(lead => 
-              lead.assignedTo === userEmail && 
-              lead.pipelineStage === 'meet_and_call'
-            );
-          } else {
-            // For sales_admin/sales_lead: Show all assigned leads (assignedTo is not null and not empty)
-            activeLeads = response.data.leads.filter(lead => 
-              lead.assignedTo && lead.assignedTo !== ''
-            );
-          }
-          
-          setLeads(activeLeads);
-        } else {
-          setLeads([]);
-        }
-      } catch (error) {
-        console.error('Error fetching active leads:', error);
-        toast.error('Failed to load active leads');
-        setLeads([]);
-      } finally {
-        setLoadingLeads(false);
-      }
-    };
-
-    // Only fetch if we have user info (for sales agents)
-    if (isSalesAgent && !userEmail) {
-      // Wait for user to load
-      return;
-    }
-
-    fetchLeads();
-  }, [isSalesAgent, userEmail]);
+  // Leads are now fetched via useLeadsFetch hook - no need for separate useEffect
 
   // Get unique values for filters
-  const uniqueStages = [...new Set(leads.map(l => l.pipelineStage).filter(Boolean))];
-  const uniqueAssignedTo = [...new Set(leads.map(l => l.assignedTo).filter(Boolean))];
+  const uniqueStages = [...new Set((leads || []).map(l => l.pipelineStage).filter(Boolean))];
+  const uniqueAssignedTo = [...new Set((leads || []).map(l => l.assignedTo).filter(Boolean))];
 
   // Filter leads
-  const filteredLeads = leads.filter(lead => {
+  const filteredLeads = (leads || []).filter(lead => {
     // Search filter
     if (searchTerm) {
     const search = searchTerm.toLowerCase();
@@ -379,8 +355,8 @@ const ActiveLeads = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [activeFilterColumn]);
 
-  const activeLeadsCount = leads.length;
-  const inProgressLeads = leads.filter(lead => 
+  const activeLeadsCount = (leads || []).length;
+  const inProgressLeads = (leads || []).filter(lead => 
     lead.pipelineStage === 'meet_and_call' || 
     lead.pipelineStage === 'assessments' || 
     lead.pipelineStage === 'offer'
@@ -409,7 +385,7 @@ const ActiveLeads = () => {
           trend={isSalesAgent ? "Assigned to me" : "Currently assigned"} 
         />
         <StatsCard icon={Mail} value={inProgressLeads} label="In Progress" trend="Being processed" />
-        <StatsCard icon={Phone} value={leads.filter(l => l.pipelineStage === 'meet_and_call').length} label="Call Scheduled" trend="Meet and Call" />
+        <StatsCard icon={Phone} value={(leads || []).filter(l => l.pipelineStage === 'meet_and_call').length} label="Call Scheduled" trend="Meet and Call" />
       </div>
 
       <div className="rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft">
@@ -824,30 +800,8 @@ const ActiveLeads = () => {
         lead={selectedLead}
         onSuccess={(updatedLead) => {
           // Refresh leads list
-          const fetchLeads = async () => {
-            try {
-              const response = await leadAPI.getAllLeads();
-              if (response.success && response.data.leads) {
-                let activeLeads;
-                
-                if (isSalesAgent && userEmail) {
-                  activeLeads = response.data.leads.filter(lead => 
-                    lead.assignedTo === userEmail && 
-                    lead.pipelineStage === 'meet_and_call'
-                  );
-                } else {
-                  activeLeads = response.data.leads.filter(lead => 
-                    lead.assignedTo && lead.assignedTo !== ''
-                  );
-                }
-                
-                setLeads(activeLeads);
-              }
-            } catch (error) {
-              console.error('Error refreshing leads:', error);
-            }
-          };
-          fetchLeads();
+          // Refresh leads using the reusable hook
+          refetchLeads();
         }}
       />
 
@@ -1670,7 +1624,7 @@ const ActiveLeads = () => {
           isOpen={showBookDemoModal}
           onClose={() => {
             setShowBookDemoModal(false);
-            setDemoData({ date: "", time: "", meetingLink: "", notes: "" });
+            setDemoData({ date: "", time: "", notes: "" });
             setSelectedLead(null);
           }}
           title={`Book Demo Call: ${selectedLead.name || "Lead"}`}
@@ -1704,18 +1658,6 @@ const ActiveLeads = () => {
             </div>
             <div>
               <label className="mb-2 block text-sm font-medium text-text">
-                Meeting Link (Optional)
-              </label>
-              <input
-                type="url"
-                value={demoData.meetingLink}
-                onChange={(e) => setDemoData({ ...demoData, meetingLink: e.target.value })}
-                placeholder="https://meet.google.com/..."
-                className="w-full rounded-xl border border-brintelli-border bg-brintelli-card px-4 py-2 text-sm text-text focus:border-brand-500 focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="mb-2 block text-sm font-medium text-text">
                 Notes (Optional)
               </label>
               <textarea
@@ -1731,7 +1673,7 @@ const ActiveLeads = () => {
                 variant="ghost"
                 onClick={() => {
                   setShowBookDemoModal(false);
-                  setDemoData({ date: "", time: "", meetingLink: "", notes: "" });
+                  setDemoData({ date: "", time: "", notes: "" });
                   setSelectedLead(null);
                 }}
                 disabled={bookingLoading}

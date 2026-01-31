@@ -4,13 +4,14 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-  "dev": "npx vite",
-  "build": "npx vite build",
-  "preview": "npx vite preview"
-}
-,
+    "dev": "npx vite",
+    "build": "npx vite build",
+    "preview": "npx vite preview"
+  },
   "dependencies": {
     "@reduxjs/toolkit": "^2.11.1",
+    "@vitejs/plugin-react": "^5.1.1",
+    "canvas-confetti": "^1.9.4",
     "framer-motion": "^12.23.24",
     "lucide-react": "^0.554.0",
     "react": "^19.2.0",
@@ -22,9 +23,8 @@
     "redux-persist": "^6.0.0",
     "socket.io-client": "^4.8.3",
     "uuid": "^13.0.0",
-    "xlsx": "^0.18.5",
     "vite": "^7.3.1",
-    "@vitejs/plugin-react": "^5.1.1"
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
@@ -39,4 +39,3 @@
     "tailwindcss": "^3.4.14"
   }
 }
-

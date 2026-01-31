@@ -13,6 +13,21 @@ export const adminRoles = {
     permissions: ["*"],
     navSections: ["*"]
   },
+  super_admin: {
+    label: "Super Admin",
+    permissions: ["*"],
+    navSections: ["*"]
+  },
+  it_admin: {
+    label: "IT Admin",
+    permissions: ["*"],
+    navSections: ["*"]
+  },
+  it_support: {
+    label: "IT Support",
+    permissions: ["dashboard", "settings", "notifications", "analytics"],
+    navSections: ["dashboard", "settings", "notifications", "analytics"]
+  },
   programManager: {
     label: "Program Manager",
     permissions: combine(

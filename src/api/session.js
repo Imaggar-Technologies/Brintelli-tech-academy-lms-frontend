@@ -96,6 +96,56 @@ export const sessionAPI = {
       body: JSON.stringify({ optionIndex }),
     });
   },
+
+  // ========== Preparation Workflow ==========
+  updatePreparation: async (sessionId, preparationData) => {
+    return apiRequest(`/api/sessions/${sessionId}/preparation`, {
+      method: 'PUT',
+      body: JSON.stringify(preparationData),
+    });
+  },
+
+  markPreparationComplete: async (sessionId) => {
+    return apiRequest(`/api/sessions/${sessionId}/preparation/complete`, {
+      method: 'POST',
+    });
+  },
+
+  submitPreparationForApproval: async (sessionId) => {
+    return apiRequest(`/api/sessions/${sessionId}/preparation/submit`, {
+      method: 'POST',
+    });
+  },
+
+  approvePreparation: async (sessionId) => {
+    return apiRequest(`/api/sessions/${sessionId}/preparation/approve`, {
+      method: 'POST',
+    });
+  },
+
+  rejectPreparation: async (sessionId, reason) => {
+    return apiRequest(`/api/sessions/${sessionId}/preparation/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+  },
+
+  enableSession: async (sessionId) => {
+    return apiRequest(`/api/sessions/${sessionId}/enable`, {
+      method: 'POST',
+    });
+  },
+
+  terminateSession: async (sessionId, reason) => {
+    return apiRequest(`/api/sessions/${sessionId}/terminate`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+  },
+
+  getPreparation: async (sessionId) => {
+    return apiRequest(`/api/sessions/${sessionId}/preparation`);
+  },
 };
 
 export default sessionAPI;

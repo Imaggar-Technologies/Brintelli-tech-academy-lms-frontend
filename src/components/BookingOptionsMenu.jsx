@@ -15,7 +15,6 @@ const BookingOptionsMenu = ({ lead, onSuccess }) => {
   const [demoData, setDemoData] = useState({
     date: "",
     time: "",
-    meetingLink: "",
     notes: "",
   });
   const [counselingData, setCounselingData] = useState({
@@ -51,13 +50,21 @@ const BookingOptionsMenu = ({ lead, onSuccess }) => {
     setLoading(true);
     try {
       const { leadAPI } = await import("../api/lead");
-      await leadAPI.bookDemo(lead.id, demoData);
+      const response = await leadAPI.bookDemo(lead.id, demoData);
+      
+      // Show success with auto-generated meeting link
+      const secureLink = response.data?.salesCall?.secureMeetingLink;
+      if (secureLink) {
+        alert(`Demo call booked successfully!\n\nMeeting Link: ${secureLink}\n\nThis link has been sent via email.`);
+      } else {
+        alert("Demo call booked successfully!");
+      }
       
       if (onSuccess) {
         onSuccess();
       }
       setShowDemoModal(false);
-      setDemoData({ date: "", time: "", meetingLink: "", notes: "" });
+      setDemoData({ date: "", time: "", notes: "" });
     } catch (error) {
       console.error("Error booking demo:", error);
       alert(error.message || "Failed to book demo");
@@ -167,18 +174,6 @@ const BookingOptionsMenu = ({ lead, onSuccess }) => {
           </div>
           <div>
             <label className="mb-2 block text-sm font-medium text-text">
-              Meeting Link (Optional)
-            </label>
-            <input
-              type="url"
-              value={demoData.meetingLink}
-              onChange={(e) => setDemoData({ ...demoData, meetingLink: e.target.value })}
-              placeholder="https://meet.google.com/..."
-              className="w-full rounded-xl border border-brintelli-border bg-brintelli-baseAlt px-4 py-2 text-sm focus:border-brand-500 focus:outline-none"
-            />
-          </div>
-          <div>
-            <label className="mb-2 block text-sm font-medium text-text">
               Notes (Optional)
             </label>
             <textarea
@@ -194,7 +189,7 @@ const BookingOptionsMenu = ({ lead, onSuccess }) => {
               variant="ghost"
               onClick={() => {
                 setShowDemoModal(false);
-                setDemoData({ date: "", time: "", meetingLink: "", notes: "" });
+                setDemoData({ date: "", time: "", notes: "" });
               }}
               disabled={loading}
             >

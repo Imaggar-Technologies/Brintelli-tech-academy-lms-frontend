@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import { CalendarClock, Video, FileText, Calendar, Filter, ExternalLink, Clock, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CalendarClock, Video, FileText, Calendar, Filter, ExternalLink, Clock, BookOpen, ChevronLeft, ChevronRight, AlertCircle, CheckCircle2 } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
 import tutorAPI from '../../api/tutor';
 import { useNavigate } from 'react-router-dom';
+import SessionPreparationForm from '../../components/tutor/SessionPreparationForm';
 
 const TutorSchedule = () => {
   const navigate = useNavigate();
@@ -13,6 +14,8 @@ const TutorSchedule = () => {
   const [filter, setFilter] = useState('all'); // 'all', 'upcoming', 'today', 'past'
   const [statusFilter, setStatusFilter] = useState(''); // '', 'SCHEDULED', 'ONGOING', 'COMPLETED', 'CANCELLED'
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedSession, setSelectedSession] = useState(null);
+  const [showPreparationForm, setShowPreparationForm] = useState(false);
 
   useEffect(() => {
     fetchSessions();
@@ -397,7 +400,36 @@ const TutorSchedule = () => {
                                         REC
                                       </span>
                                     ) : null}
+                                    {session.preparationStatus && session.preparationStatus !== 'NOT_STARTED' ? (
+                                      <span
+                                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${
+                                          session.preparationStatus === 'APPROVED'
+                                            ? 'bg-green-50 text-green-700 ring-green-200/60'
+                                            : session.preparationStatus === 'PENDING_APPROVAL'
+                                            ? 'bg-orange-50 text-orange-700 ring-orange-200/60'
+                                            : session.preparationStatus === 'REJECTED'
+                                            ? 'bg-red-50 text-red-700 ring-red-200/60'
+                                            : 'bg-blue-50 text-blue-700 ring-blue-200/60'
+                                        }`}
+                                        title={`Preparation: ${session.preparationStatus}`}
+                                      >
+                                        PREP
+                                      </span>
+                                    ) : null}
                                   </div>
+                                  {session.preparationStatus === 'NOT_STARTED' || session.preparationStatus === 'IN_PROGRESS' ? (
+                                    <button
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setSelectedSession(session);
+                                        setShowPreparationForm(true);
+                                      }}
+                                      className="mt-1 w-full text-[10px] px-2 py-1 bg-brand-50 text-brand-700 rounded hover:bg-brand-100 transition"
+                                    >
+                                      Prepare
+                                    </button>
+                                  ) : null}
                                   {session.module?.name ? (
                                     <div className="text-[10px] text-textMuted truncate">{session.module.name}</div>
                                   ) : null}
@@ -436,6 +468,22 @@ const TutorSchedule = () => {
           ) : null}
         </div>
       </div>
+
+      {/* Preparation Form Modal */}
+      {showPreparationForm && selectedSession && (
+        <SessionPreparationForm
+          sessionId={selectedSession.id}
+          session={selectedSession}
+          onClose={() => {
+            setShowPreparationForm(false);
+            setSelectedSession(null);
+            fetchSessions(); // Refresh to get updated status
+          }}
+          onUpdate={() => {
+            fetchSessions(); // Refresh to get updated status
+          }}
+        />
+      )}
     </>
   );
 };

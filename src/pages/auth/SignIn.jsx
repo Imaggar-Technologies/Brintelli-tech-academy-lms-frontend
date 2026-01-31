@@ -107,16 +107,35 @@ const SignIn = () => {
         const scheduledMs = scheduledAt && !Number.isNaN(scheduledAt.getTime()) ? scheduledAt.getTime() : null;
         const now = Date.now();
         const end = scheduledMs || now + REFRESH_MS;
+        const initialSeconds = Math.max(0, Math.ceil((end - now) / 1000));
 
-        setSecondsLeft(Math.max(0, Math.ceil((end - now) / 1000)));
+        setSecondsLeft(initialSeconds);
+        
+        // Clear any existing interval before creating a new one
+        if (countdownTimerRef.current) {
+          clearInterval(countdownTimerRef.current);
+        }
+        
+        // Start countdown timer
         countdownTimerRef.current = setInterval(() => {
-          const left = Math.max(0, Math.ceil((end - Date.now()) / 1000));
+          const now = Date.now();
+          const left = Math.max(0, Math.ceil((end - now) / 1000));
           setSecondsLeft(left);
-        }, 250);
+          
+          // Stop timer if it reaches 0
+          if (left === 0 && countdownTimerRef.current) {
+            clearInterval(countdownTimerRef.current);
+            countdownTimerRef.current = null;
+          }
+        }, 1000); // Update every second for smoother countdown
 
         // Once scheduled time is reached, poll more frequently to detect manual launch quickly.
         const isEventLive = scheduledMs ? now >= scheduledMs : false;
         const nextCheckInMs = isEventLive ? 3000 : Math.min(REFRESH_MS, Math.max(1000, end - now));
+        
+        if (refreshTimerRef.current) {
+          clearTimeout(refreshTimerRef.current);
+        }
         refreshTimerRef.current = setTimeout(() => {
           checkLaunchStatus();
         }, nextCheckInMs);
@@ -140,11 +159,31 @@ const SignIn = () => {
       // Keep a timer even on error, and retry automatically.
       const start = Date.now();
       const end = start + REFRESH_MS;
-      setSecondsLeft(Math.ceil(REFRESH_MS / 1000));
+      const initialSeconds = Math.ceil(REFRESH_MS / 1000);
+      
+      setSecondsLeft(initialSeconds);
+      
+      // Clear any existing interval before creating a new one
+      if (countdownTimerRef.current) {
+        clearInterval(countdownTimerRef.current);
+      }
+      
+      // Start countdown timer
       countdownTimerRef.current = setInterval(() => {
-        const left = Math.max(0, Math.ceil((end - Date.now()) / 1000));
+        const now = Date.now();
+        const left = Math.max(0, Math.ceil((end - now) / 1000));
         setSecondsLeft(left);
-      }, 250);
+        
+        // Stop timer if it reaches 0
+        if (left === 0 && countdownTimerRef.current) {
+          clearInterval(countdownTimerRef.current);
+          countdownTimerRef.current = null;
+        }
+      }, 1000); // Update every second for smoother countdown
+      
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+      }
       refreshTimerRef.current = setTimeout(() => {
         checkLaunchStatus();
       }, REFRESH_MS);

@@ -301,9 +301,6 @@ const handleSubmit = async (event) => {
             <div className="flex items-center gap-3">
               <img src="/logo.png" alt="Brintelli Logo" className="h-12 w-auto sm:h-14" />
             </div>
-            <div className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm">
-              Pre-launch
-            </div>
           </div>
 
           <div className="grid items-start gap-12 md:grid-cols-2 md:gap-16">

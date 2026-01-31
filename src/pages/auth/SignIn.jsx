@@ -122,10 +122,18 @@ const SignIn = () => {
         }, nextCheckInMs);
       }
     } catch (e) {
+      // Provide user-friendly error messages
+      let errorMessage = "Unable to check launch status";
+      if (e?.message?.includes("fetch") || e?.message?.includes("network") || e?.message?.includes("Failed")) {
+        errorMessage = "Connection issue. Please check your internet connection or try again later.";
+      } else if (e?.message) {
+        errorMessage = e.message;
+      }
+      
       setLaunchState({
         loading: false,
         isLaunched: false,
-        error: e?.message || "Unable to check launch status",
+        error: errorMessage,
       });
       setLaunchPhase(null);
 

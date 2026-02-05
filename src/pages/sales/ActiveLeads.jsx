@@ -1722,6 +1722,21 @@ const ActiveLeads = () => {
           </div>
         </Modal>
       )}
+
+      {/* Deactivate Lead Modal */}
+      {showDeactivateModal && selectedLead && (
+        <DeactivateLeadModal
+          isOpen={showDeactivateModal}
+          onClose={() => {
+            setShowDeactivateModal(false);
+            setSelectedLead(null);
+          }}
+          lead={selectedLead}
+          onSuccess={async () => {
+            await refetchLeads();
+          }}
+        />
+      )}
     </>
   );
 };

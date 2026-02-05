@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { ClipboardList, Calendar, Clock, CheckCircle, XCircle, Search, RefreshCw, FileText, User, Mail, Phone, MoreVertical, Gift, Send, DollarSign } from "lucide-react";
+import { ClipboardList, Calendar, Clock, CheckCircle, XCircle, Search, RefreshCw, FileText, User, Mail, Phone, MoreVertical, Gift, Send, DollarSign, ArchiveX } from "lucide-react";
 import PageHeader from "../../components/PageHeader";
 import Button from "../../components/Button";
 import StatsCard from "../../components/StatsCard";
 import Pagination from "../../components/Pagination";
 import ReleaseOfferModal from "../../components/ReleaseOfferModal";
 import ApplyScholarshipModal from "../../components/ApplyScholarshipModal";
+import DeactivateLeadModal from "../../components/DeactivateLeadModal";
 import { leadAPI } from "../../api/lead";
 import { scholarshipAPI } from "../../api/scholarship";
 import { offerAPI } from "../../api/offer";
@@ -24,6 +25,7 @@ const Assessments = () => {
   const [selectedAssessment, setSelectedAssessment] = useState(null);
   const [showOfferModal, setShowOfferModal] = useState(false);
   const [showScholarshipModal, setShowScholarshipModal] = useState(false);
+  const [showDeactivateModal, setShowDeactivateModal] = useState(false);
   const [openDropdownId, setOpenDropdownId] = useState(null);
   const [scholarships, setScholarships] = useState({}); // Map of leadId -> scholarship
   const [offers, setOffers] = useState({}); // Map of leadId -> offer
@@ -48,6 +50,9 @@ const Assessments = () => {
           // Filter leads that have assessments scheduled, assigned, or sent - BUT NOT completed
           // Completed assessments should go to Scholarship and Offers page
           let filteredLeads = leadsResponse.data.leads.filter(lead => 
+            // Exclude deactivated (Lead Dump)
+            lead.pipelineStage !== 'lead_dump' &&
+            lead.status !== 'DEACTIVATED' &&
             (lead.assessmentScheduled || 
             lead.assessmentDate || 
             lead.assessmentBooked || 
@@ -230,6 +235,12 @@ const Assessments = () => {
     return a.assessmentSent || a.assessmentLink;
   }).length;
 
+  const handleDeactivateLead = (lead) => {
+    setSelectedAssessment(lead);
+    setShowDeactivateModal(true);
+    setOpenDropdownId(null);
+  };
+
   const handleRefresh = async () => {
     try {
       setLoading(true);
@@ -243,6 +254,9 @@ const Assessments = () => {
         // Filter leads that have assessments scheduled, assigned, or sent - BUT NOT completed
         // Completed assessments should go to Scholarship and Offers page
         let filteredLeads = leadsResponse.data.leads.filter(lead => 
+          // Exclude deactivated (Lead Dump)
+          lead.pipelineStage !== 'lead_dump' &&
+          lead.status !== 'DEACTIVATED' &&
           (lead.assessmentScheduled || 
           lead.assessmentDate || 
           lead.assessmentBooked || 
@@ -606,6 +620,19 @@ const Assessments = () => {
                                   <FileText className="h-4 w-4" />
                                   View Details
                                 </button>
+                                
+                                {/* Deactivate Lead */}
+                                <div className="border-t border-brintelli-border my-1"></div>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeactivateLead(assessment);
+                                  }}
+                                  className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"
+                                >
+                                  <ArchiveX className="h-4 w-4" />
+                                  Deactivate Lead
+                                </button>
                               </div>
                             </div>
                           </>
@@ -669,6 +696,21 @@ const Assessments = () => {
             handleRefresh();
             setShowScholarshipModal(false);
             setSelectedAssessment(null);
+          }}
+        />
+      )}
+
+      {/* Deactivate Lead Modal */}
+      {showDeactivateModal && selectedAssessment && (
+        <DeactivateLeadModal
+          isOpen={showDeactivateModal}
+          onClose={() => {
+            setShowDeactivateModal(false);
+            setSelectedAssessment(null);
+          }}
+          lead={selectedAssessment}
+          onSuccess={() => {
+            handleRefresh();
           }}
         />
       )}

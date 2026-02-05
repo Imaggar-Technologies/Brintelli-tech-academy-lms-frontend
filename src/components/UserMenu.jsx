@@ -123,8 +123,14 @@ const UserMenu = ({ role = "student", roleLabel = "Student LMS", userId }) => {
   const handleSelect = (action) => {
     setOpen(false);
 
+    // Use actual user role from Redux, or fallback to role prop
+    const actualRole = currentUser.role || role;
+    
+    // Map sales roles to 'sales' for path lookup
+    const roleForPath = actualRole?.startsWith('sales_') ? 'sales' : actualRole;
+
     if (action === "profile") {
-      const target = profilePaths[role];
+      const target = profilePaths[roleForPath];
       if (target) {
         navigate(target);
       }
@@ -132,13 +138,12 @@ const UserMenu = ({ role = "student", roleLabel = "Student LMS", userId }) => {
     }
 
     if (action === "settings") {
-      const target = settingsPaths[role] ?? profilePaths[role];
+      const target = settingsPaths[roleForPath] ?? profilePaths[roleForPath];
       if (target) {
         navigate(target);
       }
       return;
     }
-
 
     if (action === "logout") {
       handleLogout(dispatch, navigate, store.getState);
@@ -186,9 +191,14 @@ const UserMenu = ({ role = "student", roleLabel = "Student LMS", userId }) => {
             <div className="mt-4 flex flex-col gap-1.5">
               {menuItems.map((item) => {
                 const ItemIcon = item.icon;
+                // Use actual user role from Redux, or fallback to role prop
+                const actualRole = currentUser.role || role;
+                // Map sales roles to 'sales' for path lookup
+                const roleForPath = actualRole?.startsWith('sales_') ? 'sales' : actualRole;
+                
                 const isDisabled =
-                  (item.key === "profile" && !profilePaths[role]) ||
-                  (item.key === "settings" && !settingsPaths[role] && !profilePaths[role]);
+                  (item.key === "profile" && !profilePaths[roleForPath]) ||
+                  (item.key === "settings" && !settingsPaths[roleForPath] && !profilePaths[roleForPath]);
 
                 return (
                   <button

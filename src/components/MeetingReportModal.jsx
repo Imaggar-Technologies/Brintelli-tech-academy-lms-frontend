@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FileText, X, ClipboardList } from "lucide-react";
 import Button from "./Button";
 import Modal from "./Modal";
@@ -9,10 +9,48 @@ import toast from "react-hot-toast";
  * Meeting Report Modal Component
  * 
  * Allows users to submit reports for demo or counseling meetings
+ * Supports resubmission of existing reports
  */
-const MeetingReportModal = ({ isOpen, onClose, lead, meetingType, onSuccess }) => {
+const MeetingReportModal = ({ isOpen, onClose, lead, meetingType, onSuccess, allowResubmit = false }) => {
+  // Get all reports (array) and latest report (for backward compatibility)
+  const allReports = meetingType === 'demo' 
+    ? (lead?.demoReports || []) 
+    : (lead?.counselingReports || []);
+  
+  const latestReport = meetingType === 'demo' 
+    ? lead?.demoReport 
+    : lead?.counselingReport;
+  
+  // If no reports array exists but latestReport exists, create array from it
+  const reportsHistory = allReports.length > 0 
+    ? allReports 
+    : (latestReport?.submitted ? [{
+        report: latestReport.report,
+        submittedAt: latestReport.submittedAt,
+        submittedBy: latestReport.submittedBy,
+        version: 1
+      }] : []);
+  
   const [report, setReport] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isResubmitting, setIsResubmitting] = useState(false);
+
+  // Initialize report state when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      if (allowResubmit && latestReport?.submitted) {
+        setReport(latestReport.report || "");
+        setIsResubmitting(true);
+      } else {
+        setReport("");
+        setIsResubmitting(false);
+      }
+    } else {
+      // Reset when modal closes
+      setReport("");
+      setIsResubmitting(false);
+    }
+  }, [isOpen, allowResubmit, latestReport]);
 
   const meetingInfo = meetingType === 'demo' 
     ? {
@@ -28,10 +66,6 @@ const MeetingReportModal = ({ isOpen, onClose, lead, meetingType, onSuccess }) =
         meetingLink: lead?.counselingMeetingLink,
       };
 
-  const existingReport = meetingType === 'demo' 
-    ? lead?.demoReport 
-    : lead?.counselingReport;
-
   const handleSubmit = async () => {
     if (!report.trim()) {
       toast.error("Please enter a report");
@@ -46,22 +80,26 @@ const MeetingReportModal = ({ isOpen, onClose, lead, meetingType, onSuccess }) =
         await leadAPI.submitCounselingReport(lead.id, report);
       }
 
-      toast.success(`${meetingInfo.title} submitted successfully! You can now assign assessment.`);
+      toast.success(
+        `${meetingInfo.title} submitted successfully!${reportsHistory.length === 0 ? ' You can now assign assessment.' : ''}`
+      );
       
       if (onSuccess) {
         onSuccess();
       }
       
-      // Show option to assign assessment
-      setTimeout(() => {
-        const shouldAssignAssessment = window.confirm(
-          "Report submitted successfully! Would you like to assign an assessment now?"
-        );
-        
-        if (shouldAssignAssessment) {
-          window.location.href = `/sales/assessments?leadId=${lead.id}`;
-        }
-      }, 500);
+      // Show option to assign assessment (only for first submission, not subsequent ones)
+      if (reportsHistory.length === 0) {
+        setTimeout(() => {
+          const shouldAssignAssessment = window.confirm(
+            "Report submitted successfully! Would you like to assign an assessment now?"
+          );
+          
+          if (shouldAssignAssessment) {
+            window.location.href = `/sales/assessments?leadId=${lead.id}`;
+          }
+        }, 500);
+      }
       
       onClose();
       setReport("");
@@ -115,60 +153,98 @@ const MeetingReportModal = ({ isOpen, onClose, lead, meetingType, onSuccess }) =
           </div>
         </div>
 
-        {/* Existing Report */}
-        {existingReport?.submitted && (
-          <div className="rounded-xl border border-green-200 bg-green-50 p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <FileText className="h-4 w-4 text-green-600" />
-              <span className="text-sm font-semibold text-green-900">Report Already Submitted</span>
+        {/* Reports History */}
+        {reportsHistory.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-brand" />
+              <h3 className="text-lg font-semibold text-text">Report History ({reportsHistory.length})</h3>
             </div>
-            <p className="text-sm text-green-800 mb-2">
-              Submitted on: {new Date(existingReport.submittedAt).toLocaleString('en-US')}
-            </p>
-            <div className="rounded-lg bg-white p-3">
-              <p className="text-sm text-text whitespace-pre-wrap">{existingReport.report}</p>
+            <div className="space-y-3 max-h-60 overflow-y-auto">
+              {[...reportsHistory]
+                .sort((a, b) => new Date(b.submittedAt || b.submittedAt || 0).getTime() - new Date(a.submittedAt || a.submittedAt || 0).getTime())
+                .map((r, idx) => (
+                  <div key={`${r.submittedAt || idx}-${r.version || idx}`} className="rounded-xl border border-brintelli-border bg-brintelli-baseAlt p-4">
+                    <div className="flex items-start justify-between gap-4 mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-brand px-2 py-0.5 rounded bg-brand/10">
+                          Report #{r.version || (reportsHistory.length - idx)}
+                        </span>
+                        {idx === 0 && (
+                          <span className="text-xs font-semibold text-green-600 px-2 py-0.5 rounded bg-green-100">
+                            Latest
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-textMuted whitespace-nowrap">
+                        {new Date(r.submittedAt || r.submittedAt).toLocaleString('en-US')}
+                      </div>
+                    </div>
+                    {r.submittedBy && (
+                      <p className="text-xs text-textMuted mb-2">
+                        Submitted by: {r.submittedBy}
+                      </p>
+                    )}
+                    <div className="rounded-lg bg-white p-3">
+                      <p className="text-sm text-text whitespace-pre-wrap">{r.report}</p>
+                    </div>
+                  </div>
+                ))}
             </div>
           </div>
         )}
 
-        {/* Report Textarea */}
-        {!existingReport?.submitted && (
-          <>
-            <div>
-              <label className="mb-2 block text-sm font-medium text-text">
-                Meeting Report <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                value={report}
-                onChange={(e) => setReport(e.target.value)}
-                placeholder="Enter meeting report... Include discussion points, outcomes, next steps, etc."
-                rows="8"
-                className="w-full rounded-xl border border-brintelli-border bg-brintelli-baseAlt px-4 py-2 text-sm focus:border-brand-500 focus:outline-none"
-              />
-              <p className="mt-1 text-xs text-textMuted">
-                Report is required before assessment can be assigned.
+        {/* Add New Report Section */}
+        <div className="space-y-4 border-t border-brintelli-border pt-4">
+          <div className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-brand" />
+            <h3 className="text-lg font-semibold text-text">
+              {reportsHistory.length > 0 ? "Add New Report" : "Submit Report"}
+            </h3>
+          </div>
+          
+          {isResubmitting && latestReport?.submitted && (
+            <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <FileText className="h-4 w-4 text-blue-600" />
+                <span className="text-sm font-semibold text-blue-900">Editing Latest Report</span>
+              </div>
+              <p className="text-sm text-blue-800">
+                Latest report submitted on: {new Date(latestReport.submittedAt).toLocaleString('en-US')}
               </p>
             </div>
+          )}
+          
+          <div>
+            <label className="mb-2 block text-sm font-medium text-text">
+              Meeting Report <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              value={report}
+              onChange={(e) => setReport(e.target.value)}
+              placeholder="Enter meeting report... Include discussion points, outcomes, next steps, etc."
+              rows="8"
+              className="w-full rounded-xl border border-brintelli-border bg-brintelli-baseAlt px-4 py-2 text-sm focus:border-brand-500 focus:outline-none"
+            />
+            <p className="mt-1 text-xs text-textMuted">
+              {reportsHistory.length > 0 
+                ? "Add a new report entry. All previous reports will be preserved."
+                : "Report is required before assessment can be assigned."}
+            </p>
+          </div>
 
-            {/* Action Buttons */}
-            <div className="flex justify-end gap-2 pt-4 border-t border-brintelli-border">
-              <Button variant="ghost" onClick={onClose} disabled={loading}>
-                Cancel
-              </Button>
-              <Button onClick={handleSubmit} disabled={!report.trim() || loading}>
-                {loading ? "Submitting..." : "Submit Report"}
-              </Button>
-            </div>
-          </>
-        )}
-
-        {existingReport?.submitted && (
-          <div className="flex justify-end pt-4 border-t border-brintelli-border">
-            <Button variant="ghost" onClick={onClose}>
-              Close
+          {/* Action Buttons */}
+          <div className="flex justify-end gap-2 pt-4 border-t border-brintelli-border">
+            <Button variant="ghost" onClick={onClose} disabled={loading}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit} disabled={!report.trim() || loading}>
+              {loading 
+                ? "Submitting..." 
+                : (reportsHistory.length > 0 ? "Add Report" : "Submit Report")}
             </Button>
           </div>
-        )}
+        </div>
       </div>
     </Modal>
   );

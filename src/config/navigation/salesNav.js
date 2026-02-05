@@ -22,6 +22,7 @@ import {
   Bell,
   TrendingUp,
   Gift,
+  ArchiveX,
 } from "lucide-react";
 
 // Navigation for sales_head (highest level - full access)
@@ -40,6 +41,7 @@ const salesHeadNav = [
     children: [
       { label: "New Leads", icon: Sparkles, path: "/sales/leads", pageId: "sales-leads" },
       { label: "Active Leads", icon: UserCheck, path: "/sales/active-leads", pageId: "sales-active-leads" },
+      { label: "Inactive Leads", icon: ArchiveX, path: "/sales/inactive-leads", pageId: "sales-inactive-leads" },
       { label: "Pipeline", icon: ArrowRightLeft, path: "/sales/pipeline", pageId: "sales-pipeline" },
       { label: "Qualification", icon: ClipboardCheck, path: "/sales/qualify", pageId: "sales-qualify" },
     ],
@@ -127,6 +129,7 @@ const salesLeadNav = [
     children: [
       { label: "New Leads", icon: Sparkles, path: "/sales/leads", pageId: "sales-leads" },
       { label: "Active Leads", icon: UserCheck, path: "/sales/active-leads", pageId: "sales-active-leads" },
+      { label: "Inactive Leads", icon: ArchiveX, path: "/sales/inactive-leads", pageId: "sales-inactive-leads" },
       { label: "Pipeline", icon: ArrowRightLeft, path: "/sales/pipeline", pageId: "sales-pipeline" },
       { label: "Qualification", icon: ClipboardCheck, path: "/sales/qualify", pageId: "sales-qualify" },
     ],
@@ -218,6 +221,7 @@ const salesAgentNav = [
     children: [
       { label: "New Leads", icon: Sparkles, path: "/sales/leads", pageId: "sales-leads", description: "Screening" },
       { label: "Active Leads", icon: UserCheck, path: "/sales/active-leads", pageId: "sales-active-leads", description: "Engagement" },
+      { label: "Inactive Leads", icon: ArchiveX, path: "/sales/inactive-leads", pageId: "sales-inactive-leads", description: "Lead Dump" },
     ],
   },
   {

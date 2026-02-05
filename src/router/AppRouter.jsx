@@ -5,8 +5,6 @@ import AdminModulePage from "../pages/adminPortal/AdminModulePage";
 import { adminNav } from "../config/adminNav";
 import ProtectedRoute from "../components/ProtectedRoute";
 import PublicRoute from "../components/PublicRoute";
-import LaunchAdmin from "../pages/LaunchAdmin";
-
 // Auth pages
 import SignIn from "../pages/auth/SignIn";
 import ForgotPassword from "../pages/auth/ForgotPassword";
@@ -231,6 +229,7 @@ import SalesFinancialProcessing from "../pages/sales/FinancialProcessing";
 import LSMAllocation from "../pages/sales/LSMAllocation";
 import OfferPage from "../pages/candidate/OfferPage";
 import SalesNotifications from "../pages/sales/Notifications";
+import InactiveLeads from "../pages/sales/InactiveLeads";
 
 // Marketing imports
 import MarketingDashboard from "../pages/marketing/Dashboard";
@@ -290,19 +289,6 @@ const AppRouter = () => {
         <Route path="/" element={<Navigate to="/auth/signin" replace />} />
         <Route path="switch-user" element={<Navigate to="/auth/signin" replace />} />
 
-        {/* App 3: Launch control (protected) */}
-        <Route
-          path="/launch"
-          element={
-            <ProtectedRoute requiredRole={["admin", "super_admin", "it_support", "it_admin"]}>
-              <LaunchAdmin />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* Launch control (public page, still requires Launch Admin Key to act) */}
-        <Route path="/launch-control" element={<LaunchAdmin />} />
-        
         {/* Auth routes - only accessible when NOT logged in */}
         <Route path="/auth">
           <Route path="signin" element={<PublicRoute><SignIn /></PublicRoute>} />
@@ -603,6 +589,7 @@ const AppRouter = () => {
             <Route path="new-leads" element={<NewLeadsWrapper />} />
             <Route path="leads" element={<SalesLeads />} />
             <Route path="active-leads" element={<ActiveLeads />} />
+            <Route path="inactive-leads" element={<InactiveLeads />} />
             <Route path="leads-overview" element={<LeadsOverview />} />
             <Route path="meetings-counselling" element={<MeetingsCounselling />} />
             <Route path="calls/:id" element={<SalesCallPage />} />

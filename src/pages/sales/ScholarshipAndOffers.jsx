@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Gift, Send, CheckCircle, XCircle, Search, RefreshCw, FileText, User, Mail, Phone, MoreVertical, Clock, DollarSign } from "lucide-react";
+import { Gift, Send, CheckCircle, XCircle, Search, RefreshCw, FileText, User, Mail, Phone, MoreVertical, Clock, DollarSign, ArchiveX } from "lucide-react";
 import PageHeader from "../../components/PageHeader";
 import Button from "../../components/Button";
 import StatsCard from "../../components/StatsCard";
 import Pagination from "../../components/Pagination";
 import ReleaseOfferModal from "../../components/ReleaseOfferModal";
 import ApplyScholarshipModal from "../../components/ApplyScholarshipModal";
+import DeactivateLeadModal from "../../components/DeactivateLeadModal";
 import { leadAPI } from "../../api/lead";
 import { scholarshipAPI } from "../../api/scholarship";
 import { offerAPI } from "../../api/offer";
@@ -24,6 +25,7 @@ const ScholarshipAndOffers = () => {
   const [selectedLead, setSelectedLead] = useState(null);
   const [showOfferModal, setShowOfferModal] = useState(false);
   const [showScholarshipModal, setShowScholarshipModal] = useState(false);
+  const [showDeactivateModal, setShowDeactivateModal] = useState(false);
   const [openDropdownId, setOpenDropdownId] = useState(null);
   const [scholarships, setScholarships] = useState({}); // Map of leadId -> scholarship
   const [offers, setOffers] = useState({}); // Map of leadId -> offer
@@ -242,6 +244,12 @@ const ScholarshipAndOffers = () => {
            (offer && offer.status === 'PENDING_SCHOLARSHIP' && offer.offeredPrice && offer.basePrice && 
             offer.offeredPrice < offer.basePrice && offer.scholarshipApplied);
   }).length;
+
+  const handleDeactivateLead = (lead) => {
+    setSelectedLead(lead);
+    setShowDeactivateModal(true);
+    setOpenDropdownId(null);
+  };
 
   const handleRefresh = async () => {
     try {
@@ -612,6 +620,11 @@ const ScholarshipAndOffers = () => {
                   const hasApprovedScholarshipFinal = hasApprovedScholarship || hasApprovedScholarshipByOffer;
                   const hasOffer = offer && (offer.status === 'OFFER_SENT' || offer.status === 'ACCEPTED');
                   const score = lead.assessmentResult?.score || lead.assessmentScore || lead.assessmentMarks?.percentage;
+                  
+                  // Check if scholarship has been applied (either through scholarship object or offer flag)
+                  const scholarshipApplied = scholarship || 
+                                            (offer && offer.scholarshipApplied) || 
+                                            (offer && offer.status === 'PENDING_SCHOLARSHIP');
 
                   return (
                     <tr key={lead.id || lead._id || idx} className="transition-colors duration-150 hover:bg-brintelli-baseAlt/40">
@@ -754,8 +767,8 @@ const ScholarshipAndOffers = () => {
                                 />
                                 <div className="absolute right-0 top-full mt-1 w-56 bg-white rounded-lg shadow-lg border border-brintelli-border z-50">
                                   <div className="py-1">
-                                    {/* Apply Scholarship - Only if not already applied */}
-                                    {!scholarship && (
+                                    {/* Apply Scholarship - Disabled if already applied (regardless of status) */}
+                                    {!scholarshipApplied ? (
                                       <button
                                         onClick={(e) => {
                                           e.stopPropagation();
@@ -768,6 +781,24 @@ const ScholarshipAndOffers = () => {
                                         <Gift className="h-4 w-4" />
                                         Apply Scholarship
                                       </button>
+                                    ) : (
+                                      <div className="w-full px-4 py-2 text-left text-sm text-textMuted flex items-center gap-2 cursor-not-allowed opacity-60">
+                                        <Gift className="h-4 w-4" />
+                                        <span>
+                                          {scholarship ? (
+                                            <>
+                                              Scholarship {scholarship.status === 'APPROVED' ? 'Approved' : 
+                                                           scholarship.status === 'REJECTED' ? 'Rejected' : 
+                                                           scholarship.status === 'REQUESTED' || scholarship.status === 'PENDING' ? 'Pending' : 
+                                                           'Applied'}
+                                            </>
+                                          ) : offer && offer.scholarshipApplied ? (
+                                            'Scholarship Applied'
+                                          ) : (
+                                            'Scholarship Pending'
+                                          )}
+                                        </span>
+                                      </div>
                                     )}
                                     
                                     {/* Send Offer - Available when assessment completed and (scholarship approved or no scholarship) */}
@@ -801,6 +832,19 @@ const ScholarshipAndOffers = () => {
                                         </button>
                                       );
                                     })()}
+                                    
+                                    {/* Deactivate Lead */}
+                                    <div className="border-t border-brintelli-border my-1"></div>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeactivateLead(lead);
+                                      }}
+                                      className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"
+                                    >
+                                      <ArchiveX className="h-4 w-4" />
+                                      Deactivate Lead
+                                    </button>
                                   </div>
                                 </div>
                               </>
@@ -878,6 +922,21 @@ const ScholarshipAndOffers = () => {
             handleRefresh();
             setShowScholarshipModal(false);
             setSelectedLead(null);
+          }}
+        />
+      )}
+
+      {/* Deactivate Lead Modal */}
+      {showDeactivateModal && selectedLead && (
+        <DeactivateLeadModal
+          isOpen={showDeactivateModal}
+          onClose={() => {
+            setShowDeactivateModal(false);
+            setSelectedLead(null);
+          }}
+          lead={selectedLead}
+          onSuccess={() => {
+            handleRefresh();
           }}
         />
       )}

@@ -17,17 +17,27 @@ const LinkItem = ({ item, collapsed, onClick }) => {
       end={item.exact ?? item.to.endsWith("/dashboard")}
       className={({ isActive }) =>
         [
-          "relative flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm font-medium transition duration-160 ease-out text-white/80",
+          "group relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-200 ease-out",
           isActive
-            ? "bg-white/20 text-white before:absolute before:-left-2 before:top-1/2 before:h-8 before:w-1.5 before:-translate-y-1/2 before:rounded-full before:bg-white/60 shadow-glass"
-            : "hover:bg-white/15 hover:text-white",
-          collapsed ? "justify-center px-3" : "pl-5",
+            ? "bg-white/20 text-white shadow-md before:absolute before:-left-2 before:top-1/2 before:h-7 before:w-1 before:-translate-y-1/2 before:rounded-full before:bg-white before:shadow-sm"
+            : "text-white/75 hover:bg-white/12 hover:text-white hover:shadow-sm",
+          collapsed ? "justify-center px-3" : "pl-4",
         ].join(" ")
       }
       onClick={onClick}
     >
-      {Icon && <Icon className="h-5 w-5 text-white/70" />}
-      {!collapsed && <span className="text-sm font-medium text-white/85">{item.label}</span>}
+      {Icon && (
+        <Icon 
+          className={`h-5 w-5 transition-colors ${
+            item.isActive ? "text-white" : "text-white/70 group-hover:text-white"
+          }`} 
+        />
+      )}
+      {!collapsed && (
+        <span className="text-sm font-medium text-white/90 group-hover:text-white">
+          {item.label}
+        </span>
+      )}
     </NavLink>
   );
 };
@@ -84,44 +94,53 @@ const Navigation = ({ role = "student", collapsed, mobileOpen, onCloseMobile, on
         } ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
         <div className="flex h-screen flex-col border-r border-white/15 px-4 py-6 backdrop-blur-sm">
-          <div className={`flex items-center flex-shrink-0 ${collapsed ? "justify-center" : "gap-3"}`}>
-            <img 
-              src="/mobile%20logo.png" 
-              alt="Brintelli Logo" 
-              className={collapsed ? "h-11 w-11 object-contain rounded-xl" : "h-12 w-auto max-w-[180px] object-contain"}
-              onError={(e) => {
-                // Fallback if mobile logo doesn't load
-                e.target.src = "/logo.png";
-              }}
-            />
-            {!collapsed && (
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-[0.45em] text-white/60 truncate">
-                  {title}
-                </p>
-                <p className="text-lg font-semibold text-white truncate">{subtitle}</p>
+          <div className={`flex items-center flex-shrink-0 gap-3 ${collapsed ? "justify-center" : ""}`}>
+            <div className={`flex items-center gap-3 flex-1 min-w-0 ${collapsed ? "justify-center" : ""}`}>
+              <div className={`flex-shrink-0 ${collapsed ? "" : "relative"}`}>
+                <img 
+                  src="/mobile%20logo.png" 
+                  alt="Brintelli Logo" 
+                  className={collapsed ? "h-10 w-10 object-contain rounded-lg shadow-lg" : "h-11 w-auto max-w-[160px] object-contain"}
+                  onError={(e) => {
+                    // Fallback if mobile logo doesn't load
+                    e.target.src = "/logo.png";
+                  }}
+                />
               </div>
-            )}
+              {!collapsed && (
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.5em] text-white/50 truncate">
+                    {title}
+                  </p>
+                  <p className="text-base font-bold text-white truncate leading-tight">{subtitle}</p>
+                </div>
+              )}
+            </div>
             <button
               onClick={onToggleCollapse}
-              className={`ml-auto hidden h-9 w-9 items-center justify-center rounded-full border border-white/25 bg-white/10 text-white transition duration-160 hover:bg-white/20 lg:flex ${
-                collapsed ? "lg:ml-0" : ""
+              className={`hidden shrink-0 h-8 w-8 items-center justify-center rounded-lg border border-white/20 bg-white/10 backdrop-blur-sm text-white transition-all duration-200 hover:bg-white/25 hover:border-white/30 hover:scale-105 active:scale-95 shadow-sm lg:flex ${
+                collapsed ? "" : ""
               }`}
               aria-label="Toggle sidebar width"
+              type="button"
             >
-              {collapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
+              {collapsed ? (
+                <ChevronsRight className="h-3.5 w-3.5" strokeWidth={2.5} />
+              ) : (
+                <ChevronsLeft className="h-3.5 w-3.5" strokeWidth={2.5} />
+              )}
             </button>
           </div>
 
-          <nav className="mt-6 flex-1 overflow-y-auto overflow-x-hidden sidebar-scroll">
+          <nav className="mt-8 flex-1 overflow-y-auto overflow-x-hidden sidebar-scroll">
             <div className="sidebar-content">
               <div className="flex flex-col gap-2">
-              {!collapsed && (
-                <p className="px-3 text-xs font-semibold uppercase tracking-wide text-white/60">
+              {!collapsed && pinned.length > 0 && (
+                <p className="px-3 mb-1 text-[10px] font-bold uppercase tracking-wider text-white/50">
                   Pinned Tools
                 </p>
               )}
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1">
                 {pinned.map((item) => (
                   <LinkItem
                     key={item.label}
@@ -133,9 +152,9 @@ const Navigation = ({ role = "student", collapsed, mobileOpen, onCloseMobile, on
               </div>
             </div>
 
-            <div className="mt-8 flex flex-col gap-2">
-              {!collapsed && (
-                <p className="px-3 text-xs font-semibold uppercase tracking-wide text-white/60">
+            <div className="mt-6 flex flex-col gap-2">
+              {!collapsed && navigation.length > 0 && (
+                <p className="px-3 mb-1 text-[10px] font-bold uppercase tracking-wider text-white/50">
                   Navigation
                 </p>
               )}
@@ -150,16 +169,26 @@ const Navigation = ({ role = "student", collapsed, mobileOpen, onCloseMobile, on
                         <button
                           type="button"
                           onClick={() => toggleGroup(item.id)}
-                          className={`flex w-full items-center gap-3 rounded-xl px-3.5 py-2 text-sm font-medium transition duration-160 ease-out text-white/80 ${
-                            collapsed ? "justify-center" : "hover:bg-white/15 hover:text-white"
+                          className={`group flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-200 ease-out ${
+                            collapsed 
+                              ? "justify-center" 
+                              : "text-white/75 hover:bg-white/12 hover:text-white hover:shadow-sm"
                           }`}
                         >
-                          {Icon && <Icon className="h-5 w-5 text-white/70" />}
+                          {Icon && (
+                            <Icon className={`h-5 w-5 transition-colors ${
+                              collapsed ? "text-white/70" : "text-white/70 group-hover:text-white"
+                            }`} />
+                          )}
                           {!collapsed && (
                             <>
-                              <span className="flex-1 text-left text-sm font-medium text-white/85">{item.label}</span>
+                              <span className="flex-1 text-left text-sm font-medium text-white/90 group-hover:text-white">
+                                {item.label}
+                              </span>
                               <ChevronDown
-                                className={`h-4 w-4 text-white/70 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                                className={`h-4 w-4 text-white/60 transition-all duration-200 ${
+                                  isOpen ? "rotate-180 text-white/80" : ""
+                                }`}
                               />
                             </>
                           )}
@@ -177,12 +206,18 @@ const Navigation = ({ role = "student", collapsed, mobileOpen, onCloseMobile, on
                                     <button
                                       type="button"
                                       onClick={() => toggleGroup(child.id)}
-                                      className="flex w-full items-center gap-3 rounded-xl px-3.5 py-2 text-sm font-medium transition duration-160 ease-out text-white/70 hover:bg-white/10 hover:text-white/90"
+                                      className="group flex w-full items-center gap-3 rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-200 ease-out text-white/70 hover:bg-white/10 hover:text-white/90 hover:shadow-sm"
                                     >
-                                      {ChildIcon && <ChildIcon className="h-4 w-4 text-white/60" />}
-                                      <span className="flex-1 text-left text-sm font-medium text-white/75">{child.label}</span>
+                                      {ChildIcon && (
+                                        <ChildIcon className="h-4 w-4 text-white/60 group-hover:text-white/80 transition-colors" />
+                                      )}
+                                      <span className="flex-1 text-left text-sm font-medium text-white/75 group-hover:text-white/95">
+                                        {child.label}
+                                      </span>
                                       <ChevronDown
-                                        className={`h-3.5 w-3.5 text-white/60 transition-transform ${childIsOpen ? "rotate-180" : ""}`}
+                                        className={`h-3.5 w-3.5 text-white/60 transition-all duration-200 ${
+                                          childIsOpen ? "rotate-180 text-white/80" : ""
+                                        }`}
                                       />
                                     </button>
                                     {childIsOpen && (
@@ -231,33 +266,39 @@ const Navigation = ({ role = "student", collapsed, mobileOpen, onCloseMobile, on
             </div>
           </nav>
 
-          <div className="mt-6 rounded-2xl border border-white/25 bg-white/10 p-4 text-white shadow-glass backdrop-blur">
-            {!collapsed ? (
-              <>
-                <h4 className="text-base font-semibold">Need support?</h4>
-                <p className="mt-1 text-xs text-white/70">
-                  Chat with your success manager whenever you need help unblocking your prep.
-                </p>
-                <button className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white/20 px-4 py-2 text-sm font-semibold text-white transition duration-160 hover:bg-white/30">
-                  <Sparkles className="h-4 w-4" />
-                  Open Help Center
-                </button>
-              </>
-            ) : (
-              <Sparkles className="mx-auto h-5 w-5 text-white" />
-            )}
-          </div>
+          <div className="mt-auto pt-4">
+            <div className={`rounded-xl border border-white/20 bg-white/8 p-4 text-white shadow-sm backdrop-blur-sm ${collapsed ? "p-3" : ""}`}>
+              {!collapsed ? (
+                <>
+                  <h4 className="text-sm font-bold text-white">Need support?</h4>
+                  <p className="mt-1.5 text-xs leading-relaxed text-white/65">
+                    Chat with your success manager whenever you need help.
+                  </p>
+                  <button className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-white/15 px-3 py-2 text-xs font-semibold text-white transition-all duration-200 hover:bg-white/25 hover:shadow-md active:scale-[0.98]">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Open Help Center
+                  </button>
+                </>
+              ) : (
+                <div className="flex items-center justify-center">
+                  <Sparkles className="h-5 w-5 text-white/80" />
+                </div>
+              )}
+            </div>
 
-          <button
-            onClick={async () => {
-              onCloseMobile();
-              await handleLogout(dispatch, navigate);
-            }}
-            className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/25 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition duration-160 hover:bg-white/20"
-          >
-            <LogOut className="h-4 w-4" />
-            {!collapsed && <span>Logout</span>}
-          </button>
+            <button
+              onClick={async () => {
+                onCloseMobile();
+                await handleLogout(dispatch, navigate);
+              }}
+              className={`mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/8 px-4 py-2.5 text-sm font-semibold text-white transition-all duration-200 hover:bg-white/15 hover:border-white/30 hover:shadow-md active:scale-[0.98] ${
+                collapsed ? "px-3" : ""
+              }`}
+            >
+              <LogOut className="h-4 w-4" />
+              {!collapsed && <span>Logout</span>}
+            </button>
+          </div>
         </div>
       </aside>
     </>

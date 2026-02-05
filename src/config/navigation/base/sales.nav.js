@@ -21,6 +21,7 @@ import {
   XCircle,
   CheckCircle,
   Gift,
+  ArchiveX,
 } from "lucide-react";
 
 /**
@@ -124,6 +125,16 @@ export const salesNav = [
         // - Agent: Only leads assigned to them (stages: meet_and_call, demo_and_mentor_screening, assessments)
         // - Lead: Team's active leads
         // WORKFLOW: Engagement & doubt clearing, meetings scheduled
+      },
+      // Inactive Leads (Lead Dump) - Agent & Lead
+      {
+        id: "inactive-leads",
+        label: "Inactive Leads",
+        icon: ArchiveX,
+        path: "/sales/inactive-leads",
+        pageId: "sales-inactive-leads",
+        permissions: ["sales:agent:view", "sales:lead:view"],
+        // WORKFLOW: Lead Dump (not interested / not qualified)
       },
       // Leads Overview (Read-only) - Sales Head Only
       {

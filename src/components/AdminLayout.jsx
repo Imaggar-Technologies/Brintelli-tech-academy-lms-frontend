@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import AdminNavigation from "./AdminNavigation";
 import Topbar from "./layout/Topbar";
 import { AdminAccessProvider, useAdminAccess } from "../context/AdminAccessContext";
-import LaunchStatusPopup from "./LaunchStatusPopup";
 
 const AdminLayoutShell = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -17,7 +16,6 @@ const AdminLayoutShell = () => {
 
   return (
     <div className="min-h-screen bg-brintelli-base text-text">
-      <LaunchStatusPopup />
       <div className="flex min-h-screen">
         <AdminNavigation
           collapsed={isSidebarCollapsed}

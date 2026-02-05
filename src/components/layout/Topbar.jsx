@@ -5,6 +5,8 @@ import { useSelector } from "react-redux";
 import { selectCurrentUser } from "../../store/slices/authSlice";
 import NotificationsDropdown from "../NotificationsDropdown";
 import UserMenu from "../UserMenu";
+import notificationApi from "../../api/notification";
+import toast from "react-hot-toast";
 
 const notificationSeed = [
   {
@@ -118,8 +120,9 @@ const getPageTitle = (pathname) => {
 const Topbar = ({ onToggleMobileSidebar, role, roleLabelOverride, roleOptions, currentRole, onRoleChange, userId }) => {
   const location = useLocation();
   const user = useSelector(selectCurrentUser);
-  const [notifications, setNotifications] = useState(notificationSeed);
+  const [notifications, setNotifications] = useState([]);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
 
   const unreadCount = useMemo(() => notifications.filter((item) => !item.read).length, [notifications]);
   
@@ -135,12 +138,74 @@ const Topbar = ({ onToggleMobileSidebar, role, roleLabelOverride, roleOptions, c
   
   const pageTitle = useMemo(() => getPageTitle(location.pathname), [location.pathname]);
 
+  // Fetch notifications from API
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      if (!user?.id && !user?.userId) return; // Don't fetch if user not logged in
+      
+      try {
+        setLoadingNotifications(true);
+        const response = await notificationApi.getNotifications({ limit: 20 });
+        if (response.success && response.data?.notifications) {
+          // Transform API response to match component format
+          const transformed = response.data.notifications.map((notif) => ({
+            id: notif.id || notif._id?.toString(),
+            title: notif.title || notif.message,
+            timestamp: formatTimestamp(notif.createdAt || notif.timestamp),
+            type: notif.type?.toLowerCase() || 'default',
+            read: notif.read || false,
+          }));
+          setNotifications(transformed);
+        }
+      } catch (error) {
+        console.error('Error fetching notifications:', error);
+        // Fallback to seed data on error
+        setNotifications(notificationSeed);
+      } finally {
+        setLoadingNotifications(false);
+      }
+    };
+
+    fetchNotifications();
+    
+    // Refresh notifications every 30 seconds
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [user]);
+
   useEffect(() => {
     setPanelOpen(false);
   }, [location.pathname]);
 
-  const handleMarkAll = () => {
-    setNotifications((items) => items.map((item) => ({ ...item, read: true })));
+  const handleMarkAll = async () => {
+    try {
+      await notificationApi.markAllAsRead();
+      setNotifications((items) => items.map((item) => ({ ...item, read: true })));
+      toast.success('All notifications marked as read');
+    } catch (error) {
+      console.error('Error marking all as read:', error);
+      toast.error('Failed to mark all as read');
+      // Still update UI optimistically
+      setNotifications((items) => items.map((item) => ({ ...item, read: true })));
+    }
+  };
+
+  // Format timestamp helper
+  const formatTimestamp = (dateString) => {
+    if (!dateString) return 'Just now';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
   return (
@@ -209,6 +274,27 @@ const Topbar = ({ onToggleMobileSidebar, role, roleLabelOverride, roleOptions, c
                 notifications={notifications}
                 onClose={() => setPanelOpen(false)}
                 onMarkAll={handleMarkAll}
+                onNotificationClick={async (notification) => {
+                  // Mark notification as read when clicked
+                  if (!notification.read && notification.id) {
+                    try {
+                      await notificationApi.markAsRead(notification.id);
+                      setNotifications((items) =>
+                        items.map((item) =>
+                          item.id === notification.id ? { ...item, read: true } : item
+                        )
+                      );
+                    } catch (error) {
+                      console.error('Error marking notification as read:', error);
+                    }
+                  }
+                  
+                  // Navigate to notification link if available
+                  if (notification.link) {
+                    // You can add navigation logic here if needed
+                    // navigate(notification.link);
+                  }
+                }}
               />
             </div>
             <UserMenu role={actualRole} roleLabel={roleLabel} userId={userId} />

@@ -58,10 +58,14 @@ export const leadAPI = {
     });
   },
 
-  updatePipelineStage: async (leadId, pipelineStage) => {
+  updatePipelineStage: async (leadId, pipelineStage, deactivationReason = null) => {
+    const body = { pipelineStage };
+    if (pipelineStage === 'lead_dump' && deactivationReason) {
+      body.deactivationReason = deactivationReason;
+    }
     return apiRequest(`/api/leads/${leadId}/pipeline-stage`, {
       method: 'PUT',
-      body: JSON.stringify({ pipelineStage }),
+      body: JSON.stringify(body),
     });
   },
 
@@ -139,6 +143,15 @@ export const leadAPI = {
     return apiRequest(`/api/leads/${leadId}/assessment-marks`, {
       method: 'PUT',
       body: JSON.stringify(assessmentData),
+    });
+  },
+  deactivateLead: async (leadId, deactivationReason) => {
+    return apiRequest(`/api/leads/${leadId}/pipeline-stage`, {
+      method: 'PUT',
+      body: JSON.stringify({ 
+        pipelineStage: 'lead_dump',
+        deactivationReason: deactivationReason,
+      }),
     });
   },
 };

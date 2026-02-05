@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Sparkles, Search, Filter, Plus, Mail, Phone, Building2, UserPlus, ClipboardList, Users, X, RefreshCw, Eye, ChevronDown, FileText, MoreVertical, User, Video, AlertCircle } from "lucide-react";
+import { Sparkles, Search, Filter, Plus, Mail, Phone, Building2, UserPlus, ClipboardList, Users, X, RefreshCw, Eye, ChevronDown, FileText, MoreVertical, User, Video, AlertCircle, ArchiveX } from "lucide-react";
 import PageHeader from "../../components/PageHeader";
 import Button from "../../components/Button";
 import StatsCard from "../../components/StatsCard";
@@ -8,6 +8,7 @@ import Pagination from "../../components/Pagination";
 import CallNotesModal from "../../components/CallNotesModal";
 import CallNotesViewer from "../../components/CallNotesViewer";
 import ViewAllCallNotesModal from "../../components/ViewAllCallNotesModal";
+import DeactivateLeadModal from "../../components/DeactivateLeadModal";
 import Modal from "../../components/Modal";
 import { leadAPI } from "../../api/lead";
 import { programAPI } from "../../api/program";
@@ -37,6 +38,7 @@ const ActiveLeads = () => {
   const [showPreScreeningModal, setShowPreScreeningModal] = useState(false);
   const [showContactDetailsModal, setShowContactDetailsModal] = useState(false);
   const [showBookDemoModal, setShowBookDemoModal] = useState(false);
+  const [showDeactivateModal, setShowDeactivateModal] = useState(false);
   const [openDropdownId, setOpenDropdownId] = useState(null);
   const [demoData, setDemoData] = useState({
     date: "",
@@ -64,17 +66,33 @@ const ActiveLeads = () => {
       const response = await leadAPI.getAllLeads();
       if (response.success && response.data.leads) {
         let activeLeads;
+        const isDeactivated = (lead) =>
+          lead?.isDeactivated === true ||
+          lead?.pipelineStage === "lead_dump" ||
+          lead?.status === "DEACTIVATED";
         
         if (isSalesAgent && userEmail) {
           // For sales_agent: Show ONLY leads assigned to them in meet_and_call stage
           activeLeads = response.data.leads.filter(lead => 
             lead.assignedTo === userEmail && 
-            lead.pipelineStage === 'meet_and_call'
+            lead.pipelineStage === 'meet_and_call' &&
+            !isDeactivated(lead)
           );
         } else {
-          // For sales_admin/sales_lead: Show all assigned leads
+          // For sales_admin/sales_lead: Show assigned leads that are still active (exclude lead_dump)
+          const ACTIVE_STAGES = [
+            'meet_and_call',
+            'demo_and_mentor_screening',
+            'assessments',
+            'offer',
+            'deal_negotiation',
+            'payment_and_financial_clearance',
+            'onboarded_to_lsm',
+          ];
           activeLeads = response.data.leads.filter(lead => 
-            lead.assignedTo && lead.assignedTo !== ''
+            lead.assignedTo && lead.assignedTo !== '' &&
+            ACTIVE_STAGES.includes(lead.pipelineStage) &&
+            !isDeactivated(lead)
           );
         }
         
@@ -731,6 +749,20 @@ const ActiveLeads = () => {
                                     >
                                       <Phone className="h-4 w-4" />
                                       Add Call Notes
+                                    </button>
+
+                                    {/* Deactivate Lead */}
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedLead(lead);
+                                        setShowDeactivateModal(true);
+                                        setOpenDropdownId(null);
+                                      }}
+                                      className="w-full px-4 py-2 text-left text-sm text-rose-700 hover:bg-rose-50 transition-colors flex items-center gap-2 border-t border-brintelli-border"
+                                    >
+                                      <ArchiveX className="h-4 w-4" />
+                                      Deactivate Lead
                                     </button>
                                   </div>
                                 </div>

@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useSelector } from "react-redux";
-import { Handshake, TrendingUp, DollarSign, Clock, Search, RefreshCw, Award, Star, Percent, FileCheck, FileText, Download, CreditCard } from "lucide-react";
+import { Handshake, TrendingUp, DollarSign, Search, RefreshCw, Award, Star, FileCheck, Download, CreditCard, ArchiveX } from "lucide-react";
 import PageHeader from "../../components/PageHeader";
 import Button from "../../components/Button";
 import StatsCard from "../../components/StatsCard";
@@ -30,10 +30,13 @@ const SalesDeals = () => {
   const [offers, setOffers] = useState({}); // Map of leadId -> offer
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [dealType, setDealType] = useState("ACTIVE_DEALS"); // ACTIVE_DEALS | BOOKED | CONVERSIONS
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [selectedDeal, setSelectedDeal] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showDeactivateModal, setShowDeactivateModal] = useState(false);
+  const [deactivationReason, setDeactivationReason] = useState('');
   const [paymentData, setPaymentData] = useState({
     paymentStatus: 'PENDING',
     paymentAmount: '',
@@ -41,6 +44,7 @@ const SalesDeals = () => {
     paymentMethod: '',
   });
   const [updatingPayment, setUpdatingPayment] = useState(false);
+  const [deactivating, setDeactivating] = useState(false);
 
   const isSalesAgent = currentUser?.role === 'sales_agent';
   const isSalesLead = currentUser?.role === 'sales_lead';
@@ -60,6 +64,9 @@ const SalesDeals = () => {
         if (leadsResponse.success && leadsResponse.data.leads) {
           // Filter for leads with offers SENT (OFFER_SENT status) - these are the deals
           let filteredDeals = leadsResponse.data.leads.filter(lead => 
+            // Exclude deactivated (Lead Dump)
+            lead.pipelineStage !== 'lead_dump' &&
+            lead.status !== 'DEACTIVATED' &&
             lead.assessmentCompleted && 
             (lead.offerId || lead.offerReleased || 
              lead.pipelineStage === 'offer' || 
@@ -115,20 +122,45 @@ const SalesDeals = () => {
     fetchDeals();
   }, [isSalesAgent, isSalesLead, isSalesHead, userEmail]);
 
-  // Filter deals by search term
-  const filteredDeals = deals.filter(deal => {
-    if (!searchTerm) return true;
-    const search = searchTerm.toLowerCase();
-    return (
-      deal.name?.toLowerCase().includes(search) ||
-      deal.email?.toLowerCase().includes(search) ||
-      deal.company?.toLowerCase().includes(search)
-    );
-  });
+  const getOfferForDeal = (deal) => {
+    const leadIdStr = String(deal?.id || deal?._id || '');
+    return offers[leadIdStr] || offers[deal.id] || offers[deal._id] || offers[deal.offerId] || null;
+  };
+
+  const { typeDeals, filteredDeals } = useMemo(() => {
+    const base = (deals || []).filter((deal) => {
+      const offer = getOfferForDeal(deal);
+      if (!offer) return false;
+      if (dealType === "CONVERSIONS") return offer.paymentStatus === "PAID";
+      if (dealType === "BOOKED") return offer.paymentStatus === "PARTIAL";
+      // ACTIVE_DEALS: offers sent with payment link but not paid yet (PENDING or null, excluding PARTIAL and PAID)
+      return offer.paymentStatus !== "PAID" && offer.paymentStatus !== "PARTIAL";
+    });
+
+    const filtered = base.filter((deal) => {
+      if (!searchTerm) return true;
+      const search = searchTerm.toLowerCase();
+      return (
+        deal.name?.toLowerCase().includes(search) ||
+        deal.email?.toLowerCase().includes(search) ||
+        deal.company?.toLowerCase().includes(search)
+      );
+    });
+
+    return { typeDeals: base, filteredDeals: filtered };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deals, offers, dealType, searchTerm]);
 
   // Calculate stats
   const totalDeals = filteredDeals.length;
-  const totalValue = filteredDeals.reduce((sum, deal) => sum + (deal.value || 0), 0);
+  const totalValue = filteredDeals.reduce((sum, deal) => {
+    const offer = getOfferForDeal(deal);
+    if (!offer) return sum;
+    // For conversions, value = paid amount; for booked, value = partial payment; for active deals, value = offeredPrice
+    if (dealType === "CONVERSIONS") return sum + (offer.paymentAmount || offer.offeredPrice || 0);
+    if (dealType === "BOOKED") return sum + (offer.paymentAmount || 0);
+    return sum + (offer.offeredPrice || 0);
+  }, 0);
   const avgScore = filteredDeals.length > 0
     ? Math.round(filteredDeals.reduce((sum, deal) => sum + (deal.assessmentScore || 0), 0) / filteredDeals.length)
     : 0;
@@ -138,6 +170,36 @@ const SalesDeals = () => {
   const totalPages = Math.ceil(filteredDeals.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedDeals = filteredDeals.slice(startIndex, startIndex + itemsPerPage);
+
+  const handleDeactivateLead = (deal) => {
+    setSelectedDeal(deal);
+    setDeactivationReason('');
+    setShowDeactivateModal(true);
+  };
+
+  const handleConfirmDeactivate = async () => {
+    if (!deactivationReason || deactivationReason.trim() === '') {
+      toast.error('Please provide a reason for deactivation');
+      return;
+    }
+
+    if (!selectedDeal) return;
+
+    try {
+      setDeactivating(true);
+      await leadAPI.deactivateLead(selectedDeal.id || selectedDeal._id, deactivationReason.trim());
+      toast.success('Lead deactivated successfully');
+      setShowDeactivateModal(false);
+      setSelectedDeal(null);
+      setDeactivationReason('');
+      handleRefresh();
+    } catch (error) {
+      console.error('Error deactivating lead:', error);
+      toast.error(error?.message || 'Failed to deactivate lead');
+    } finally {
+      setDeactivating(false);
+    }
+  };
 
   const handleRefresh = async () => {
     try {
@@ -149,6 +211,9 @@ const SalesDeals = () => {
       
       if (leadsResponse.success && leadsResponse.data.leads) {
         let filteredDeals = leadsResponse.data.leads.filter(lead => 
+          // Exclude deactivated (Lead Dump)
+          lead.pipelineStage !== 'lead_dump' &&
+          lead.status !== 'DEACTIVATED' &&
           lead.assessmentCompleted &&
           (lead.offerId || lead.offerReleased || 
            lead.pipelineStage === 'offer' || 
@@ -257,8 +322,12 @@ const SalesDeals = () => {
   return (
     <>
       <PageHeader
-        title="Active Deals"
-        description="Track and manage leads with completed assessments and scholarship offers."
+        title="Deals & Conversions"
+        description={dealType === "CONVERSIONS"
+          ? "Conversions: Leads who have fully paid and are converted."
+          : dealType === "BOOKED"
+          ? "Booked: Leads who have partially paid and booked their seat."
+          : "Active Offers: Leads with offers sent but payment is pending (not paid yet)."}
       />
 
       {/* Stats Cards */}
@@ -266,14 +335,14 @@ const SalesDeals = () => {
         <StatsCard 
           icon={Handshake} 
           value={totalDeals} 
-          label="Active Deals" 
-          trend={`${totalDeals} leads with offers`} 
+          label={dealType === "CONVERSIONS" ? "Conversions" : dealType === "BOOKED" ? "Booked Seat" : "Active Offers"} 
+          trend={`${totalDeals} leads`} 
         />
         <StatsCard 
           icon={DollarSign} 
           value={`₹${(totalValue / 1000).toFixed(0)}K`} 
-          label="Total Value" 
-          trend="Pipeline value" 
+          label={dealType === "CONVERSIONS" ? "Collected" : dealType === "BOOKED" ? "Partial Payments" : "Offered Value"} 
+          trend={dealType === "CONVERSIONS" ? "Total paid" : dealType === "BOOKED" ? "Partial amount received" : "Pipeline value"} 
         />
         <StatsCard 
           icon={TrendingUp} 
@@ -291,6 +360,59 @@ const SalesDeals = () => {
 
       {/* Deals Table */}
       <div className="rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft p-6">
+        {/* Deal type tabs */}
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <div className="inline-flex rounded-2xl border border-brintelli-border bg-brintelli-baseAlt p-1">
+            <button
+              type="button"
+              onClick={() => {
+                setDealType("ACTIVE_DEALS");
+                setCurrentPage(1);
+              }}
+              className={`rounded-xl px-4 py-2 text-sm font-semibold ${
+                dealType === "ACTIVE_DEALS" ? "bg-white shadow-sm text-text" : "text-textMuted hover:text-text"
+              }`}
+            >
+              Active Offers ({(deals || []).filter((d) => {
+                const offer = getOfferForDeal(d);
+                return offer && offer.paymentStatus !== "PAID" && offer.paymentStatus !== "PARTIAL";
+              }).length})
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setDealType("BOOKED");
+                setCurrentPage(1);
+              }}
+              className={`rounded-xl px-4 py-2 text-sm font-semibold ${
+                dealType === "BOOKED" ? "bg-white shadow-sm text-text" : "text-textMuted hover:text-text"
+              }`}
+            >
+              Booked Seat ({(deals || []).filter((d) => getOfferForDeal(d)?.paymentStatus === "PARTIAL").length})
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setDealType("CONVERSIONS");
+                setCurrentPage(1);
+              }}
+              className={`rounded-xl px-4 py-2 text-sm font-semibold ${
+                dealType === "CONVERSIONS" ? "bg-white shadow-sm text-text" : "text-textMuted hover:text-text"
+              }`}
+            >
+              Conversions ({(deals || []).filter((d) => getOfferForDeal(d)?.paymentStatus === "PAID").length})
+            </button>
+          </div>
+
+          <div className="text-xs text-textMuted">
+            {dealType === "CONVERSIONS" 
+              ? "Fully paid - Converted" 
+              : dealType === "BOOKED"
+              ? "Partially paid - Seat booked"
+              : "Not paid - Active offers"}
+          </div>
+        </div>
+
         {/* Search and Filters */}
         <div className="flex items-center justify-between mb-6">
           <div className="relative flex-1 max-w-md">
@@ -419,7 +541,11 @@ const SalesDeals = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-700 capitalize">
-                          {deal.pipelineStage === 'deal_negotiation' ? 'Negotiation' : 'Offer'}
+                          {dealType === "CONVERSIONS"
+                            ? 'Converted'
+                            : dealType === "BOOKED"
+                            ? 'Seat Booked'
+                            : (deal.pipelineStage === 'deal_negotiation' ? 'Negotiation' : 'Active Offer')}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -434,27 +560,40 @@ const SalesDeals = () => {
                               <Download className="h-4 w-4" />
                             </Button>
                           )}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedDeal(deal);
-                              if (hasOffer) {
-                                setPaymentData({
-                                  paymentStatus: offer.paymentStatus || 'PENDING',
-                                  paymentAmount: offer.paymentAmount || '',
-                                  paymentDate: offer.paymentDate ? new Date(offer.paymentDate).toISOString().split('T')[0] : '',
-                                  paymentMethod: offer.paymentMethod || '',
-                                });
-                                setShowPaymentModal(true);
-                              } else {
-                                toast.info('No offer found for this deal');
-                              }
-                            }}
-                            title="Update Payment Status"
-                          >
-                            <CreditCard className="h-4 w-4" />
-                          </Button>
+                          {dealType !== "CONVERSIONS" ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedDeal(deal);
+                                if (hasOffer) {
+                                  setPaymentData({
+                                    paymentStatus: offer.paymentStatus || 'PENDING',
+                                    paymentAmount: offer.paymentAmount || '',
+                                    paymentDate: offer.paymentDate ? new Date(offer.paymentDate).toISOString().split('T')[0] : '',
+                                    paymentMethod: offer.paymentMethod || '',
+                                  });
+                                  setShowPaymentModal(true);
+                                } else {
+                                  toast.info('No offer found for this deal');
+                                }
+                              }}
+                              title="Update Payment Status"
+                            >
+                              <CreditCard className="h-4 w-4" />
+                            </Button>
+                          ) : null}
+                          {dealType !== "CONVERSIONS" && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeactivateLead(deal)}
+                              title="Deactivate Lead"
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <ArchiveX className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -579,9 +718,70 @@ const SalesDeals = () => {
             </div>
           </div>
         </Modal>
-      )}
-    </>
-  );
-};
+          )}
 
-export default SalesDeals;
+          {/* Deactivate Lead Modal */}
+          {showDeactivateModal && selectedDeal && (
+            <Modal
+              isOpen={showDeactivateModal}
+              onClose={() => {
+                setShowDeactivateModal(false);
+                setSelectedDeal(null);
+                setDeactivationReason('');
+              }}
+              title="Deactivate Lead"
+              size="md"
+            >
+              <div className="space-y-4">
+                <p className="text-sm text-textMuted">
+                  Are you sure you want to deactivate <span className="font-semibold text-text">{selectedDeal.name}</span>? 
+                  This will move the lead to inactive status (Lead Dump).
+                </p>
+                
+                <div>
+                  <label htmlFor="deactivationReason" className="block text-sm font-semibold text-text mb-2">
+                    Reason for Deactivation <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    id="deactivationReason"
+                    value={deactivationReason}
+                    onChange={(e) => setDeactivationReason(e.target.value)}
+                    placeholder="e.g., Not interested, Budget constraints, Found another program, etc."
+                    rows={4}
+                    className="w-full px-4 py-2 rounded-xl border border-brintelli-border bg-brintelli-baseAlt text-sm focus:border-brand-500 focus:outline-none resize-none"
+                    required
+                  />
+                  <p className="mt-1 text-xs text-textMuted">
+                    Please provide a clear reason for deactivating this lead.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end gap-3">
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setShowDeactivateModal(false);
+                    setSelectedDeal(null);
+                    setDeactivationReason('');
+                  }}
+                  disabled={deactivating}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={handleConfirmDeactivate}
+                  disabled={deactivating || !deactivationReason.trim()}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  {deactivating ? 'Deactivating...' : 'Deactivate Lead'}
+                </Button>
+              </div>
+            </Modal>
+          )}
+        </>
+      );
+    };
+
+    export default SalesDeals;

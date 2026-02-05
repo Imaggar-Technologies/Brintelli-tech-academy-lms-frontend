@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Phone, Calendar, MessageSquare, FileText, Video, Clock, CheckCircle, XCircle, Search, RefreshCw, ClipboardList, Edit2, Plus, MoreVertical } from "lucide-react";
+import { Phone, Calendar, MessageSquare, FileText, Video, Clock, CheckCircle, XCircle, Search, RefreshCw, ClipboardList, Edit2, Plus, MoreVertical, ArchiveX } from "lucide-react";
 import PageHeader from "../../components/PageHeader";
 import Button from "../../components/Button";
 import StatsCard from "../../components/StatsCard";
@@ -9,6 +9,7 @@ import MeetingReportModal from "../../components/MeetingReportModal";
 import RescheduleMeetingModal from "../../components/RescheduleMeetingModal";
 import ScheduleAssessmentModal from "../../components/ScheduleAssessmentModal";
 import BookingOptionsMenu from "../../components/BookingOptionsMenu";
+import DeactivateLeadModal from "../../components/DeactivateLeadModal";
 import { leadAPI } from "../../api/lead";
 import toast from "react-hot-toast";
 import { selectCurrentUser } from "../../store/slices/authSlice";
@@ -26,8 +27,10 @@ const MeetingsCounselling = () => {
   const [showReportModal, setShowReportModal] = useState(false);
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [showAssessmentModal, setShowAssessmentModal] = useState(false);
+  const [showDeactivateModal, setShowDeactivateModal] = useState(false);
   const [meetingType, setMeetingType] = useState(null); // 'demo' or 'counseling'
   const [openDropdownId, setOpenDropdownId] = useState(null);
+  const [allowResubmit, setAllowResubmit] = useState(false);
 
   const isSalesAgent = currentUser?.role === 'sales_agent';
   const userEmail = currentUser?.email;
@@ -139,9 +142,10 @@ const MeetingsCounselling = () => {
     return demoNeedsReport || counselingNeedsReport;
   }).length;
 
-  const handleOpenReport = (lead, type) => {
+  const handleOpenReport = (lead, type, resubmit = false) => {
     setSelectedLead(lead);
     setMeetingType(type);
+    setAllowResubmit(resubmit);
     setShowReportModal(true);
   };
 
@@ -176,6 +180,12 @@ const MeetingsCounselling = () => {
   const handleScheduleAssessment = (lead) => {
     setSelectedLead(lead);
     setShowAssessmentModal(true);
+  };
+
+  const handleDeactivateLead = (lead) => {
+    setSelectedLead(lead);
+    setShowDeactivateModal(true);
+    setOpenDropdownId(null);
   };
 
   const handleAssessmentSuccess = () => {
@@ -434,6 +444,21 @@ const MeetingsCounselling = () => {
                                         {lead.demoReport?.submitted ? "View Report" : "Submit Report"}
                                       </button>
                                       
+                                      {/* Resubmit Report (only if report already submitted) */}
+                                      {lead.demoReport?.submitted && (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleOpenReport(lead, 'demo', true);
+                                            setOpenDropdownId(null);
+                                          }}
+                                          className="w-full px-4 py-2 text-left text-sm text-blue-600 hover:bg-blue-50 transition-colors flex items-center gap-2"
+                                        >
+                                          <FileText className="h-4 w-4" />
+                                          Resubmit Report
+                                        </button>
+                                      )}
+                                      
                                       {/* Reschedule */}
                                       <button
                                         onClick={(e) => {
@@ -461,6 +486,19 @@ const MeetingsCounselling = () => {
                                           Schedule Assessment
                                         </button>
                                       )}
+                                      
+                                      {/* Deactivate Lead */}
+                                      <div className="border-t border-brintelli-border my-1"></div>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDeactivateLead(lead);
+                                        }}
+                                        className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"
+                                      >
+                                        <ArchiveX className="h-4 w-4" />
+                                        Deactivate Lead
+                                      </button>
                                     </div>
                                   </div>
                                 </>
@@ -565,6 +603,21 @@ const MeetingsCounselling = () => {
                                         {lead.counselingReport?.submitted ? "View Report" : "Submit Report"}
                                       </button>
                                       
+                                      {/* Resubmit Report (only if report already submitted) */}
+                                      {lead.counselingReport?.submitted && (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleOpenReport(lead, 'counseling', true);
+                                            setOpenDropdownId(null);
+                                          }}
+                                          className="w-full px-4 py-2 text-left text-sm text-blue-600 hover:bg-blue-50 transition-colors flex items-center gap-2"
+                                        >
+                                          <FileText className="h-4 w-4" />
+                                          Resubmit Report
+                                        </button>
+                                      )}
+                                      
                                       {/* Reschedule */}
                                       <button
                                         onClick={(e) => {
@@ -592,6 +645,19 @@ const MeetingsCounselling = () => {
                                           Schedule Assessment
                                         </button>
                                       )}
+                                      
+                                      {/* Deactivate Lead */}
+                                      <div className="border-t border-brintelli-border my-1"></div>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDeactivateLead(lead);
+                                        }}
+                                        className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"
+                                      >
+                                        <ArchiveX className="h-4 w-4" />
+                                        Deactivate Lead
+                                      </button>
                                     </div>
                                   </div>
                                 </>
@@ -634,7 +700,9 @@ const MeetingsCounselling = () => {
           setShowReportModal(false);
           setSelectedLead(null);
           setMeetingType(null);
+          setAllowResubmit(false);
         }}
+        allowResubmit={allowResubmit}
         lead={selectedLead}
         meetingType={meetingType}
         onSuccess={handleReportSuccess}
@@ -663,6 +731,21 @@ const MeetingsCounselling = () => {
         lead={selectedLead}
         onSuccess={handleRefresh}
       />
+
+      {/* Deactivate Lead Modal */}
+      {showDeactivateModal && selectedLead && (
+        <DeactivateLeadModal
+          isOpen={showDeactivateModal}
+          onClose={() => {
+            setShowDeactivateModal(false);
+            setSelectedLead(null);
+          }}
+          lead={selectedLead}
+          onSuccess={() => {
+            handleRefresh();
+          }}
+        />
+      )}
     </>
   );
 };

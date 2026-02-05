@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import Navigation from "./layout/Navigation";
 import Topbar from "./layout/Topbar";
 import SecureContextBanner from "./SecureContextBanner";
-import LaunchStatusPopup from "./LaunchStatusPopup";
 
 const getRoleFromPath = (pathname) => {
   // Redirect admin routes to admin portal
@@ -49,7 +48,6 @@ const AppLayout = () => {
 
   return (
     <div className="min-h-screen bg-brintelli-baseAlt text-text">
-      <LaunchStatusPopup />
       {isLiveMeetingPage ? (
         <div className="min-h-screen">
           <SecureContextBanner />

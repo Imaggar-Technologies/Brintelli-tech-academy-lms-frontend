@@ -251,7 +251,6 @@ const salesAgentNav = [
     icon: Handshake,
     children: [
       { label: "Active Deals", icon: Handshake, path: "/sales/deals", pageId: "sales-deals" },
-      { label: "Negotiations", icon: MessageSquare, path: "/sales/deals?filter=negotiations", pageId: "sales-deals-negotiations" },
       { label: "Won Deals", icon: Award, path: "/sales/won", pageId: "sales-won" },
       { label: "Lost Deals", icon: Target, path: "/sales/lost", pageId: "sales-lost" },
     ],

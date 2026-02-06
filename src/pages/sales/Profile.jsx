@@ -5,7 +5,26 @@ import PageHeader from "../../components/PageHeader";
 import Button from "../../components/Button";
 import StatsCard from "../../components/StatsCard";
 import apiRequest from "../../api/apiClient";
+import { salesAPI } from "../../api/sales";
 import { selectCurrentUser, updateUser as updateUserInStore } from "../../store/slices/authSlice";
+
+// Helper function to get current quarter
+const getCurrentQuarter = () => {
+  const month = new Date().getMonth();
+  return Math.floor(month / 3) + 1;
+};
+
+// Helper function to format currency
+const formatCurrency = (amount) => {
+  if (amount >= 10000000) {
+    return (amount / 10000000).toFixed(1) + 'Cr';
+  } else if (amount >= 100000) {
+    return (amount / 100000).toFixed(1) + 'L';
+  } else if (amount >= 1000) {
+    return (amount / 1000).toFixed(1) + 'K';
+  }
+  return amount.toString();
+};
 
 const SalesProfile = () => {
   const dispatch = useDispatch();
@@ -17,6 +36,18 @@ const SalesProfile = () => {
   const [error, setError] = useState("");
   const [profile, setProfile] = useState(null);
   const [form, setForm] = useState({ fullName: "", phone: "" });
+  const [metrics, setMetrics] = useState({
+    dealsWon: 0,
+    winRate: 0,
+    revenueGenerated: 0,
+    leadsAssigned: 0,
+    totalDeals: 0,
+    period: {
+      quarter: getCurrentQuarter(),
+      year: new Date().getFullYear(),
+    },
+    loading: true,
+  });
 
   useEffect(() => {
     const load = async () => {
@@ -37,6 +68,32 @@ const SalesProfile = () => {
       }
     };
     load();
+  }, []);
+
+  useEffect(() => {
+    const loadMetrics = async () => {
+      setMetrics(prev => ({ ...prev, loading: true }));
+      try {
+        const res = await salesAPI.getSalesMetrics();
+        const data = res?.data || {};
+        setMetrics({
+          dealsWon: data.dealsWon || 0,
+          winRate: data.winRate || 0,
+          revenueGenerated: data.revenueGenerated || 0,
+          leadsAssigned: data.leadsAssigned || 0,
+          totalDeals: data.totalDeals || 0,
+          period: data.period || {
+            quarter: getCurrentQuarter(),
+            year: new Date().getFullYear(),
+          },
+          loading: false,
+        });
+      } catch (e) {
+        console.error("Failed to load sales metrics:", e);
+        setMetrics(prev => ({ ...prev, loading: false }));
+      }
+    };
+    loadMetrics();
   }, []);
 
   const displayName = useMemo(() => {
@@ -105,25 +162,25 @@ const SalesProfile = () => {
       <div className="grid gap-5 md:grid-cols-4">
         <StatsCard 
           icon={Award} 
-          value={"—"} 
+          value={metrics.loading ? "—" : metrics.dealsWon.toString()} 
           label="Deals Won" 
-          trend="This quarter" 
+          trend={`Q${metrics.period?.quarter || getCurrentQuarter()} ${metrics.period?.year || new Date().getFullYear()}`}
         />
         <StatsCard 
           icon={TrendingUp} 
-          value={"—"} 
+          value={metrics.loading ? "—" : `${metrics.winRate}%`} 
           label="Win Rate" 
-          trend="+5% improvement" 
+          trend={metrics.winRate > 0 ? `${metrics.totalDeals || 0} deals` : "No deals yet"}
         />
         <StatsCard 
           icon={Award} 
-          value={"—"} 
+          value={metrics.loading ? "—" : `₹${formatCurrency(metrics.revenueGenerated)}`} 
           label="Revenue Generated" 
-          trend="This year" 
+          trend={`${new Date().getFullYear()}`}
         />
         <StatsCard 
           icon={TrendingUp} 
-          value={"—"} 
+          value={metrics.loading ? "—" : metrics.leadsAssigned.toString()} 
           label="Leads Assigned" 
           trend="Active pipeline" 
         />

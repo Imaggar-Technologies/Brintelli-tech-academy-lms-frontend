@@ -210,7 +210,6 @@ import SalesDemos from "../pages/sales/Demos";
 import SalesCalendar from "../pages/sales/Calendar";
 import SalesFollowUps from "../pages/sales/FollowUps";
 import SalesDeals from "../pages/sales/Deals";
-import Negotiations from "../pages/sales/Negotiations";
 import SalesWon from "../pages/sales/Won";
 import SalesLost from "../pages/sales/Lost";
 import SalesPartners from "../pages/sales/Partners";
@@ -597,7 +596,6 @@ const AppRouter = () => {
             <Route path="assessments" element={<Assessments />} />
             <Route path="scholarship-and-offers" element={<ScholarshipAndOffers />} />
             <Route path="deals" element={<SalesDeals />} />
-            <Route path="negotiations" element={<Negotiations />} />
             <Route path="won-deals" element={<SalesWon />} />
             <Route path="lost-deals" element={<SalesLost />} />
             <Route path="team" element={<SalesTeam />} />

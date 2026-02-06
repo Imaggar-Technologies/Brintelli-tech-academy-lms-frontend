@@ -1,16 +1,24 @@
 import { useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { CalendarClock, ClipboardList, BriefcaseBusiness, CheckCircle2, X } from "lucide-react";
+import { CalendarClock, ClipboardList, BriefcaseBusiness, CheckCircle2, X, ArrowRight, Phone, User, FileText, Gift } from "lucide-react";
 
 const iconMap = {
   live: CalendarClock,
   assignment: ClipboardList,
   placement: BriefcaseBusiness,
+  sales_call: Phone,
+  call_invitation: Phone,
   default: CheckCircle2,
+  info: CheckCircle2,
+  success: CheckCircle2,
+  warning: CheckCircle2,
+  error: X,
 };
 
 const NotificationsDropdown = ({ open, notifications = [], onClose, onMarkAll, onNotificationClick }) => {
   const panelRef = useRef(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!open) return;
@@ -81,18 +89,39 @@ const NotificationsDropdown = ({ open, notifications = [], onClose, onMarkAll, o
               <div className="divide-y divide-gray-100">
                 {notifications.map((item) => {
                   const Icon = iconMap[item.type] ?? iconMap.default;
+                  const hasLink = item.link && item.link.trim() !== '';
+                  const hasMetadata = item.metadata && Object.keys(item.metadata).length > 0;
+                  
+                  const handleClick = (e) => {
+                    e.stopPropagation();
+                    if (onNotificationClick) {
+                      onNotificationClick(item);
+                    }
+                    if (hasLink) {
+                      navigate(item.link);
+                      onClose?.();
+                    }
+                  };
+
+                  const handleActionClick = (e) => {
+                    e.stopPropagation();
+                    if (hasLink) {
+                      navigate(item.link);
+                      onClose?.();
+                    }
+                    if (onNotificationClick) {
+                      onNotificationClick(item);
+                    }
+                  };
+
                   return (
                     <motion.div
                       key={item.id}
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
-                      onClick={() => {
-                        if (onNotificationClick) {
-                          onNotificationClick(item);
-                        }
-                      }}
+                      onClick={handleClick}
                       className={`group relative flex items-start gap-4 px-5 py-4 transition-all ${
-                        onNotificationClick ? 'cursor-pointer hover:bg-gray-50/80' : ''
+                        hasLink ? 'cursor-pointer hover:bg-gray-50/80' : ''
                       } ${item.read ? 'bg-white' : 'bg-blue-50/30'}`}
                     >
                       {/* Unread Indicator */}
@@ -118,11 +147,75 @@ const NotificationsDropdown = ({ open, notifications = [], onClose, onMarkAll, o
                         }`}>
                           {item.title}
                         </p>
-                        <p className="mt-1 text-xs text-gray-500">{item.timestamp}</p>
+                        
+                        {/* Message */}
+                        {item.message && item.message !== item.title && (
+                          <p className={`mt-1.5 text-xs leading-relaxed ${
+                            item.read ? 'text-gray-500' : 'text-gray-600'
+                          }`}>
+                            {item.message}
+                          </p>
+                        )}
+
+                        {/* Metadata Details */}
+                        {hasMetadata && (
+                          <div className="mt-2 space-y-1">
+                            {item.metadata.leadId && (
+                              <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                                <User className="h-3 w-3" />
+                                <span>Lead ID: {item.metadata.leadId}</span>
+                              </div>
+                            )}
+                            {item.metadata.callId && (
+                              <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                                <Phone className="h-3 w-3" />
+                                <span>Call ID: {item.metadata.callId}</span>
+                              </div>
+                            )}
+                            {item.metadata.meetingLink && (
+                              <div className="flex items-center gap-1.5 text-xs text-blue-600">
+                                <CalendarClock className="h-3 w-3" />
+                                <span>Meeting scheduled</span>
+                              </div>
+                            )}
+                            {item.metadata.assessmentId && (
+                              <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                                <FileText className="h-3 w-3" />
+                                <span>Assessment assigned</span>
+                              </div>
+                            )}
+                            {item.metadata.scholarshipType && (
+                              <div className="flex items-center gap-1.5 text-xs text-green-600">
+                                <Gift className="h-3 w-3" />
+                                <span>Scholarship: {item.metadata.scholarshipType}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        <p className="mt-2 text-xs text-gray-400">{item.timestamp}</p>
                       </div>
 
+                      {/* Action Button */}
+                      {hasLink && (
+                        <div className="mt-1 shrink-0">
+                          <button
+                            onClick={handleActionClick}
+                            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                              item.read
+                                ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                : 'bg-brand-500 text-white hover:bg-brand-600'
+                            }`}
+                            type="button"
+                          >
+                            <span>View</span>
+                            <ArrowRight className="h-3 w-3" />
+                          </button>
+                        </div>
+                      )}
+
                       {/* Unread Dot */}
-                      {!item.read && (
+                      {!item.read && !hasLink && (
                         <div className="mt-1.5 shrink-0">
                           <span className="inline-flex h-2 w-2 rounded-full bg-brand-500" />
                         </div>

@@ -226,18 +226,6 @@ export const salesNav = [
         // ABAC: Filtered by assignedTo (Agent), teamId (Lead), or departmentId (Head)
         // WORKFLOW: Leads with completed assessments and offers (pipelineStage: 'offer')
       },
-      // Negotiations - Lead & Head
-      {
-        id: "negotiations",
-        label: "Negotiations",
-        icon: MessageSquare,
-        path: "/sales/negotiations",
-        pageId: "sales-negotiations",
-        permissions: ["sales:lead:view", "sales:head:view"],
-        // RBAC: Lead and Head only (requires sales:update for actions)
-        // ABAC: Filtered by teamId (Lead) or departmentId (Head)
-        // WORKFLOW: Deal negotiation stage
-      },
       // Won Deals - Sales Head Only
       {
         id: "won-deals",

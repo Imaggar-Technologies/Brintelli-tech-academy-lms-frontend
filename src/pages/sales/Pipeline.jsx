@@ -293,19 +293,11 @@ const SalesPipeline = () => {
           isSalesHead 
             ? "Department-wide pipeline view. Read-only analytics and funnel metrics."
             : isSalesLead
-            ? "Team pipeline view. Track team leads and use batch operations to move multiple leads."
-            : "Your assigned leads pipeline. Move individual leads between stages."
+            ? "Team pipeline view. Track team leads across pipeline stages."
+            : "Your assigned leads pipeline. View leads across pipeline stages."
         }
         actions={
           <>
-            {isSalesLead && selectedLeads.length > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-textMuted">{selectedLeads.length} selected</span>
-                <Button variant="secondary" size="sm" className="gap-2">
-                  Batch Move
-                </Button>
-              </div>
-            )}
             {!isSalesHead && (
           <Button className="gap-2">
             <Plus className="h-4 w-4" />
@@ -414,57 +406,6 @@ const SalesPipeline = () => {
                               <Trash2 className="h-2.5 w-2.5" />
                               Move to Dump
                             </button>
-                          </div>
-                        )}
-
-                        {/* Stage Navigation Buttons - Role-based */}
-                        {!isSalesHead && (
-                          <div className="mt-1.5 pt-1.5 border-t border-brintelli-border/30">
-                            <div className="flex gap-1">
-                              {pipelineStages.map((nextStage) => {
-                                if (nextStage.id === stage.id) return null;
-                                const isNext = pipelineStages.findIndex(s => s.id === stage.id) + 1 === pipelineStages.findIndex(s => s.id === nextStage.id);
-                                const isPrev = pipelineStages.findIndex(s => s.id === stage.id) - 1 === pipelineStages.findIndex(s => s.id === nextStage.id);
-                                
-                                if (!isNext && !isPrev) return null;
-
-                                return (
-                                  <button
-                                    key={nextStage.id}
-                                    onClick={() => handleStageUpdate(lead.id, nextStage.id)}
-                                    className={`flex-1 text-[10px] px-1.5 py-0.5 rounded transition ${
-                                      isNext
-                                        ? 'bg-brand-500/80 text-white hover:bg-brand-500'
-                                        : 'bg-brintelli-border/40 text-textMuted/70 hover:bg-brintelli-border/60'
-                                    }`}
-                                    title={`Move to ${nextStage.name}`}
-                                  >
-                                    {isNext ? '→' : '←'} {isNext ? 'Next' : 'Prev'}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-                        
-                        {/* Selection checkbox for batch operations (Sales Lead only) */}
-                        {isSalesLead && (
-                          <div className="mt-2 pt-2 border-t border-brintelli-border">
-                            <label className="flex items-center gap-2 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={selectedLeads.includes(lead.id)}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setSelectedLeads([...selectedLeads, lead.id]);
-                                  } else {
-                                    setSelectedLeads(selectedLeads.filter(id => id !== lead.id));
-                                  }
-                                }}
-                                className="rounded border-brintelli-border text-brand focus:ring-brand"
-                              />
-                              <span className="text-xs text-textMuted">Select for batch move</span>
-                            </label>
                           </div>
                         )}
                       </div>

@@ -151,9 +151,12 @@ const Topbar = ({ onToggleMobileSidebar, role, roleLabelOverride, roleOptions, c
           const transformed = response.data.notifications.map((notif) => ({
             id: notif.id || notif._id?.toString(),
             title: notif.title || notif.message,
+            message: notif.message || '',
             timestamp: formatTimestamp(notif.createdAt || notif.timestamp),
             type: notif.type?.toLowerCase() || 'default',
             read: notif.read || false,
+            link: notif.link || null,
+            metadata: notif.metadata || {},
           }));
           setNotifications(transformed);
         }
@@ -289,11 +292,7 @@ const Topbar = ({ onToggleMobileSidebar, role, roleLabelOverride, roleOptions, c
                     }
                   }
                   
-                  // Navigate to notification link if available
-                  if (notification.link) {
-                    // You can add navigation logic here if needed
-                    // navigate(notification.link);
-                  }
+                  // Navigation is handled in NotificationsDropdown component
                 }}
               />
             </div>

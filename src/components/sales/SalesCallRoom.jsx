@@ -412,38 +412,58 @@ export default function SalesCallRoom({ callId, call }) {
 
   // ─── Toggle mic ───────────────────────────────────────────────────
   const handleToggleMic = useCallback(() => {
+    if (!localStreamRef.current) {
+      toast.error("Microphone not available. Please enable media first.");
+      return;
+    }
+
     setIsMuted((prev) => {
       const next = !prev;
-      localStreamRef.current
-        ?.getAudioTracks()
-        .forEach((t) => (t.enabled = !next));
+      
+      // Update local audio tracks
+      const audioTracks = localStreamRef.current.getAudioTracks();
+      if (audioTracks.length > 0) {
+        audioTracks.forEach((t) => {
+          t.enabled = !next;
+          console.log(`🎤 Audio track ${t.id} ${!next ? 'enabled' : 'disabled'}`);
+        });
+      }
       
       // Update audio tracks in all peer connections
-      pcsRef.current.forEach((pc) => {
-        const sender = pc.getSenders().find(s => s.track && s.track.kind === 'audio');
-        if (sender && sender.track) {
-          sender.track.enabled = !next;
-        }
+      pcsRef.current.forEach((pc, socketId) => {
+        const senders = pc.getSenders();
+        senders.forEach((sender) => {
+          if (sender.track && sender.track.kind === 'audio') {
+            sender.track.enabled = !next;
+            console.log(`📡 Audio track updated for peer ${socketId}: ${!next ? 'enabled' : 'disabled'}`);
+          }
+        });
       });
       
+      toast.success(next ? "Microphone muted" : "Microphone unmuted");
       return next;
     });
   }, []);
 
   // ─── Toggle video ─────────────────────────────────────────────────
   const handleToggleVideo = useCallback(async () => {
+    // Don't allow toggling video if screen sharing
+    if (isScreenSharing) {
+      toast.error("Please stop screen sharing first");
+      return;
+    }
+
     const next = !isVideoOn;
-    setIsVideoOn(next);
 
     if (next) {
       // Turn on: get new video track
       try {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
           toast.error("Your browser doesn't support camera access");
-          setIsVideoOn(false);
           return;
         }
 
+        console.log("📹 Requesting camera access...");
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
             width: { ideal: 1280 },
@@ -451,42 +471,60 @@ export default function SalesCallRoom({ callId, call }) {
             facingMode: 'user'
           },
         });
+        
         const videoTrack = stream.getVideoTracks()[0];
-        if (localStreamRef.current) {
-          const oldTrack = localStreamRef.current.getVideoTracks()[0];
-          if (oldTrack) {
-            localStreamRef.current.removeTrack(oldTrack);
-            oldTrack.stop();
-          }
-          localStreamRef.current.addTrack(videoTrack);
-        } else {
-          // Create new stream if it doesn't exist
-          const newStream = new MediaStream();
-          newStream.addTrack(videoTrack);
-          if (localStreamRef.current?.getAudioTracks().length > 0) {
-            localStreamRef.current.getAudioTracks().forEach(t => newStream.addTrack(t));
-          }
-          localStreamRef.current = newStream;
+        if (!videoTrack) {
+          throw new Error("No video track received");
         }
+
+        // Ensure we have a local stream
+        if (!localStreamRef.current) {
+          localStreamRef.current = new MediaStream();
+        }
+
+        // Remove old video track if exists
+        const oldVideoTracks = localStreamRef.current.getVideoTracks();
+        oldVideoTracks.forEach((oldTrack) => {
+          localStreamRef.current.removeTrack(oldTrack);
+          oldTrack.stop();
+        });
+
+        // Add new video track
+        localStreamRef.current.addTrack(videoTrack);
+        console.log("✅ Video track added to local stream");
         
         // Update all peer connections with new video track
-        pcsRef.current.forEach((pc) => {
-          const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
-          if (sender) {
-            sender.replaceTrack(videoTrack);
+        pcsRef.current.forEach((pc, socketId) => {
+          const senders = pc.getSenders();
+          const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+          
+          if (videoSender) {
+            videoSender.replaceTrack(videoTrack).then(() => {
+              console.log(`📡 Video track replaced for peer ${socketId}`);
+            }).catch((err) => {
+              console.error(`❌ Failed to replace video track for peer ${socketId}:`, err);
+            });
           } else {
-            pc.addTrack(videoTrack, localStreamRef.current);
+            // Add new video track if no sender exists
+            try {
+              pc.addTrack(videoTrack, localStreamRef.current);
+              console.log(`📡 Video track added to peer ${socketId}`);
+            } catch (err) {
+              console.error(`❌ Failed to add video track to peer ${socketId}:`, err);
+            }
           }
         });
         
+        // Update local video display
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = localStreamRef.current;
           safePlay(localVideoRef.current);
         }
         
+        setIsVideoOn(true);
         toast.success("Camera enabled");
       } catch (err) {
-        console.error("Camera error:", err);
+        console.error("❌ Camera error:", err);
         let errorMessage = "Failed to access camera";
         
         if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
@@ -501,52 +539,97 @@ export default function SalesCallRoom({ callId, call }) {
         setIsVideoOn(false);
       }
     } else {
-      // Turn off: stop video track and remove from peer connections
-      localStreamRef.current?.getVideoTracks().forEach((t) => {
-        t.stop();
-        localStreamRef.current.removeTrack(t);
+      // Turn off: disable video track (don't remove, just disable)
+      const videoTracks = localStreamRef.current?.getVideoTracks() || [];
+      videoTracks.forEach((t) => {
+        t.enabled = false;
+        console.log(`📹 Video track ${t.id} disabled`);
       });
       
-      // Remove video track from all peer connections
-      pcsRef.current.forEach((pc) => {
-        const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
-        if (sender) {
-          pc.removeTrack(sender);
-        }
+      // Disable video in all peer connections (but keep the track)
+      pcsRef.current.forEach((pc, socketId) => {
+        const senders = pc.getSenders();
+        senders.forEach((sender) => {
+          if (sender.track && sender.track.kind === 'video') {
+            sender.track.enabled = false;
+            console.log(`📡 Video track disabled for peer ${socketId}`);
+          }
+        });
       });
+      
+      setIsVideoOn(false);
+      toast.success("Camera disabled");
     }
-  }, [isVideoOn]);
+  }, [isVideoOn, isScreenSharing]);
 
   // ─── Toggle screen share ─────────────────────────────────────────
   const handleToggleScreenShare = useCallback(async () => {
     if (!isScreenSharing) {
       try {
+        console.log("🖥️ Starting screen share...");
         const screen = await navigator.mediaDevices.getDisplayMedia({
-          video: true,
-          audio: true, // Enable audio for screen share
+          video: {
+            cursor: 'always',
+            displaySurface: 'monitor'
+          },
+          audio: true,
         });
+        
+        const screenVideoTrack = screen.getVideoTracks()[0];
+        const screenAudioTrack = screen.getAudioTracks()[0];
+        
+        if (!screenVideoTrack) {
+          throw new Error("No screen video track received");
+        }
+
+        // Store original camera track for restoration
+        const originalVideoTrack = localStreamRef.current?.getVideoTracks().find(
+          t => !t.label.toLowerCase().includes('screen')
+        );
+
         screenStreamRef.current = screen;
         setIsScreenSharing(true);
         setScreenShareParticipant("local");
 
-        // Replace video tracks in all peer connections with screen share
-        const screenVideoTrack = screen.getVideoTracks()[0];
-        const screenAudioTrack = screen.getAudioTracks()[0];
+        console.log("✅ Screen share track obtained, updating", pcsRef.current.size, "peer connections...");
         
-        pcsRef.current.forEach((pc) => {
-          // Remove old video track
-          const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
-          if (sender && screenVideoTrack) {
-            sender.replaceTrack(screenVideoTrack);
+        // Replace video tracks in all peer connections with screen share
+        pcsRef.current.forEach((pc, socketId) => {
+          const senders = pc.getSenders();
+          const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+          
+          if (videoSender && screenVideoTrack) {
+            videoSender.replaceTrack(screenVideoTrack).then(() => {
+              console.log(`📡 Screen share track replaced for peer ${socketId}`);
+            }).catch((err) => {
+              console.error(`❌ Failed to replace screen share track for peer ${socketId}:`, err);
+            });
+          } else if (screenVideoTrack) {
+            // Add screen share track if no video sender exists
+            try {
+              pc.addTrack(screenVideoTrack, screen);
+              console.log(`📡 Screen share track added to peer ${socketId}`);
+            } catch (err) {
+              console.error(`❌ Failed to add screen share track to peer ${socketId}:`, err);
+            }
           }
           
-          // Add screen audio if available
+          // Handle screen audio if available
           if (screenAudioTrack) {
-            const audioSender = pc.getSenders().find(s => s.track && s.track.kind === 'audio');
+            const audioSender = senders.find(s => s.track && s.track.kind === 'audio');
             if (audioSender) {
-              audioSender.replaceTrack(screenAudioTrack);
+              audioSender.replaceTrack(screenAudioTrack).then(() => {
+                console.log(`📡 Screen audio track replaced for peer ${socketId}`);
+              }).catch((err) => {
+                console.error(`❌ Failed to replace screen audio track for peer ${socketId}:`, err);
+              });
             } else {
-              pc.addTrack(screenAudioTrack, screen);
+              try {
+                pc.addTrack(screenAudioTrack, screen);
+                console.log(`📡 Screen audio track added to peer ${socketId}`);
+              } catch (err) {
+                console.error(`❌ Failed to add screen audio track to peer ${socketId}:`, err);
+              }
             }
           }
         });
@@ -557,48 +640,80 @@ export default function SalesCallRoom({ callId, call }) {
           safePlay(localVideoRef.current);
         }
 
-        screen.getVideoTracks()[0].onended = () => {
+        // Handle screen share end
+        screenVideoTrack.onended = () => {
+          console.log("🖥️ Screen share ended by user");
           setIsScreenSharing(false);
           setScreenShareParticipant(null);
           screenStreamRef.current = null;
           
-          // Restore camera video track
-          if (localStreamRef.current && isVideoOn) {
-            const cameraVideoTrack = localStreamRef.current.getVideoTracks()[0];
-            if (cameraVideoTrack) {
-              pcsRef.current.forEach((pc) => {
-                const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
-                if (sender && cameraVideoTrack) {
-                  sender.replaceTrack(cameraVideoTrack);
-                }
-              });
-              
-              if (localVideoRef.current) {
-                localVideoRef.current.srcObject = localStreamRef.current;
-                safePlay(localVideoRef.current);
+          // Restore camera video track if it exists
+          const originalVideoTrack = localStreamRef.current?.getVideoTracks().find(
+            t => !t.label.toLowerCase().includes('screen')
+          );
+          
+          if (originalVideoTrack && localStreamRef.current) {
+            console.log("📹 Restoring camera video track...");
+            pcsRef.current.forEach((pc, socketId) => {
+              const senders = pc.getSenders();
+              const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+              if (videoSender && originalVideoTrack) {
+                videoSender.replaceTrack(originalVideoTrack).then(() => {
+                  console.log(`📡 Camera track restored for peer ${socketId}`);
+                }).catch((err) => {
+                  console.error(`❌ Failed to restore camera track for peer ${socketId}:`, err);
+                });
               }
+            });
+            
+            if (localVideoRef.current) {
+              localVideoRef.current.srcObject = localStreamRef.current;
+              safePlay(localVideoRef.current);
             }
+          } else if (isVideoOn) {
+            // Re-request camera if no original track
+            console.log("📹 Re-requesting camera...");
+            handleToggleVideo();
           }
         };
+        
+        toast.success("Screen sharing started");
       } catch (err) {
+        console.error("❌ Screen share error:", err);
         if (err.name !== "NotAllowedError") {
-          toast.error("Screen share failed");
+          toast.error("Screen share failed: " + (err.message || "Unknown error"));
         }
+        setIsScreenSharing(false);
+        setScreenShareParticipant(null);
       }
     } else {
-      screenStreamRef.current?.getTracks().forEach((t) => t.stop());
+      console.log("🖥️ Stopping screen share...");
+      // Stop screen share tracks
+      screenStreamRef.current?.getTracks().forEach((t) => {
+        t.stop();
+        console.log(`🛑 Stopped screen track: ${t.kind}`);
+      });
       screenStreamRef.current = null;
       setIsScreenSharing(false);
       setScreenShareParticipant(null);
       
-      // Restore camera video track
+      // Restore camera video track if video was on
       if (localStreamRef.current && isVideoOn) {
-        const cameraVideoTrack = localStreamRef.current.getVideoTracks()[0];
+        const cameraVideoTrack = localStreamRef.current.getVideoTracks().find(
+          t => !t.label.toLowerCase().includes('screen')
+        );
+        
         if (cameraVideoTrack) {
-          pcsRef.current.forEach((pc) => {
-            const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
-            if (sender && cameraVideoTrack) {
-              sender.replaceTrack(cameraVideoTrack);
+          console.log("📹 Restoring camera video track...");
+          pcsRef.current.forEach((pc, socketId) => {
+            const senders = pc.getSenders();
+            const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+            if (videoSender && cameraVideoTrack) {
+              videoSender.replaceTrack(cameraVideoTrack).then(() => {
+                console.log(`📡 Camera track restored for peer ${socketId}`);
+              }).catch((err) => {
+                console.error(`❌ Failed to restore camera track for peer ${socketId}:`, err);
+              });
             }
           });
           
@@ -606,10 +721,16 @@ export default function SalesCallRoom({ callId, call }) {
             localVideoRef.current.srcObject = localStreamRef.current;
             safePlay(localVideoRef.current);
           }
+        } else {
+          // Re-enable video if no camera track exists
+          console.log("📹 Re-requesting camera...");
+          handleToggleVideo();
         }
       }
+      
+      toast.success("Screen sharing stopped");
     }
-  }, [isScreenSharing, isVideoOn]);
+  }, [isScreenSharing, isVideoOn, handleToggleVideo]);
 
   // ─── WebRTC: Create peer connection with adapter ──────────────────
   const createPeerConnection = useCallback((socketId, isInitiator = false) => {

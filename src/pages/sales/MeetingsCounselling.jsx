@@ -581,6 +581,35 @@ const MeetingsCounselling = () => {
     }
   };
 
+  // ─── Handle assign assignment for sales call ────────────────────────
+  const handleAssignAssignment = async (call) => {
+    try {
+      const leadId = call.leadId?.toString();
+      if (!leadId) {
+        toast.error('Lead ID not found for this call');
+        return;
+      }
+      
+      const lead = await fetchLeadForCall(leadId);
+      if (!lead) {
+        toast.error('Lead not found');
+        return;
+      }
+      
+      // Check if report is submitted (required before assigning assessment)
+      if (!lead.demoReport?.submitted) {
+        toast.error('Please submit the meeting report before assigning an assessment');
+        return;
+      }
+      
+      setSelectedLeadForCall(lead);
+      setShowAssessmentModal(true);
+    } catch (error) {
+      console.error('Error opening assessment modal:', error);
+      toast.error('Failed to open assessment modal');
+    }
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     try {
@@ -895,6 +924,21 @@ const MeetingsCounselling = () => {
                                           >
                                             <ClipboardList className="h-4 w-4" />
                                             Prescreening
+                                          </button>
+                                        )}
+                                        
+                                        {/* Assign Assignment (only if report submitted) */}
+                                        {call.status === 'COMPLETED' && call.leadId && (
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleAssignAssignment(call);
+                                              setOpenDropdownId(null);
+                                            }}
+                                            className="w-full px-4 py-2 text-left text-sm text-text hover:bg-brintelli-baseAlt transition-colors flex items-center gap-2"
+                                          >
+                                            <ClipboardList className="h-4 w-4" />
+                                            Assign Assignment
                                           </button>
                                         )}
                                         
@@ -1384,9 +1428,14 @@ const MeetingsCounselling = () => {
         onClose={() => {
           setShowAssessmentModal(false);
           setSelectedLead(null);
+          setSelectedLeadForCall(null);
         }}
-        lead={selectedLead}
-        onSuccess={handleRefresh}
+        lead={selectedLead || selectedLeadForCall}
+        onSuccess={() => {
+          handleRefresh();
+          fetchCalls();
+          setSelectedLeadForCall(null);
+        }}
       />
 
       {/* Deactivate Lead Modal */}

@@ -35,22 +35,86 @@ const OutstandingDues = () => {
   const fetchDues = async () => {
     try {
       setLoading(true);
-      // Use finance API endpoint for outstanding dues
-      const duesResponse = await financeAPI.getOutstandingDues({ view: viewFilter });
+      
+      // Fetch all overdue items (invoices and installments)
+      const [duesResponse, overdueResponse] = await Promise.all([
+        financeAPI.getOutstandingDues({ view: viewFilter }),
+        financeAPI.getOverdueItems(),
+      ]);
 
+      let allDues = [];
+
+      // Add outstanding dues from offers
       if (duesResponse.success && duesResponse.data.dues) {
-        const duesList = duesResponse.data.dues;
-        setDues(duesList);
-
-        // Map leads from the enriched dues data
-        const leadsMap = {};
-        duesList.forEach(due => {
-          if (due.lead) {
-            leadsMap[due.leadId] = due.lead;
-          }
-        });
-        setLeads(leadsMap);
+        const duesList = duesResponse.data.dues.map(due => ({
+          ...due,
+          type: 'offer',
+        }));
+        allDues = [...allDues, ...duesList];
       }
+
+      // Add overdue invoices
+      if (overdueResponse.success && overdueResponse.data.invoices) {
+        const invoiceDues = overdueResponse.data.invoices.map(invoice => ({
+          id: invoice._id || invoice.id,
+          leadId: invoice.studentId,
+          lead: {
+            name: invoice.studentName,
+            email: invoice.studentEmail,
+            phone: invoice.studentPhone,
+          },
+          totalFee: invoice.totalAmount,
+          paidAmount: invoice.paidAmount || 0,
+          dueAmount: invoice.totalAmount - (invoice.paidAmount || 0),
+          dueDate: invoice.dueDate || invoice.createdAt,
+          daysOverdue: invoice.dueDate ? Math.max(0, Math.floor((new Date() - new Date(invoice.dueDate)) / (1000 * 60 * 60 * 24))) : 0,
+          riskLevel: invoice.dueDate ? (Math.floor((new Date() - new Date(invoice.dueDate)) / (1000 * 60 * 60 * 24)) > 30 ? 'High' : 'Medium') : 'Low',
+          type: 'invoice',
+          invoiceNumber: invoice.invoiceNumber,
+        }));
+        allDues = [...allDues, ...invoiceDues];
+      }
+
+      // Add overdue installments
+      if (overdueResponse.success && overdueResponse.data.installments) {
+        const installmentDues = overdueResponse.data.installments.map(installment => ({
+          id: installment._id || installment.id,
+          leadId: installment.studentId,
+          lead: {
+            name: installment.studentName,
+          },
+          totalFee: installment.amount,
+          paidAmount: installment.paidAmount || 0,
+          dueAmount: installment.amount - (installment.paidAmount || 0),
+          dueDate: installment.dueDate,
+          daysOverdue: installment.dueDate ? Math.max(0, Math.floor((new Date() - new Date(installment.dueDate)) / (1000 * 60 * 60 * 24))) : 0,
+          riskLevel: installment.dueDate ? (Math.floor((new Date() - new Date(installment.dueDate)) / (1000 * 60 * 60 * 24)) > 30 ? 'High' : 'Medium') : 'Low',
+          type: 'installment',
+          installmentNumber: `${installment.installmentNumber}/${installment.totalInstallments}`,
+        }));
+        allDues = [...allDues, ...installmentDues];
+      }
+
+      // Filter based on view
+      if (viewFilter === 'overdue') {
+        allDues = allDues.filter(due => due.daysOverdue > 0);
+      } else if (viewFilter === 'critical') {
+        allDues = allDues.filter(due => due.daysOverdue > 30);
+      }
+
+      // Sort by days overdue (most overdue first)
+      allDues.sort((a, b) => b.daysOverdue - a.daysOverdue);
+
+      setDues(allDues);
+
+      // Map leads from the enriched dues data
+      const leadsMap = {};
+      allDues.forEach(due => {
+        if (due.lead) {
+          leadsMap[due.leadId] = due.lead;
+        }
+      });
+      setLeads(leadsMap);
     } catch (error) {
       console.error("Error fetching dues:", error);
       toast.error("Failed to load outstanding dues");

@@ -1,21 +1,18 @@
 import {
   LayoutDashboard,
   Wallet,
-  Target,
-  Settings,
-  BarChart3,
-  FileBarChart,
-  TrendingUp,
-  UsersRound,
-  Gift,
+  FileSearch,
+  ClipboardCheck,
+  User,
   AlertCircle,
+  RotateCcw,
 } from "lucide-react";
 
 /**
- * BASE FINANCE NAVIGATION - Single Source of Truth
+ * FINANCE OFFICER NAVIGATION
  * 
- * RBAC: Uses role-specific permissions (finance:agent:view, finance:lead:view, finance:head:view)
- * ABAC: Filters data within pages based on user attributes
+ * Simplified navigation for Finance Officer role
+ * Focus: Dashboard, Transactions, Financial Processing (Offers), Refunds, Overdues, Scholarships, Profile
  */
 export const financeNav = [
   {
@@ -24,9 +21,15 @@ export const financeNav = [
     icon: LayoutDashboard,
     path: "/finance/dashboard",
     pageId: "finance-dashboard",
-    permissions: ["finance:agent:view", "finance:lead:view", "finance:head:view"],
-    // RBAC: All finance roles
-    // ABAC: Data filtered by ownerId (Agent), teamId (Lead), departmentId (Head)
+    permissions: ["finance:read"],
+  },
+  {
+    id: "transactions",
+    label: "Transactions",
+    icon: FileSearch,
+    path: "/finance/transactions",
+    pageId: "finance-transactions",
+    permissions: ["finance:read"],
   },
   {
     id: "financial-processing",
@@ -34,80 +37,42 @@ export const financeNav = [
     icon: Wallet,
     path: "/finance/processing",
     pageId: "finance-processing",
-    permissions: ["finance:agent:view", "finance:lead:view", "finance:head:view"],
-    // RBAC: All finance roles
-    // ABAC: 
-    // - Agent: Only assigned transactions
-    // - Lead: Team's transactions
-    // - Head: All department transactions
+    permissions: ["finance:read", "finance:update"],
+    description: "Manage payment links and offers sent to students",
   },
   {
-    id: "deals-review",
-    label: "Deals Review",
-    icon: Target,
-    path: "/finance/deals",
-    pageId: "finance-deals",
-    permissions: ["finance:agent:view", "finance:lead:view", "finance:head:view"],
-    // RBAC: All finance roles
-    // ABAC: Filtered by deal owner/team/department
+    id: "refunds",
+    label: "Refunds",
+    icon: RotateCcw,
+    path: "/finance/refunds",
+    pageId: "finance-refunds",
+    permissions: ["finance:read", "finance:update"],
+    description: "Process and manage refund requests",
+  },
+  {
+    id: "overdues",
+    label: "Overdues & Outstandings",
+    icon: AlertCircle,
+    path: "/finance/dues",
+    pageId: "finance-dues",
+    permissions: ["finance:read", "finance:update"],
   },
   {
     id: "scholarships",
     label: "Scholarships",
-    icon: Gift,
+    icon: ClipboardCheck,
     path: "/finance/scholarships",
     pageId: "finance-scholarships",
-    permissions: ["finance:agent:view", "finance:lead:view", "finance:head:view"],
-    // RBAC: All finance roles can review and approve/reject scholarship requests
-    // ABAC: All finance users can see all scholarship requests for review
-  },
-  {
-    id: "outstanding-dues",
-    label: "Outstanding Dues",
-    icon: AlertCircle,
-    path: "/finance/dues",
-    pageId: "finance-dues",
-    permissions: ["finance:agent:view", "finance:lead:view", "finance:head:view"],
-    // RBAC: All finance roles
-    // ABAC: All finance users can see all dues for follow-up
-  },
-  {
-    id: "revenue-analytics",
-    label: "Revenue Analytics",
-    icon: BarChart3,
-    path: "/finance/revenue-analytics",
-    pageId: "finance-revenue-analytics",
-    permissions: ["finance:lead:view", "finance:head:view"],
-    // RBAC: Lead and Head only
-    // ABAC: Team revenue (Lead), department revenue (Head)
-  },
-  {
-    id: "team-management",
-    label: "Team Management",
-    icon: UsersRound,
-    path: "/finance/team",
-    pageId: "finance-team",
-    permissions: ["finance:lead:view"],
-    // RBAC: Finance Lead only
-    // ABAC: Shows agents in user's team
-  },
-  {
-    id: "reports",
-    label: "Reports & Analytics",
-    icon: FileBarChart,
-    path: "/finance/reports",
-    pageId: "finance-reports",
-    permissions: ["finance:head:view"],
-    // RBAC: Finance Head only
-    // ABAC: Department-wide reports
+    permissions: ["finance:read", "finance:update"],
   },
   {
     id: "profile",
-    label: "Profile & Settings",
-    icon: Settings,
+    label: "Profile",
+    icon: User,
     path: "/finance/profile",
     pageId: "finance-profile",
-    permissions: ["finance:agent:view", "finance:lead:view", "finance:head:view"],
-    // RBAC: All finance roles
+    permissions: ["finance:read"],
   },
 ];
+
+export default financeNav;

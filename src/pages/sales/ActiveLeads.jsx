@@ -12,6 +12,7 @@ import DeactivateLeadModal from "../../components/DeactivateLeadModal";
 import Modal from "../../components/Modal";
 import { leadAPI } from "../../api/lead";
 import { programAPI } from "../../api/program";
+import { userAPI } from "../../api/user";
 import toast from "react-hot-toast";
 import { selectCurrentUser } from "../../store/slices/authSlice";
 import { fetchSalesTeam, selectSalesTeam, selectSalesTeamLoading, selectSalesTeamError } from "../../store/slices/salesTeamSlice";
@@ -44,8 +45,14 @@ const ActiveLeads = () => {
     date: "",
     time: "",
     notes: "",
+    mentorId: "",
+    programManagerId: "",
   });
   const [bookingLoading, setBookingLoading] = useState(false);
+  const [mentors, setMentors] = useState([]);
+  const [programManagers, setProgramManagers] = useState([]);
+  const [loadingMentors, setLoadingMentors] = useState(false);
+  const [loadingPMs, setLoadingPMs] = useState(false);
   const [preScreeningData, setPreScreeningData] = useState({
     leadId: null,
     education: { degree: "", field: "", university: "", graduationYear: "", gpa: "" },
@@ -269,6 +276,106 @@ const ActiveLeads = () => {
       setOpenDropdownId(null);
     }
   }, [isCallNotesModalOpen, showViewAllCallNotesModal, showPreScreeningModal, showContactDetailsModal, showBookDemoModal]);
+
+  // Fetch mentors and program managers when Book Demo modal opens
+  useEffect(() => {
+    if (showBookDemoModal) {
+      const fetchMentors = async () => {
+        setLoadingMentors(true);
+        try {
+          // Try multiple role name variations (most common first)
+          const roleVariations = ['mentor', 'Mentor'];
+          let mentors = [];
+          let lastError = null;
+          
+          for (const role of roleVariations) {
+            try {
+              const response = await userAPI.getUsersByRole(role);
+              console.log(`[ActiveLeads] Fetch mentors response for role "${role}":`, response);
+              
+              if (response.success && response.data?.users) {
+                mentors = response.data.users;
+                console.log(`[ActiveLeads] Found ${mentors.length} mentors with role "${role}"`);
+                break; // Use first successful response
+              } else {
+                console.warn(`[ActiveLeads] No mentors found for role "${role}"`);
+              }
+            } catch (err) {
+              lastError = err;
+              console.warn(`[ActiveLeads] Failed to fetch mentors with role "${role}":`, err);
+              // Check if it's a permission error
+              if (err?.response?.status === 403 || err?.message?.includes('permission')) {
+                console.error('[ActiveLeads] Permission denied. Sales agent may not have "users:read" permission.');
+                toast.error('You do not have permission to view mentors. Please contact your administrator.');
+                break;
+              }
+            }
+          }
+          
+          setMentors(mentors);
+          if (mentors.length === 0 && !lastError) {
+            console.warn('[ActiveLeads] No mentors found. Check if users with role "mentor" or "Mentor" exist in the database.');
+          }
+        } catch (error) {
+          console.error('[ActiveLeads] Error fetching mentors:', error);
+          if (error?.response?.status !== 403) {
+            toast.error('Failed to load mentors. Please try again.');
+          }
+        } finally {
+          setLoadingMentors(false);
+        }
+      };
+
+      const fetchProgramManagers = async () => {
+        setLoadingPMs(true);
+        try {
+          // Try multiple role name variations (most common first based on appRoleAccess.js)
+          const roleVariations = ['programManager', 'program-manager', 'programmanager', 'Program Manager'];
+          let programManagers = [];
+          let lastError = null;
+          
+          for (const role of roleVariations) {
+            try {
+              const response = await userAPI.getUsersByRole(role);
+              console.log(`[ActiveLeads] Fetch program managers response for role "${role}":`, response);
+              
+              if (response.success && response.data?.users) {
+                programManagers = response.data.users;
+                console.log(`[ActiveLeads] Found ${programManagers.length} program managers with role "${role}"`);
+                break; // Use first successful response
+              } else {
+                console.warn(`[ActiveLeads] No program managers found for role "${role}"`);
+              }
+            } catch (err) {
+              lastError = err;
+              console.warn(`[ActiveLeads] Failed to fetch program managers with role "${role}":`, err);
+              // Check if it's a permission error
+              if (err?.response?.status === 403 || err?.message?.includes('permission')) {
+                console.error('[ActiveLeads] Permission denied. Sales agent may not have "users:read" permission.');
+                toast.error('You do not have permission to view program managers. Please contact your administrator.');
+                break;
+              }
+            }
+          }
+          
+          setProgramManagers(programManagers);
+          if (programManagers.length === 0 && !lastError) {
+            console.warn('[ActiveLeads] No program managers found. Check if users with role "programManager", "program-manager", or "programmanager" exist in the database.');
+          }
+        } catch (error) {
+          console.error('[ActiveLeads] Error fetching program managers:', error);
+          if (error?.response?.status !== 403) {
+            toast.error('Failed to load program managers. Please try again.');
+          }
+        } finally {
+          setLoadingPMs(false);
+        }
+      };
+
+      fetchMentors();
+      fetchProgramManagers();
+    }
+  }, [showBookDemoModal]);
 
   // Handle book demo
   const handleBookDemo = async () => {
@@ -1656,7 +1763,7 @@ const ActiveLeads = () => {
           isOpen={showBookDemoModal}
           onClose={() => {
             setShowBookDemoModal(false);
-            setDemoData({ date: "", time: "", notes: "" });
+            setDemoData({ date: "", time: "", notes: "", mentorId: "", programManagerId: "" });
             setSelectedLead(null);
           }}
           title={`Book Demo Call: ${selectedLead.name || "Lead"}`}
@@ -1700,12 +1807,50 @@ const ActiveLeads = () => {
                 className="w-full rounded-xl border border-brintelli-border bg-brintelli-card px-4 py-2 text-sm text-text focus:border-brand-500 focus:outline-none"
               />
             </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-text">
+                  Invite Mentor (Optional)
+                </label>
+                <select
+                  value={demoData.mentorId}
+                  onChange={(e) => setDemoData({ ...demoData, mentorId: e.target.value })}
+                  className="w-full rounded-xl border border-brintelli-border bg-brintelli-card px-4 py-2 text-sm text-text focus:border-brand-500 focus:outline-none"
+                  disabled={loadingMentors}
+                >
+                  <option value="">Select a mentor...</option>
+                  {mentors.map((mentor) => (
+                    <option key={mentor.id || mentor._id} value={mentor.id || mentor._id}>
+                      {mentor.name || mentor.fullName || mentor.email}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-medium text-text">
+                  Invite Program Manager (Optional)
+                </label>
+                <select
+                  value={demoData.programManagerId}
+                  onChange={(e) => setDemoData({ ...demoData, programManagerId: e.target.value })}
+                  className="w-full rounded-xl border border-brintelli-border bg-brintelli-card px-4 py-2 text-sm text-text focus:border-brand-500 focus:outline-none"
+                  disabled={loadingPMs}
+                >
+                  <option value="">Select a program manager...</option>
+                  {programManagers.map((pm) => (
+                    <option key={pm.id || pm._id} value={pm.id || pm._id}>
+                      {pm.name || pm.fullName || pm.email}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
             <div className="flex justify-end gap-2 pt-4 border-t border-brintelli-border">
               <Button
                 variant="ghost"
                 onClick={() => {
                   setShowBookDemoModal(false);
-                  setDemoData({ date: "", time: "", notes: "" });
+                  setDemoData({ date: "", time: "", notes: "", mentorId: "", programManagerId: "" });
                   setSelectedLead(null);
                 }}
                 disabled={bookingLoading}

@@ -353,7 +353,14 @@ const Profile = () => {
           </div>
 
           {/* Save Button */}
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-3">
+            <Button
+              variant="secondary"
+              onClick={() => window.location.href = '/mentor/settings'}
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              Settings
+            </Button>
             <Button
               variant="primary"
               onClick={handleSaveProfile}
@@ -362,8 +369,8 @@ const Profile = () => {
               <Save className="h-4 w-4 mr-2" />
               {saving ? 'Saving...' : 'Save Profile'}
             </Button>
-      </div>
-    </div>
+          </div>
+        </div>
       )}
     </>
   );

@@ -1,54 +1,112 @@
 import { useState, useEffect } from "react";
-import { Search, RefreshCw, CheckCircle2, XCircle, Clock, Eye, DollarSign } from "lucide-react";
+import { Search, CheckCircle2, XCircle, Clock, Eye, DollarSign, RefreshCw } from "lucide-react";
 import PageHeader from "../../components/PageHeader";
 import Button from "../../components/Button";
 import Modal from "../../components/Modal";
 import Pagination from "../../components/Pagination";
 import { scholarshipAPI } from "../../api/scholarship";
+import { offerAPI } from "../../api/offer";
+import { leadAPI } from "../../api/lead";
 import toast from "react-hot-toast";
 
+/**
+ * SCHOLARSHIP MANAGEMENT PAGE
+ * 
+ * Review and manage scholarship requests from candidates
+ * - Summary cards: Pending Requests, Approved, Pending Revenue Impact, Total Revenue Loss
+ * - Table with: Candidate, Base Price, Requested Amount, Final Price, Revenue Loss, Status, Requested At, Actions
+ * - Decision modal for approve/reject with notes
+ */
 const Scholarships = () => {
   const [scholarships, setScholarships] = useState([]);
+  const [offers, setOffers] = useState([]);
+  const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState(""); // Show all by default
+  const [statusFilter, setStatusFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [selectedScholarship, setSelectedScholarship] = useState(null);
-  const [showDetailModal, setShowDetailModal] = useState(false);
   const [showDecisionModal, setShowDecisionModal] = useState(false);
-  const [decisionData, setDecisionData] = useState({ decision: "", finalPrice: "", notes: "" });
+  const [decisionForm, setDecisionForm] = useState({
+    decision: "",
+    notes: "",
+  });
 
   useEffect(() => {
-    fetchScholarships();
-  }, [statusFilter]);
+    fetchData();
+  }, [statusFilter, currentPage]);
 
-  const fetchScholarships = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
-      const response = await scholarshipAPI.getAllScholarships({
-        status: statusFilter || undefined,
+      
+      // Fetch all data in parallel
+      const [scholarshipsResponse, offersResponse, leadsResponse] = await Promise.all([
+        scholarshipAPI.getAllScholarships().catch(err => {
+          console.error('Error fetching scholarships:', err);
+          return { success: false, data: { scholarshipRequests: [] } };
+        }),
+        offerAPI.getAllOffers().catch(err => {
+          console.error('Error fetching offers:', err);
+          return { success: false, data: { offers: [] } };
+        }),
+        leadAPI.getAllLeads().catch(err => {
+          console.error('Error fetching leads:', err);
+          return { success: false, data: { leads: [] } };
+        }),
+      ]);
+
+      const scholarshipRequests = scholarshipsResponse.success 
+        ? scholarshipsResponse.data.scholarshipRequests || [] 
+        : [];
+      const offersList = offersResponse.success ? offersResponse.data.offers || [] : [];
+      const leadsList = leadsResponse.success ? leadsResponse.data.leads || [] : [];
+
+      setOffers(offersList);
+      setLeads(leadsList);
+
+      // Enrich scholarships with offer and lead data
+      const enrichedScholarships = scholarshipRequests.map(scholarship => {
+        const offer = offersList.find(o => o.id === scholarship.offerId || o._id === scholarship.offerId);
+        const lead = leadsList.find(l => l.id === scholarship.leadId || l._id === scholarship.leadId);
+        
+        const basePrice = offer?.offeredPrice || offer?.basePrice || 0;
+        const requestedAmount = scholarship.requestedAmount || 0;
+        const finalPrice = scholarship.status === 'APPROVED' 
+          ? basePrice - requestedAmount 
+          : basePrice;
+        const revenueLoss = scholarship.status === 'APPROVED' ? requestedAmount : 0;
+
+        return {
+          ...scholarship,
+          studentName: lead?.name || scholarship.studentName || 'Unknown',
+          studentEmail: lead?.email || scholarship.studentEmail || 'N/A',
+          basePrice,
+          finalPrice,
+          revenueLoss,
+          courseName: offer?.courseName || lead?.courseName || 'N/A',
+        };
       });
 
-      if (response.success && response.data.scholarshipRequests) {
-        setScholarships(response.data.scholarshipRequests);
+      // Apply status filter
+      let filtered = enrichedScholarships;
+      if (statusFilter) {
+        filtered = filtered.filter(s => s.status === statusFilter);
       }
+
+      setScholarships(filtered);
     } catch (error) {
-      console.error("Error fetching scholarships:", error);
-      toast.error("Failed to load scholarship requests");
+      console.error("Error fetching data:", error);
+      toast.error("Failed to load scholarships");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleViewDetails = (scholarship) => {
+  const handleOpenDecisionModal = (scholarship) => {
     setSelectedScholarship(scholarship);
-    setShowDetailModal(true);
-  };
-
-  const handleMakeDecision = (scholarship) => {
-    setSelectedScholarship(scholarship);
-    setDecisionData({
+    setDecisionForm({
       decision: "",
       notes: "",
     });
@@ -56,480 +114,356 @@ const Scholarships = () => {
   };
 
   const handleSubmitDecision = async () => {
-    if (!decisionData.decision) {
+    if (!decisionForm.decision) {
       toast.error("Please select a decision");
       return;
     }
 
+    if (!selectedScholarship) return;
+
     try {
       const response = await scholarshipAPI.makeScholarshipDecision(
-        selectedScholarship.id,
+        selectedScholarship.id || selectedScholarship._id,
         {
-          decision: decisionData.decision,
-          notes: decisionData.notes,
+          decision: decisionForm.decision,
+          notes: decisionForm.notes || undefined,
         }
       );
 
       if (response.success) {
-        toast.success(`Scholarship request ${decisionData.decision.toLowerCase()} successfully`);
+        toast.success(`Scholarship ${decisionForm.decision.toLowerCase()} successfully`);
         setShowDecisionModal(false);
         setSelectedScholarship(null);
-        fetchScholarships();
+        setDecisionForm({ decision: "", notes: "" });
+        fetchData();
       } else {
-        toast.error(response.error || "Failed to process decision");
+        toast.error(response.message || "Failed to submit decision");
       }
     } catch (error) {
-      console.error("Error making decision:", error);
-      toast.error(error.message || "Failed to process decision");
+      console.error("Error submitting decision:", error);
+      toast.error("Failed to submit decision");
     }
   };
 
+  const getStatusBadge = (status) => {
+    const badges = {
+      REQUESTED: "bg-yellow-100 text-yellow-700",
+      APPROVED: "bg-green-100 text-green-700",
+      REJECTED: "bg-red-100 text-red-700",
+      DENIED: "bg-red-100 text-red-700",
+      PENDING: "bg-blue-100 text-blue-700",
+    };
+    return badges[status] || "bg-gray-100 text-gray-700";
+  };
+
+  const formatCurrency = (amount) => {
+    if (!amount) return "₹0";
+    if (amount >= 10000000) return `₹${(amount / 10000000).toFixed(2)}Cr`;
+    if (amount >= 100000) return `₹${(amount / 100000).toFixed(2)}L`;
+    if (amount >= 1000) return `₹${(amount / 1000).toFixed(2)}K`;
+    return `₹${amount.toLocaleString()}`;
+  };
+
   const filteredScholarships = scholarships.filter((scholarship) => {
-    if (!searchTerm) return true;
-    const search = searchTerm.toLowerCase();
-    return (
-      scholarship.lead?.name?.toLowerCase().includes(search) ||
-      scholarship.lead?.email?.toLowerCase().includes(search)
-    );
+    const matchesSearch = 
+      scholarship.studentName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      scholarship.studentEmail?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      scholarship.requestedAmount?.toString().includes(searchTerm);
+    return matchesSearch;
   });
 
   const totalPages = Math.ceil(filteredScholarships.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedScholarships = filteredScholarships.slice(startIndex, startIndex + itemsPerPage);
+  const paginatedScholarships = filteredScholarships.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
-  const getStatusBadge = (status) => {
-    const badges = {
-      REQUESTED: { bg: "bg-yellow-100", text: "text-yellow-700", icon: Clock, label: "Requested" },
-      APPROVED: { bg: "bg-green-100", text: "text-green-700", icon: CheckCircle2, label: "Approved" },
-      REJECTED: { bg: "bg-red-100", text: "text-red-700", icon: XCircle, label: "Rejected" },
-    };
-    const badge = badges[status] || badges.REQUESTED;
-    const Icon = badge.icon;
-    return (
-      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold ${badge.bg} ${badge.text}`}>
-        <Icon className="h-3 w-3" />
-        {badge.label}
-      </span>
-    );
-  };
+  // Calculate stats
+  const pendingRequests = filteredScholarships.filter(s => s.status === 'REQUESTED').length;
+  const approvedCount = filteredScholarships.filter(s => s.status === 'APPROVED').length;
+  const pendingRevenueImpact = filteredScholarships
+    .filter(s => s.status === 'REQUESTED')
+    .reduce((sum, s) => sum + (s.requestedAmount || 0), 0);
+  const totalRevenueLoss = filteredScholarships
+    .filter(s => s.status === 'APPROVED')
+    .reduce((sum, s) => sum + (s.revenueLoss || s.requestedAmount || 0), 0);
 
   return (
     <>
       <PageHeader
         title="Scholarship Management"
-        description="Review and manage scholarship requests from candidates."
+        description="Review and manage scholarship requests from candidates"
       />
 
-      {/* Stats */}
-      <div className="grid gap-5 md:grid-cols-4 mb-6">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-textMuted mb-1">Pending Requests</p>
-              <p className="text-2xl font-bold text-text">
-                {scholarships.filter((s) => s.status === "REQUESTED").length}
-              </p>
+              <p className="text-3xl font-bold text-yellow-600">{pendingRequests}</p>
             </div>
-            <Clock className="h-8 w-8 text-yellow-500" />
+            <Clock className="h-8 w-8 text-yellow-600 opacity-20" />
           </div>
         </div>
         <div className="rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-textMuted mb-1">Approved</p>
-              <p className="text-2xl font-bold text-text">
-                {scholarships.filter((s) => s.status === "APPROVED").length}
-              </p>
+              <p className="text-3xl font-bold text-green-600">{approvedCount}</p>
             </div>
-            <CheckCircle2 className="h-8 w-8 text-green-500" />
+            <CheckCircle2 className="h-8 w-8 text-green-600 opacity-20" />
           </div>
         </div>
         <div className="rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-textMuted mb-1">Pending Revenue Impact</p>
-              <p className="text-2xl font-bold text-red-600">
-                ₹{scholarships
-                  .filter((s) => s.status === "REQUESTED")
-                  .reduce((sum, s) => sum + (s.requestedAmount || 0), 0)
-                  .toLocaleString()}
-              </p>
+              <p className="text-3xl font-bold text-red-600">{formatCurrency(pendingRevenueImpact)}</p>
             </div>
-            <DollarSign className="h-8 w-8 text-red-500" />
+            <DollarSign className="h-8 w-8 text-red-600 opacity-20" />
           </div>
         </div>
         <div className="rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-textMuted mb-1">Total Revenue Loss</p>
-              <p className="text-2xl font-bold text-red-600">
-                ₹{scholarships
-                  .filter((s) => s.status === "APPROVED")
-                  .reduce((sum, s) => {
-                    const basePrice = s.offer?.basePrice || 0;
-                    // Calculate revenue loss: basePrice - finalPrice
-                    // Final price = basePrice - approvedAmount (or requestedAmount)
-                    const approvedAmount = s.approvedAmount || s.requestedAmount || 0;
-                    const finalPrice = Math.max(0, basePrice - approvedAmount);
-                    const revenueLoss = basePrice - finalPrice;
-                    return sum + revenueLoss;
-                  }, 0)
-                  .toLocaleString()}
-              </p>
+              <p className="text-3xl font-bold text-red-600">{formatCurrency(totalRevenueLoss)}</p>
             </div>
-            <XCircle className="h-8 w-8 text-red-500" />
+            <XCircle className="h-8 w-8 text-red-600 opacity-20" />
           </div>
         </div>
       </div>
 
-      {/* Scholarships Table */}
-      <div className="rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft p-6">
-        {/* Filters */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-textMuted" />
+      {/* Filters */}
+      <div className="rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft p-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-textMuted w-4 h-4" />
             <input
               type="text"
               placeholder="Search by candidate name or email..."
               value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="w-full pl-10 pr-4 py-2 rounded-xl border border-brintelli-border bg-brintelli-baseAlt text-sm focus:border-brand-500 focus:outline-none"
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-brintelli-border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
           </div>
-          <div className="flex items-center gap-3">
-            <select
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="px-4 py-2 rounded-xl border border-brintelli-border bg-brintelli-baseAlt text-sm focus:border-brand-500 focus:outline-none"
-            >
-              <option value="">All Status</option>
-              <option value="REQUESTED">Requested</option>
-              <option value="APPROVED">Approved</option>
-              <option value="REJECTED">Rejected</option>
-            </select>
-            <Button variant="ghost" size="sm" onClick={fetchScholarships}>
-              <RefreshCw className="h-4 w-4" />
-              Refresh
-            </Button>
-          </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-4 py-2 border border-brintelli-border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+          >
+            <option value="">All Status</option>
+            <option value="REQUESTED">Requested</option>
+            <option value="APPROVED">Approved</option>
+            <option value="REJECTED">Rejected</option>
+            <option value="DENIED">Denied</option>
+            <option value="PENDING">Pending</option>
+          </select>
+          <Button variant="ghost" size="sm" onClick={fetchData}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
         </div>
+      </div>
 
-        {/* Table */}
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <RefreshCw className="h-6 w-6 animate-spin text-brand" />
-            <span className="ml-3 text-textMuted">Loading scholarship requests...</span>
-          </div>
-        ) : (
+      {/* Scholarships Table */}
+      <div className="rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft overflow-hidden">
+        <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-brintelli-baseAlt">
+            <thead className="bg-brintelli-baseAlt border-b border-brintelli-border">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-textMuted">Candidate</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-textMuted">Base Price</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-textMuted">Requested Amount</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-textMuted">Final Price</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-textMuted">Revenue Loss (₹)</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-textMuted">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-textMuted">Requested At</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-textMuted">Actions</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">CANDIDATE</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">BASE PRICE</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">REQUESTED AMOUNT</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">FINAL PRICE</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">REVENUE LOSS (₹)</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">STATUS</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">REQUESTED AT</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-textMuted">ACTIONS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-brintelli-border">
-              {paginatedScholarships.length === 0 ? (
+              {loading ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-textMuted">
-                    {searchTerm ? "No scholarship requests match your search." : "No scholarship requests found."}
+                  <td colSpan={8} className="px-6 py-12 text-center">
+                    <div className="flex flex-col items-center justify-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-500 mb-4"></div>
+                      <p className="text-sm font-medium text-textMuted">Loading scholarships...</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : paginatedScholarships.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-6 py-12 text-center">
+                    <p className="text-sm font-medium text-textMuted">No scholarships found</p>
+                    <p className="text-xs text-textMuted mt-2">Try adjusting your filters</p>
                   </td>
                 </tr>
               ) : (
-                paginatedScholarships.map((scholarship) => {
-                  const basePrice = scholarship.offer?.basePrice || 0;
-                  // Calculate final price: if approved, use basePrice - approvedAmount (or requestedAmount)
-                  // Otherwise, use offer's offeredPrice if available, or basePrice
-                  let finalPrice = basePrice;
-                  if (scholarship.status === 'APPROVED') {
-                    // When approved, final price = basePrice - approvedAmount (or requestedAmount if approvedAmount not set)
-                    const approvedAmount = scholarship.approvedAmount || scholarship.requestedAmount || 0;
-                    finalPrice = Math.max(0, basePrice - approvedAmount);
-                  } else if (scholarship.offer?.offeredPrice) {
-                    // If offer has been sent with a price, use that
-                    finalPrice = scholarship.offer.offeredPrice;
-                  }
-                  const revenueLoss = basePrice - finalPrice;
-                  
-                  return (
-                    <tr key={scholarship.id} className="transition hover:bg-brintelli-baseAlt">
-                      <td className="px-4 py-3">
-                        <p className="font-semibold text-text">{scholarship.lead?.name || "N/A"}</p>
-                        <p className="text-xs text-textMuted">{scholarship.lead?.email || "N/A"}</p>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-sm font-semibold text-text">
-                          ₹{basePrice.toLocaleString()}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-sm font-semibold text-text">
-                          ₹{scholarship.requestedAmount?.toLocaleString() || "0"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-sm font-semibold text-text">
-                          ₹{finalPrice.toLocaleString()}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-sm font-bold text-red-600">
-                          ₹{revenueLoss.toLocaleString()}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">{getStatusBadge(scholarship.status)}</td>
-                      <td className="px-4 py-3">
-                        <span className="text-sm text-text">
-                          {new Date(scholarship.createdAt).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
+                paginatedScholarships.map((scholarship) => (
+                  <tr key={scholarship.id || scholarship._id} className="hover:bg-brintelli-baseAlt/30 transition-colors">
+                    <td className="px-6 py-4">
+                      <div>
+                        <p className="text-sm font-medium text-text">{scholarship.studentName}</p>
+                        <p className="text-xs text-textMuted">{scholarship.studentEmail}</p>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm font-semibold text-text">{formatCurrency(scholarship.basePrice)}</span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm font-semibold text-text">{formatCurrency(scholarship.requestedAmount)}</span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm font-semibold text-text">{formatCurrency(scholarship.finalPrice)}</span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`text-sm font-semibold ${scholarship.revenueLoss > 0 ? 'text-red-600' : 'text-text'}`}>
+                        {formatCurrency(scholarship.revenueLoss)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusBadge(scholarship.status)}`}>
+                        {scholarship.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm text-textMuted">
+                        {scholarship.createdAt || scholarship.requestedAt
+                          ? new Date(scholarship.createdAt || scholarship.requestedAt).toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric'
+                            })
+                          : 'N/A'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleOpenDecisionModal(scholarship)}
+                          className="p-1 text-brand-600 hover:bg-brand-50 rounded"
+                          title="View Details"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        {scholarship.status === "REQUESTED" && (
                           <button
-                            onClick={() => handleViewDetails(scholarship)}
-                            className="inline-flex items-center gap-1 text-sm text-brand-600 hover:text-brand-700 hover:underline"
-                            title="View Details"
+                            onClick={() => handleOpenDecisionModal(scholarship)}
+                            className="p-1 text-green-600 hover:bg-green-50 rounded"
+                            title="Make Decision"
                           >
-                            <Eye className="h-3.5 w-3.5" />
+                            <CheckCircle2 className="w-4 h-4" />
                           </button>
-                          {scholarship.status === "REQUESTED" && (
-                            <button
-                              onClick={() => handleMakeDecision(scholarship)}
-                              className="inline-flex items-center gap-1 text-sm text-green-600 hover:text-green-700 hover:underline"
-                              title="Make Decision"
-                            >
-                              <CheckCircle2 className="h-3.5 w-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
-        )}
-
-        {/* Pagination */}
-        {filteredScholarships.length > 0 && (
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            totalItems={filteredScholarships.length}
-            itemsPerPage={itemsPerPage}
-            onPageChange={setCurrentPage}
-          />
+        </div>
+        {totalPages > 1 && (
+          <div className="px-6 py-4 border-t border-brintelli-border flex items-center justify-between">
+            <div className="text-sm text-textMuted">
+              {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, filteredScholarships.length)} of {filteredScholarships.length}
+            </div>
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          </div>
         )}
       </div>
 
-      {/* Detail Modal */}
-      {showDetailModal && selectedScholarship && (
-        <Modal
-          isOpen={showDetailModal}
-          onClose={() => {
-            setShowDetailModal(false);
-            setSelectedScholarship(null);
-          }}
-          title="Scholarship Request Details"
-        >
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-sm font-semibold text-textMuted mb-2">Candidate</h3>
-              <p className="text-text font-semibold">{selectedScholarship.lead?.name || "N/A"}</p>
-              <p className="text-sm text-textMuted">{selectedScholarship.lead?.email || "N/A"}</p>
-            </div>
-
-            {selectedScholarship.offer && (
-              <div className="rounded-xl border border-brintelli-border bg-brintelli-baseAlt p-4">
-                <h3 className="text-sm font-semibold text-textMuted mb-3">Offer Details</h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-sm text-textMuted">Base Price:</span>
-                    <span className="text-sm font-semibold text-text">
-                      ₹{selectedScholarship.offer.basePrice?.toLocaleString() || "N/A"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-textMuted">Current Offered Price:</span>
-                    <span className="text-sm font-semibold text-text">
-                      ₹{selectedScholarship.offer.offeredPrice?.toLocaleString() || "N/A"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-textMuted">Level:</span>
-                    <span className="text-sm font-semibold text-text">{selectedScholarship.offer.level || "N/A"}</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="rounded-xl border border-brintelli-border bg-brintelli-baseAlt p-4">
-              <h3 className="text-sm font-semibold text-textMuted mb-3">Scholarship Request</h3>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sm text-textMuted">Requested Amount:</span>
-                  <span className="text-sm font-semibold text-text">
-                    ₹{selectedScholarship.requestedAmount?.toLocaleString() || "0"}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-sm text-textMuted">Reason:</span>
-                  <p className="text-sm text-text mt-1">{selectedScholarship.reason || "No reason provided"}</p>
-                </div>
-                {selectedScholarship.documents && selectedScholarship.documents.length > 0 && (
-                  <div>
-                    <span className="text-sm text-textMuted">Documents:</span>
-                    <div className="mt-1 space-y-1">
-                      {selectedScholarship.documents.map((doc, index) => (
-                        <a
-                          key={index}
-                          href={doc}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm text-brand-600 hover:underline block"
-                        >
-                          Document {index + 1}
-                        </a>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {selectedScholarship.reviewedAt && (
-              <div>
-                <p className="text-xs text-textMuted mb-1">Reviewed At</p>
-                <p className="text-sm text-text">
-                  {new Date(selectedScholarship.reviewedAt).toLocaleString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </p>
-              </div>
-            )}
-
-            <div className="flex gap-3 pt-4 border-t border-brintelli-border">
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setShowDetailModal(false);
-                  setSelectedScholarship(null);
-                }}
-              >
-                Close
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* Decision Modal */}
+      {/* Make Scholarship Decision Modal */}
       {showDecisionModal && selectedScholarship && (
         <Modal
           isOpen={showDecisionModal}
           onClose={() => {
             setShowDecisionModal(false);
             setSelectedScholarship(null);
+            setDecisionForm({ decision: "", notes: "" });
           }}
           title="Make Scholarship Decision"
         >
           <div className="space-y-6">
-            <div className="rounded-xl border border-brintelli-border bg-brintelli-baseAlt p-4">
-              <p className="text-sm font-semibold text-text">{selectedScholarship.lead?.name}</p>
-              <p className="text-xs text-textMuted">{selectedScholarship.lead?.email}</p>
-              <p className="text-sm text-textMuted mt-2">
-                Requested: ₹{selectedScholarship.requestedAmount?.toLocaleString()}
-              </p>
+            {/* Applicant Information */}
+            <div className="rounded-lg border border-brintelli-border bg-brintelli-baseAlt p-4">
+              <div className="space-y-2">
+                <div>
+                  <p className="text-xs font-medium text-textMuted mb-1">Name</p>
+                  <p className="text-sm font-semibold text-text">{selectedScholarship.studentName}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-textMuted mb-1">Email</p>
+                  <p className="text-sm text-text">{selectedScholarship.studentEmail}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-textMuted mb-1">Requested Amount</p>
+                  <p className="text-sm font-semibold text-text">Requested: {formatCurrency(selectedScholarship.requestedAmount)}</p>
+                  <p className="text-xs text-textMuted mt-1">
+                    Base Price: {formatCurrency(selectedScholarship.basePrice)}
+                  </p>
+                </div>
+              </div>
             </div>
 
+            {/* Decision Field */}
             <div>
-              <label className="block text-sm font-semibold text-text mb-2">Decision</label>
+              <label className="block text-sm font-medium text-text mb-2">
+                Decision <span className="text-red-500">*</span>
+              </label>
               <select
-                value={decisionData.decision}
-                onChange={(e) => setDecisionData({ ...decisionData, decision: e.target.value })}
-                className="w-full px-4 py-2 rounded-xl border border-brintelli-border bg-brintelli-baseAlt text-sm focus:border-brand-500 focus:outline-none"
-                required
+                value={decisionForm.decision}
+                onChange={(e) => setDecisionForm({ ...decisionForm, decision: e.target.value })}
+                className="w-full px-4 py-2 border border-brintelli-border rounded-lg bg-white text-text focus:outline-none focus:ring-2 focus:ring-brand-500"
               >
                 <option value="">Select decision...</option>
                 <option value="APPROVED">Approve</option>
                 <option value="REJECTED">Reject</option>
+                <option value="DENIED">Deny</option>
               </select>
             </div>
 
-            {decisionData.decision === "APPROVED" && selectedScholarship && (
-              <div className="rounded-xl border border-brintelli-border bg-brintelli-baseAlt p-4">
-                <p className="text-sm font-semibold text-text mb-2">Approval Summary</p>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-textMuted">Base Price:</span>
-                    <span className="font-medium text-text">₹{selectedScholarship.offer?.basePrice?.toLocaleString() || 'N/A'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-textMuted">Requested Amount:</span>
-                    <span className="font-medium text-text">₹{selectedScholarship.requestedAmount?.toLocaleString() || 'N/A'}</span>
-                  </div>
-                  <div className="flex justify-between pt-2 border-t border-brintelli-border">
-                    <span className="text-textMuted">Final Price (after approval):</span>
-                    <span className="font-semibold text-green-600">
-                      ₹{selectedScholarship.offer?.basePrice && selectedScholarship.requestedAmount 
-                        ? (selectedScholarship.offer.basePrice - selectedScholarship.requestedAmount).toLocaleString() 
-                        : 'N/A'}
-                    </span>
-                  </div>
-                  <p className="text-xs text-textMuted mt-2">
-                    The scholarship will be approved with the requested amount. The final price will be calculated automatically.
-                  </p>
-                </div>
-              </div>
-            )}
-
+            {/* Notes Field */}
             <div>
-              <label className="block text-sm font-semibold text-text mb-2">Notes (Optional)</label>
+              <label className="block text-sm font-medium text-text mb-2">
+                Notes (Optional)
+              </label>
               <textarea
-                value={decisionData.notes}
-                onChange={(e) => setDecisionData({ ...decisionData, notes: e.target.value })}
-                className="w-full px-4 py-2 rounded-xl border border-brintelli-border bg-brintelli-baseAlt text-sm focus:border-brand-500 focus:outline-none"
+                value={decisionForm.notes}
+                onChange={(e) => setDecisionForm({ ...decisionForm, notes: e.target.value })}
+                rows={4}
                 placeholder="Add any notes..."
-                rows={3}
+                className="w-full px-4 py-2 border border-brintelli-border rounded-lg bg-white text-text focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
               />
             </div>
 
-            <div className="flex gap-3 pt-4 border-t border-brintelli-border">
-              <Button variant="primary" onClick={handleSubmitDecision}>
-                Submit Decision
-              </Button>
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-3 pt-4 border-t border-brintelli-border">
               <Button
                 variant="ghost"
                 onClick={() => {
                   setShowDecisionModal(false);
                   setSelectedScholarship(null);
+                  setDecisionForm({ decision: "", notes: "" });
                 }}
               >
                 Cancel
               </Button>
-      </div>
-    </div>
+              <Button
+                variant="primary"
+                onClick={handleSubmitDecision}
+                disabled={!decisionForm.decision}
+              >
+                Submit Decision
+              </Button>
+            </div>
+          </div>
         </Modal>
       )}
     </>

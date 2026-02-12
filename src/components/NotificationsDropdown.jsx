@@ -1,7 +1,9 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { CalendarClock, ClipboardList, BriefcaseBusiness, CheckCircle2, X, ArrowRight, Phone, User, FileText, Gift } from "lucide-react";
+import salesCallApi from "../api/salesCall";
+import toast from "react-hot-toast";
 
 const iconMap = {
   live: CalendarClock,
@@ -19,6 +21,7 @@ const iconMap = {
 const NotificationsDropdown = ({ open, notifications = [], onClose, onMarkAll, onNotificationClick }) => {
   const panelRef = useRef(null);
   const navigate = useNavigate();
+  const [processingInvitation, setProcessingInvitation] = useState(null);
 
   useEffect(() => {
     if (!open) return;
@@ -194,10 +197,78 @@ const NotificationsDropdown = ({ open, notifications = [], onClose, onMarkAll, o
                         )}
 
                         <p className="mt-2 text-xs text-gray-400">{item.timestamp}</p>
+
+                        {/* Accept/Reject Buttons for Call Invitations */}
+                        {item.metadata?.actionType === 'CALL_INVITATION' && item.metadata?.callId && !item.read && (
+                          <div className="mt-3 flex gap-2">
+                            <button
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                const callId = item.metadata.callId;
+                                setProcessingInvitation(callId);
+                                try {
+                                  const response = await salesCallApi.acceptInvitation(callId);
+                                  if (response.success) {
+                                    toast.success('Invitation accepted! The call has been added to your meetings.');
+                                    if (onNotificationClick) {
+                                      onNotificationClick(item);
+                                    }
+                                    // Refresh notifications
+                                    window.location.reload();
+                                  } else {
+                                    toast.error(response.message || 'Failed to accept invitation');
+                                  }
+                                } catch (error) {
+                                  console.error('Error accepting invitation:', error);
+                                  toast.error(error?.response?.data?.message || 'Failed to accept invitation');
+                                } finally {
+                                  setProcessingInvitation(null);
+                                }
+                              }}
+                              disabled={processingInvitation === item.metadata.callId}
+                              className="flex items-center gap-1.5 rounded-lg bg-green-500 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-green-600 disabled:opacity-50"
+                              type="button"
+                            >
+                              <CheckCircle2 className="h-3 w-3" />
+                              {processingInvitation === item.metadata.callId ? 'Accepting...' : 'Accept'}
+                            </button>
+                            <button
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                const callId = item.metadata.callId;
+                                setProcessingInvitation(callId);
+                                try {
+                                  const response = await salesCallApi.rejectInvitation(callId);
+                                  if (response.success) {
+                                    toast.success('Invitation rejected');
+                                    if (onNotificationClick) {
+                                      onNotificationClick(item);
+                                    }
+                                    // Refresh notifications
+                                    window.location.reload();
+                                  } else {
+                                    toast.error(response.message || 'Failed to reject invitation');
+                                  }
+                                } catch (error) {
+                                  console.error('Error rejecting invitation:', error);
+                                  toast.error(error?.response?.data?.message || 'Failed to reject invitation');
+                                } finally {
+                                  setProcessingInvitation(null);
+                                }
+                              }}
+                              disabled={processingInvitation === item.metadata.callId}
+                              className="flex items-center gap-1.5 rounded-lg bg-red-500 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-red-600 disabled:opacity-50"
+                              type="button"
+                            >
+                              <X className="h-3 w-3" />
+                              {processingInvitation === item.metadata.callId ? 'Rejecting...' : 'Reject'}
+                            </button>
+                          </div>
+                        )}
                       </div>
 
                       {/* Action Button */}
-                      {hasLink && (
+                      {hasLink && !(item.metadata?.actionType === 'CALL_INVITATION' && !item.read) && (
                         <div className="mt-1 shrink-0">
                           <button
                             onClick={handleActionClick}

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import { Phone, Calendar, MessageSquare, FileText, Video, Clock, CheckCircle, XCircle, Search, RefreshCw, ClipboardList, Edit2, Plus, MoreVertical, ArchiveX } from "lucide-react";
 import PageHeader from "../../components/PageHeader";
 import Button from "../../components/Button";
@@ -10,13 +11,16 @@ import RescheduleMeetingModal from "../../components/RescheduleMeetingModal";
 import ScheduleAssessmentModal from "../../components/ScheduleAssessmentModal";
 import BookingOptionsMenu from "../../components/BookingOptionsMenu";
 import DeactivateLeadModal from "../../components/DeactivateLeadModal";
+import Modal from "../../components/Modal";
 import { leadAPI } from "../../api/lead";
+import salesCallApi from "../../api/salesCall";
 import toast from "react-hot-toast";
 import { selectCurrentUser } from "../../store/slices/authSlice";
-import { fetchSalesTeam } from "../../store/slices/salesTeamSlice";
+import { fetchSalesTeam, selectSalesTeam } from "../../store/slices/salesTeamSlice";
 
 const MeetingsCounselling = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const currentUser = useSelector(selectCurrentUser);
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -32,20 +36,54 @@ const MeetingsCounselling = () => {
   const [openDropdownId, setOpenDropdownId] = useState(null);
   const [allowResubmit, setAllowResubmit] = useState(false);
 
+  // My Scheduled Calls (from sales call API)
+  const [scheduledCalls, setScheduledCalls] = useState([]);
+  const [loadingCalls, setLoadingCalls] = useState(true);
+
+  // Sales Call Handlers - State
+  const [selectedCall, setSelectedCall] = useState(null);
+  const [showRescheduleCallModal, setShowRescheduleCallModal] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [rescheduleDate, setRescheduleDate] = useState("");
+  const [rescheduleTime, setRescheduleTime] = useState("");
+  const [selectedUserIds, setSelectedUserIds] = useState([]);
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [rescheduleLoading, setRescheduleLoading] = useState(false);
+
   const isSalesAgent = currentUser?.role === 'sales_agent';
   const userEmail = currentUser?.email;
+  const salesTeam = useSelector(selectSalesTeam);
 
   // Fetch sales team for assessment assignment
   useEffect(() => {
     dispatch(fetchSalesTeam());
   }, [dispatch]);
 
+  // Fetch scheduled sales calls (visible to this user based on role)
+  const fetchCalls = async () => {
+    try {
+      setLoadingCalls(true);
+      const response = await salesCallApi.getMyCalls();
+      if (response.success && response.data?.calls) {
+        setScheduledCalls(response.data.calls);
+      }
+    } catch (error) {
+      console.error('Error fetching scheduled calls:', error);
+    } finally {
+      setLoadingCalls(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCalls();
+  }, []);
+
   // Close dropdown when modals open
   useEffect(() => {
-    if (showReportModal || showRescheduleModal || showAssessmentModal) {
+    if (showReportModal || showRescheduleModal || showAssessmentModal || showRescheduleCallModal || showInviteModal) {
       setOpenDropdownId(null);
     }
-  }, [showReportModal, showRescheduleModal, showAssessmentModal]);
+  }, [showReportModal, showRescheduleModal, showAssessmentModal, showRescheduleCallModal, showInviteModal]);
 
   // Fetch leads with booked meetings
   useEffect(() => {
@@ -94,41 +132,103 @@ const MeetingsCounselling = () => {
     );
   });
 
-  // Generate all rows from leads (each lead can have multiple rows: demo, counseling, or no meeting)
-  const allRows = filteredLeads.flatMap((lead, idx) => {
+  // Filter sales calls by search term
+  const filteredCalls = scheduledCalls.filter(call => {
+    if (!searchTerm) return true;
+    const search = searchTerm.toLowerCase();
+    return (
+      call.leadName?.toLowerCase().includes(search) ||
+      call.leadEmail?.toLowerCase().includes(search) ||
+      call.leadPhone?.includes(search)
+    );
+  });
+
+  // Generate rows from leads (each lead can have multiple rows: demo, counseling, or no meeting)
+  const leadRows = filteredLeads.flatMap((lead, idx) => {
     const hasDemo = lead.demoBooked;
     const hasCounseling = lead.counselingBooked;
     const rows = [];
 
     // Show leads without meetings if they're in demo stage but no meetings booked
     if (!hasDemo && !hasCounseling && lead.pipelineStage === 'demo_and_mentor_screening') {
-      rows.push({ type: 'no-meeting', lead, idx: `${lead.id || idx}-no-meeting` });
+      rows.push({ type: 'no-meeting', lead, idx: `lead-${lead.id || idx}-no-meeting` });
     }
 
     // Demo meeting row
     if (hasDemo) {
-      rows.push({ type: 'demo', lead, idx: `${lead.id || idx}-demo` });
+      rows.push({ type: 'demo', lead, idx: `lead-${lead.id || idx}-demo` });
     }
 
     // Counseling meeting row
     if (hasCounseling) {
-      rows.push({ type: 'counseling', lead, idx: `${lead.id || idx}-counseling` });
+      rows.push({ type: 'counseling', lead, idx: `lead-${lead.id || idx}-counseling` });
     }
 
     return rows;
   });
+
+  // Generate rows from scheduled sales calls
+  // First, filter to only active calls
+  const activeCalls = filteredCalls.filter(call => {
+    return call.status === 'SCHEDULED' || call.status === 'ONGOING';
+  });
+
+  // Group calls by lead ID to identify multiple calls for same lead
+  const callsByLead = activeCalls.reduce((acc, call) => {
+    const leadId = call.leadId?.toString() || 'unknown';
+    if (!acc[leadId]) {
+      acc[leadId] = [];
+    }
+    acc[leadId].push(call);
+    return acc;
+  }, {});
+
+  // Generate rows with call numbering for multiple calls per lead
+  const salesCallRows = activeCalls.map((call, idx) => {
+    const leadId = call.leadId?.toString() || 'unknown';
+    const callsForThisLead = callsByLead[leadId] || [];
+    
+    // Sort calls by scheduled date to number them chronologically
+    const sortedCalls = [...callsForThisLead].sort((a, b) => {
+      const dateA = a.scheduledDate ? new Date(a.scheduledDate) : new Date(0);
+      const dateB = b.scheduledDate ? new Date(b.scheduledDate) : new Date(0);
+      return dateA - dateB;
+    });
+    
+    const callIndex = sortedCalls.findIndex(c => 
+      (c._id?.toString() || c.id) === (call._id?.toString() || call.id)
+    );
+    const hasMultipleCalls = sortedCalls.length > 1;
+    
+    return {
+      type: 'sales-call',
+      call,
+      idx: `call-${call._id?.toString() || call.id || idx}`,
+      callNumber: hasMultipleCalls ? callIndex + 1 : null,
+      totalCallsForLead: hasMultipleCalls ? sortedCalls.length : null,
+    };
+  });
+
+  // Combine all rows: sales calls first, then lead meetings
+  const allRows = [...salesCallRows, ...leadRows];
 
   // Pagination - apply to rows, not leads
   const totalPages = Math.ceil(allRows.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedRows = allRows.slice(startIndex, startIndex + itemsPerPage);
 
-  // Stats
-  const scheduledCount = leads.filter(l => {
+  // Stats (include both lead meetings and sales calls)
+  const scheduledSalesCalls = scheduledCalls.filter(c => 
+    c.status === 'SCHEDULED' || c.status === 'ONGOING'
+  ).length;
+  
+  const scheduledLeadMeetings = leads.filter(l => {
     const demoUpcoming = l.demoBooked && (!l.demoReport?.submitted) && new Date(l.demoDate) >= new Date();
     const counselingUpcoming = l.counselingBooked && (!l.counselingReport?.submitted) && new Date(l.counselingDate) >= new Date();
     return demoUpcoming || counselingUpcoming;
   }).length;
+  
+  const scheduledCount = scheduledSalesCalls + scheduledLeadMeetings;
 
   const completedCount = leads.filter(l => {
     const demoDone = l.demoReport?.submitted;
@@ -152,10 +252,15 @@ const MeetingsCounselling = () => {
   const handleRefresh = async () => {
     try {
       setLoading(true);
-      const response = await leadAPI.getAllLeads();
-      if (response.success && response.data.leads) {
+      // Refresh both leads and sales calls
+      const [leadsResponse] = await Promise.all([
+        leadAPI.getAllLeads(),
+        fetchCalls(),
+      ]);
+      
+      if (leadsResponse.success && leadsResponse.data.leads) {
         // Show leads in demo stage (with or without meetings booked)
-        let filteredLeads = response.data.leads.filter(lead => 
+        let filteredLeads = leadsResponse.data.leads.filter(lead => 
           lead.pipelineStage === 'demo_and_mentor_screening'
         );
         if (isSalesAgent && userEmail) {
@@ -188,6 +293,107 @@ const MeetingsCounselling = () => {
     setOpenDropdownId(null);
   };
 
+  // Sales Call Handlers - Functions
+  const handleRescheduleCall = (call) => {
+    setSelectedCall(call);
+    if (call.scheduledDate) {
+      const date = new Date(call.scheduledDate);
+      setRescheduleDate(date.toISOString().split('T')[0]);
+      setRescheduleTime(date.toTimeString().slice(0, 5));
+    } else {
+      setRescheduleDate("");
+      setRescheduleTime("");
+    }
+    setShowRescheduleCallModal(true);
+  };
+
+  const handleInviteMembers = (call) => {
+    setSelectedCall(call);
+    setSelectedUserIds([]);
+    setShowInviteModal(true);
+  };
+
+  const handleRescheduleSubmit = async () => {
+    if (!rescheduleDate || !rescheduleTime) {
+      toast.error("Please select date and time");
+      return;
+    }
+
+    if (!selectedCall) return;
+
+    try {
+      setRescheduleLoading(true);
+      const scheduledDateTime = new Date(`${rescheduleDate}T${rescheduleTime}`);
+      
+      const response = await salesCallApi.updateCall(selectedCall._id || selectedCall.id, {
+        scheduledDate: scheduledDateTime.toISOString(),
+      });
+
+      if (response.success) {
+        toast.success('Call rescheduled successfully');
+        handleCallRescheduleSuccess();
+      } else {
+        toast.error(response.message || 'Failed to reschedule call');
+      }
+    } catch (error) {
+      console.error('Error rescheduling call:', error);
+      toast.error(error?.response?.data?.message || 'Failed to reschedule call');
+    } finally {
+      setRescheduleLoading(false);
+    }
+  };
+
+  const handleInviteSubmit = async () => {
+    if (selectedUserIds.length === 0) {
+      toast.error("Please select at least one team member");
+      return;
+    }
+
+    if (!selectedCall) return;
+
+    try {
+      setInviteLoading(true);
+      const response = await salesCallApi.inviteMembers(
+        selectedCall._id || selectedCall.id,
+        selectedUserIds
+      );
+
+      if (response.success) {
+        toast.success(`${selectedUserIds.length} member(s) invited successfully`);
+        handleInviteSuccess();
+      } else {
+        toast.error(response.message || 'Failed to invite members');
+      }
+    } catch (error) {
+      console.error('Error inviting members:', error);
+      toast.error(error?.response?.data?.message || 'Failed to invite members');
+    } finally {
+      setInviteLoading(false);
+    }
+  };
+
+  const handleCancelCall = async (call) => {
+    if (!window.confirm(`Are you sure you want to cancel this call with ${call.leadName || 'the lead'}?`)) {
+      return;
+    }
+
+    try {
+      const response = await salesCallApi.updateCall(call._id || call.id, {
+        status: 'CANCELLED',
+      });
+      
+      if (response.success) {
+        toast.success('Call cancelled successfully');
+        handleRefresh();
+      } else {
+        toast.error(response.message || 'Failed to cancel call');
+      }
+    } catch (error) {
+      console.error('Error cancelling call:', error);
+      toast.error(error?.response?.data?.message || 'Failed to cancel call');
+    }
+  };
+
   const handleAssessmentSuccess = () => {
     // Refresh leads after assessment scheduling
     // Lead should move to assessments stage, so it will be filtered out
@@ -197,6 +403,18 @@ const MeetingsCounselling = () => {
   const handleReportSuccess = () => {
     // Refresh leads after report submission
     handleRefresh();
+  };
+
+  const handleCallRescheduleSuccess = () => {
+    handleRefresh();
+    setShowRescheduleCallModal(false);
+    setSelectedCall(null);
+  };
+
+  const handleInviteSuccess = () => {
+    handleRefresh();
+    setShowInviteModal(false);
+    setSelectedCall(null);
   };
 
   const formatDate = (dateString) => {
@@ -315,7 +533,220 @@ const MeetingsCounselling = () => {
               ) : (
                 <>
                   {paginatedRows.map((row) => {
-                    const { lead, idx, type } = row;
+                    const { lead, call, idx, type, callNumber, totalCallsForLead } = row;
+
+                    // Sales Call Row
+                    if (type === 'sales-call') {
+                      const callId = call._id?.toString() || call.id;
+                      const isOngoing = call.status === 'ONGOING';
+                      const scheduledDateTime = call.scheduledDate 
+                        ? new Date(call.scheduledDate) 
+                        : null;
+                      
+                      // Check if current user has a pending invitation
+                      const currentUserId = currentUser?.id || currentUser?.userId;
+                      const hasPendingInvitation = call.pendingInvitations?.some(
+                        inv => String(inv.userId) === String(currentUserId) && inv.status === 'PENDING'
+                      );
+                      
+                      return (
+                        <tr 
+                          key={idx} 
+                          className={`transition-colors duration-150 hover:bg-brintelli-baseAlt/40 ${
+                            isOngoing ? 'bg-green-50/50 border-l-4 border-l-green-500' : ''
+                          } ${callNumber ? 'border-t border-dashed border-gray-200' : ''}`}
+                        >
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-start gap-2">
+                              <div className="flex-1">
+                                <p className="font-semibold text-text">
+                                  {call.leadName || `Lead: ${String(call.leadId || '').slice(-6)}`}
+                                </p>
+                                {call.leadEmail && (
+                                  <p className="text-xs text-textMuted">{call.leadEmail}</p>
+                                )}
+                              </div>
+                              {callNumber && (
+                                <span className="shrink-0 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
+                                  Call {callNumber}/{totalCallsForLead}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <Video className="h-4 w-4 text-brand" />
+                              <span className="text-sm text-text">Sales Call</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {scheduledDateTime ? (
+                              <div className="flex flex-col gap-1">
+                                <div className="flex items-center gap-2 text-sm">
+                                  <Calendar className="h-3.5 w-3.5 text-textMuted" />
+                                  <span className="text-text">
+                                    {scheduledDateTime.toLocaleDateString('en-US', {
+                                      month: 'short',
+                                      day: 'numeric',
+                                      year: 'numeric',
+                                    })}
+                                  </span>
+                                  <Clock className="h-3.5 w-3.5 text-textMuted ml-2" />
+                                  <span className="text-text">
+                                    {scheduledDateTime.toLocaleTimeString('en-US', {
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                    })}
+                                  </span>
+                                </div>
+                                {call.meetingId && (
+                                  <span className="text-[10px] text-textMuted font-mono">
+                                    Meeting ID: {call.meetingId}
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-textMuted">Not scheduled</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {hasPendingInvitation ? (
+                              <span className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold bg-yellow-100 text-yellow-700">
+                                <Clock className="h-3 w-3" />
+                                Pending Invitation
+                              </span>
+                            ) : isOngoing ? (
+                              <span className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold bg-green-100 text-green-700">
+                                <span className="h-2 w-2 animate-pulse rounded-full bg-green-600" />
+                                LIVE
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-700">
+                                <Calendar className="h-3 w-3" />
+                                Scheduled
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="text-xs text-textMuted italic">-</span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                className="gap-2"
+                                onClick={() => navigate(`/sales/calls/${callId}`)}
+                              >
+                                <Video className="h-4 w-4" />
+                                {isOngoing ? 'Join' : 'Start'}
+                              </Button>
+                              <div className="relative">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="gap-1"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenDropdownId(openDropdownId === idx ? null : idx);
+                                  }}
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                                {openDropdownId === idx && (
+                                  <>
+                                    <div 
+                                      className="fixed inset-0 z-40" 
+                                      onClick={() => setOpenDropdownId(null)}
+                                    />
+                                    <div className="absolute right-0 top-full mt-1 w-56 bg-white rounded-lg shadow-lg border border-brintelli-border z-50">
+                                      <div className="py-1">
+                                        {/* View/Edit Call Details */}
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            // Navigate to call details or open edit modal
+                                            navigate(`/sales/calls/${callId}`);
+                                            setOpenDropdownId(null);
+                                          }}
+                                          className="w-full px-4 py-2 text-left text-sm text-text hover:bg-brintelli-baseAlt transition-colors flex items-center gap-2"
+                                        >
+                                          <FileText className="h-4 w-4" />
+                                          View Call Details
+                                        </button>
+                                        
+                                        {/* Reschedule */}
+                                        {!isOngoing && call.status === 'SCHEDULED' && (
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleRescheduleCall(call);
+                                              setOpenDropdownId(null);
+                                            }}
+                                            className="w-full px-4 py-2 text-left text-sm text-text hover:bg-brintelli-baseAlt transition-colors flex items-center gap-2"
+                                          >
+                                            <Edit2 className="h-4 w-4" />
+                                            Reschedule
+                                          </button>
+                                        )}
+                                        
+                                        {/* Invite Members */}
+                                        {!isOngoing && (
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleInviteMembers(call);
+                                              setOpenDropdownId(null);
+                                            }}
+                                            className="w-full px-4 py-2 text-left text-sm text-text hover:bg-brintelli-baseAlt transition-colors flex items-center gap-2"
+                                          >
+                                            <Phone className="h-4 w-4" />
+                                            Invite Members
+                                          </button>
+                                        )}
+                                        
+                                        {/* View Insights (if completed) */}
+                                        {call.status === 'COMPLETED' && (
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              navigate(`/sales/calls/${callId}/insights`);
+                                              setOpenDropdownId(null);
+                                            }}
+                                            className="w-full px-4 py-2 text-left text-sm text-text hover:bg-brintelli-baseAlt transition-colors flex items-center gap-2 border-t border-brintelli-border"
+                                          >
+                                            <ClipboardList className="h-4 w-4" />
+                                            View Insights
+                                          </button>
+                                        )}
+                                        
+                                        {/* Cancel Call (if scheduled) */}
+                                        {!isOngoing && call.status === 'SCHEDULED' && (
+                                          <>
+                                            <div className="border-t border-brintelli-border my-1"></div>
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleCancelCall(call);
+                                                setOpenDropdownId(null);
+                                              }}
+                                              className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"
+                                            >
+                                              <XCircle className="h-4 w-4" />
+                                              Cancel Call
+                                            </button>
+                                          </>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    }
 
                     // No Meeting Row
                     if (type === 'no-meeting') {
@@ -746,6 +1177,143 @@ const MeetingsCounselling = () => {
           }}
         />
       )}
+
+      {/* Reschedule Sales Call Modal */}
+      <Modal
+        isOpen={showRescheduleCallModal}
+        onClose={() => {
+          setShowRescheduleCallModal(false);
+          setSelectedCall(null);
+          setRescheduleDate("");
+          setRescheduleTime("");
+        }}
+        title="Reschedule Sales Call"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">Date</label>
+            <input
+              type="date"
+              value={rescheduleDate}
+              onChange={(e) => setRescheduleDate(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Time</label>
+            <input
+              type="time"
+              value={rescheduleTime}
+              onChange={(e) => setRescheduleTime(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowRescheduleCallModal(false);
+                setSelectedCall(null);
+                setRescheduleDate("");
+                setRescheduleTime("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleRescheduleSubmit}
+              disabled={rescheduleLoading}
+            >
+              {rescheduleLoading ? "Rescheduling..." : "Reschedule"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Invite Members Modal */}
+      <Modal
+        isOpen={showInviteModal}
+        onClose={() => {
+          setShowInviteModal(false);
+          setSelectedCall(null);
+          setSelectedUserIds([]);
+        }}
+        title="Invite Members to Call"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">Select Team Members</label>
+            <div className="max-h-64 overflow-y-auto rounded-lg border border-gray-200">
+              {salesTeam.length === 0 ? (
+                <div className="p-6 text-center text-sm text-gray-400">
+                  Loading team...
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-100">
+                  {salesTeam
+                    .filter((m) => {
+                      const memberId = m.id || m._id || m.userId;
+                      const currentUserId = currentUser?.id || currentUser?.userId;
+                      return memberId && String(memberId) !== String(currentUserId);
+                    })
+                    .map((member) => {
+                      const memberId = member.id || member._id || member.userId;
+                      return (
+                        <label
+                          key={memberId}
+                          className="flex cursor-pointer items-center gap-3 px-4 py-3 transition hover:bg-gray-50"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedUserIds.includes(memberId)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedUserIds([...selectedUserIds, memberId]);
+                              } else {
+                                setSelectedUserIds(selectedUserIds.filter((id) => id !== memberId));
+                              }
+                            }}
+                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-600">
+                            {(member.name || member.fullName || member.email || 'U').charAt(0).toUpperCase()}
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-gray-800">
+                              {member.name || member.fullName || member.email}
+                            </p>
+                            <p className="text-xs text-gray-400">
+                              {member.email}
+                            </p>
+                          </div>
+                        </label>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 border-t border-gray-100 pt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowInviteModal(false);
+                setSelectedCall(null);
+                setSelectedUserIds([]);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleInviteSubmit}
+              disabled={selectedUserIds.length === 0 || inviteLoading}
+            >
+              {inviteLoading ? "Inviting..." : `Invite ${selectedUserIds.length > 0 ? `(${selectedUserIds.length})` : ''}`}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </>
   );
 };

@@ -88,49 +88,46 @@ const Navigation = ({ role = "student", collapsed, mobileOpen, onCloseMobile, on
           mobileOpen ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
       />
-      <aside
-        className={`fixed inset-y-0 left-0 z-40 transform bg-gradient-to-b from-brand-dark via-brand to-accent-purple text-white shadow-glow transition-all duration-300 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
-          sidebarWidth
-        } ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}
-      >
-        <div className="flex h-screen flex-col border-r border-white/15 px-4 py-6 backdrop-blur-sm">
-          <div className={`flex items-center flex-shrink-0 gap-3 ${collapsed ? "justify-center" : ""}`}>
-            <div className={`flex items-center gap-3 flex-1 min-w-0 ${collapsed ? "justify-center" : ""}`}>
-              <div className={`flex-shrink-0 ${collapsed ? "" : "relative"}`}>
-                <img 
-                  src="/mobile%20logo.png" 
-                  alt="Brintelli Logo" 
-                  className={collapsed ? "h-10 w-10 object-contain rounded-lg shadow-lg" : "h-11 w-auto max-w-[160px] object-contain"}
-                  onError={(e) => {
-                    // Fallback if mobile logo doesn't load
-                    e.target.src = "/logo.png";
-                  }}
-                />
-              </div>
-              {!collapsed && (
-                <div className="flex-1 min-w-0">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.5em] text-white/50 truncate">
-                    {title}
-                  </p>
-                  <p className="text-base font-bold text-white truncate leading-tight">{subtitle}</p>
+      <div className="relative">
+        <aside
+          className={`fixed inset-y-0 left-0 z-40 transform bg-gradient-to-b from-brand-dark via-brand to-accent-purple text-white shadow-glow transition-all duration-300 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
+            sidebarWidth
+          } ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}
+        >
+          <div className="flex h-screen flex-col border-r border-white/15 px-4 py-6 backdrop-blur-sm">
+            <div className={`flex items-center flex-shrink-0 gap-3 ${collapsed ? "justify-center" : ""}`}>
+              <div className={`flex items-center gap-3 flex-1 min-w-0 ${collapsed ? "justify-center" : ""}`}>
+                <div className={`flex-shrink-0 ${collapsed ? "" : "relative"}`}>
+                  <img 
+                    src="/mobile%20logo.png" 
+                    alt="Brintelli Logo" 
+                    className={collapsed ? "h-10 w-10 object-contain rounded-lg shadow-lg" : "h-11 w-auto max-w-[160px] object-contain"}
+                    onError={(e) => {
+                      // Fallback if mobile logo doesn't load
+                      e.target.src = "/logo.png";
+                    }}
+                  />
                 </div>
+                {!collapsed && (
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.5em] text-white/50 truncate">
+                      {title}
+                    </p>
+                    <p className="text-base font-bold text-white truncate leading-tight">{subtitle}</p>
+                  </div>
+                )}
+              </div>
+              {collapsed && (
+                <button
+                  onClick={onToggleCollapse}
+                  className="hidden shrink-0 h-8 w-8 items-center justify-center rounded-lg border border-white/20 bg-white/10 backdrop-blur-sm text-white transition-all duration-200 hover:bg-white/25 hover:border-white/30 hover:scale-105 active:scale-95 shadow-sm lg:flex"
+                  aria-label="Toggle sidebar width"
+                  type="button"
+                >
+                  <ChevronsRight className="h-3.5 w-3.5" strokeWidth={2.5} />
+                </button>
               )}
             </div>
-            <button
-              onClick={onToggleCollapse}
-              className={`hidden shrink-0 h-8 w-8 items-center justify-center rounded-lg border border-white/20 bg-white/10 backdrop-blur-sm text-white transition-all duration-200 hover:bg-white/25 hover:border-white/30 hover:scale-105 active:scale-95 shadow-sm lg:flex ${
-                collapsed ? "" : ""
-              }`}
-              aria-label="Toggle sidebar width"
-              type="button"
-            >
-              {collapsed ? (
-                <ChevronsRight className="h-3.5 w-3.5" strokeWidth={2.5} />
-              ) : (
-                <ChevronsLeft className="h-3.5 w-3.5" strokeWidth={2.5} />
-              )}
-            </button>
-          </div>
 
           <nav className="mt-8 flex-1 overflow-y-auto overflow-x-hidden sidebar-scroll">
             <div className="sidebar-content">
@@ -301,6 +298,17 @@ const Navigation = ({ role = "student", collapsed, mobileOpen, onCloseMobile, on
           </div>
         </div>
       </aside>
+      {!collapsed && (
+        <button
+          onClick={onToggleCollapse}
+          className="hidden absolute top-6 left-full z-50 h-8 w-8 -translate-x-1/2 items-center justify-center rounded-lg border border-white/20 bg-white/10 backdrop-blur-sm text-white transition-all duration-200 hover:bg-white/25 hover:border-white/30 hover:scale-105 active:scale-95 shadow-sm lg:flex"
+          aria-label="Toggle sidebar width"
+          type="button"
+        >
+          <ChevronsLeft className="h-3.5 w-3.5" strokeWidth={2.5} />
+        </button>
+      )}
+      </div>
     </>
   );
 };

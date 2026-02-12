@@ -1,17 +1,23 @@
 import { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
-import { User, Mail, Phone, Building2, MapPin, Settings, Award, Shield, Calendar, Edit2, DollarSign, TrendingUp } from 'lucide-react';
+import { User, Mail, Phone, Building2, MapPin, Settings, Shield, Calendar, Edit2, Save } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
-import StatsCard from '../../components/StatsCard';
 import { selectCurrentUser } from '../../store/slices/authSlice';
 import { toast } from 'react-hot-toast';
 
-const Profile = () => {
+const FinanceProfile = () => {
   const user = useSelector(selectCurrentUser);
   const [isEditing, setIsEditing] = useState(false);
-  const [editData, setEditData] = useState({});
-  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editData, setEditData] = useState({
+    fullName: '',
+    email: '',
+    phone: '',
+    address: '',
+    bio: '',
+  });
 
   useEffect(() => {
     if (user) {
@@ -23,18 +29,21 @@ const Profile = () => {
         bio: user.bio || '',
       });
     }
-    // TODO: Fetch finance stats from API
-    setStats({
-      totalRevenue: 0,
-      pendingPayments: 0,
-      scholarshipsProcessed: 0,
-    });
   }, [user]);
 
-  const handleSave = () => {
-    // TODO: Implement API call to update finance profile
-    toast.success('Profile updated successfully');
-    setIsEditing(false);
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      // TODO: Implement API call to update finance profile
+      // await financeAPI.updateProfile(editData);
+      toast.success('Profile updated successfully');
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast.error('Failed to update profile');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const getInitials = (name) => {
@@ -57,56 +66,42 @@ const Profile = () => {
         title="Profile & Settings"
         description="Manage your finance profile and preferences"
         actions={
-          <Button
-            variant={isEditing ? 'ghost' : 'secondary'}
-            size="sm"
-            onClick={() => {
-              if (isEditing) {
-                handleSave();
-              } else {
-                setIsEditing(true);
-              }
-            }}
-            className="gap-2"
-          >
-            {isEditing ? (
-              <>
-                <Settings className="h-4 w-4" />
-                Save Changes
-              </>
-            ) : (
-              <>
-                <Edit2 className="h-4 w-4" />
-                Edit Profile
-              </>
-            )}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => window.location.href = '/finance/settings'}
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              Settings
+            </Button>
+            <Button
+              variant={isEditing ? 'ghost' : 'secondary'}
+              size="sm"
+              onClick={() => {
+                if (isEditing) {
+                  handleSave();
+                } else {
+                  setIsEditing(true);
+                }
+              }}
+              disabled={saving}
+            >
+              {isEditing ? (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  {saving ? 'Saving...' : 'Save Changes'}
+                </>
+              ) : (
+                <>
+                  <Edit2 className="h-4 w-4 mr-2" />
+                  Edit Profile
+                </>
+              )}
+            </Button>
+          </div>
         }
       />
-
-      {/* Stats Cards */}
-      {stats && (
-        <div className="grid gap-5 md:grid-cols-3 mb-6">
-          <StatsCard
-            icon={DollarSign}
-            value={stats.totalRevenue ? `₹${stats.totalRevenue.toLocaleString()}` : '—'}
-            label="Total Revenue"
-            trend="This month"
-          />
-          <StatsCard
-            icon={TrendingUp}
-            value={stats.pendingPayments || '—'}
-            label="Pending Payments"
-            trend="Awaiting processing"
-          />
-          <StatsCard
-            icon={Award}
-            value={stats.scholarshipsProcessed || '—'}
-            label="Scholarships Processed"
-            trend="This quarter"
-          />
-        </div>
-      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Profile Card */}
@@ -144,7 +139,7 @@ const Profile = () => {
                       type="email"
                       value={editData.email}
                       onChange={(e) => setEditData({ ...editData, email: e.target.value })}
-                      className="w-full mt-1 px-3 py-2 border border-brintelli-border rounded-lg bg-brintelli-baseAlt text-sm text-text focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                      className="w-full mt-1 px-3 py-2 border border-brintelli-border rounded-lg bg-white text-sm text-text focus:outline-none focus:ring-2 focus:ring-brand-500"
                     />
                   ) : (
                     <p className="font-semibold text-text mt-1">{displayEmail}</p>
@@ -161,7 +156,7 @@ const Profile = () => {
                       type="tel"
                       value={editData.phone}
                       onChange={(e) => setEditData({ ...editData, phone: e.target.value })}
-                      className="w-full mt-1 px-3 py-2 border border-brintelli-border rounded-lg bg-brintelli-baseAlt text-sm text-text focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                      className="w-full mt-1 px-3 py-2 border border-brintelli-border rounded-lg bg-white text-sm text-text focus:outline-none focus:ring-2 focus:ring-brand-500"
                     />
                   ) : (
                     <p className="font-semibold text-text mt-1">{displayPhone}</p>
@@ -178,7 +173,7 @@ const Profile = () => {
                       value={editData.address}
                       onChange={(e) => setEditData({ ...editData, address: e.target.value })}
                       rows={2}
-                      className="w-full mt-1 px-3 py-2 border border-brintelli-border rounded-lg bg-brintelli-baseAlt text-sm text-text focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                      className="w-full mt-1 px-3 py-2 border border-brintelli-border rounded-lg bg-white text-sm text-text focus:outline-none focus:ring-2 focus:ring-brand-500"
                     />
                   ) : (
                     <p className="font-semibold text-text mt-1">{displayAddress}</p>
@@ -231,7 +226,7 @@ const Profile = () => {
                 onChange={(e) => setEditData({ ...editData, bio: e.target.value })}
                 rows={4}
                 placeholder="Tell us about yourself..."
-                className="w-full px-3 py-2 border border-brintelli-border rounded-lg bg-brintelli-baseAlt text-sm text-text focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                className="w-full px-3 py-2 border border-brintelli-border rounded-lg bg-white text-sm text-text focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
             ) : (
               <p className="text-sm text-textMuted">
@@ -279,22 +274,23 @@ const Profile = () => {
               <Button
                 variant="ghost"
                 className="w-full justify-start"
-                onClick={() => {
-                  window.location.href = window.location.pathname.replace('/profile', '/dashboard');
-                }}
+                onClick={() => window.location.href = '/finance/dashboard'}
               >
-                <DollarSign className="h-4 w-4 mr-2" />
-                Finance Dashboard
+                Dashboard
               </Button>
               <Button
                 variant="ghost"
                 className="w-full justify-start"
-                onClick={() => {
-                  toast.info('Password change feature coming soon');
-                }}
+                onClick={() => window.location.href = '/finance/transactions'}
               >
-                <Shield className="h-4 w-4 mr-2" />
-                Change Password
+                Transactions
+              </Button>
+              <Button
+                variant="ghost"
+                className="w-full justify-start"
+                onClick={() => window.location.href = '/finance/refunds'}
+              >
+                Refunds
               </Button>
             </div>
           </div>
@@ -304,4 +300,4 @@ const Profile = () => {
   );
 };
 
-export default Profile;
+export default FinanceProfile;

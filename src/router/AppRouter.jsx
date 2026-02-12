@@ -145,6 +145,7 @@ import MentorInterviewPrep from "../pages/mentor/InterviewPrep";
 import MentorResumeReviews from "../pages/mentor/ResumeReviews";
 import MentorPlacementReadiness from "../pages/mentor/PlacementReadiness";
 import MentorProfile from "../pages/mentor/Profile";
+import MentorSettings from "../pages/mentor/Settings";
 import MentorFeedback from "../pages/mentor/Feedback";
 import MentorResources from "../pages/mentor/Resources";
 import MentorRiskStudents from "../pages/mentor/RiskStudents";
@@ -193,11 +194,16 @@ import FinanceDeals from "../pages/finance/Deals";
 import Scholarships from "../pages/finance/Scholarships";
 import FinancialProcessing from "../pages/finance/Processing";
 import OutstandingDues from "../pages/finance/Dues";
+import FinanceProfile from "../pages/finance/Profile";
+import FinanceSettings from "../pages/finance/Settings";
+import FinanceTransactions from "../pages/finance/Transactions";
+import FinanceRefunds from "../pages/finance/Refunds";
 
 // Sales imports
 import SalesDashboard from "../pages/sales/SalesDashboard";
 import JoinCall from "../pages/sales/JoinCall";
 import SalesCallPage from "../pages/sales/SalesCallPage";
+import MeetingRedirect from "../pages/sales/MeetingRedirect";
 import ExecutiveDashboard from "../pages/sales/ExecutiveDashboard";
 import SalesPipeline from "../pages/sales/Pipeline";
 import NewLeadsWrapper from "../pages/sales/NewLeadsWrapper";
@@ -335,6 +341,25 @@ const AppRouter = () => {
           })}
         </Route>
         <Route path="/admin/*" element={<Navigate to="/admin-portal/dashboard" replace />} />
+
+        {/* Full-screen meeting routes — NO AppLayout (no sidebar/topbar) */}
+        <Route path="/sales/calls/:id" element={
+          <ProtectedRoute>
+            <SalesCallPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/sales/calls/join/:token" element={
+          <ProtectedRoute>
+            <JoinCall />
+          </ProtectedRoute>
+        } />
+        {/* Meeting ID redirect: /meetings/join/XXXXX → /sales/calls/:callId */}
+        <Route path="/meetings/join/:meetingId" element={
+          <ProtectedRoute>
+            <MeetingRedirect />
+          </ProtectedRoute>
+        } />
+
         <Route path="/" element={
           <ProtectedRoute>
             <AppLayout />
@@ -521,6 +546,7 @@ const AppRouter = () => {
             <Route path="placement-readiness" element={<MentorPlacementReadiness />} />
             {/* Profile */}
             <Route path="profile" element={<MentorProfile />} />
+            <Route path="settings" element={<MentorSettings />} />
           </Route>
 
           <Route path="program-manager">
@@ -573,11 +599,16 @@ const AppRouter = () => {
           </Route>
 
           <Route path="finance">
+            <Route index element={<Navigate to="/finance/dashboard" replace />} />
             <Route path="dashboard" element={<FinanceDashboard />} />
             <Route path="processing" element={<FinancialProcessing />} />
             <Route path="deals" element={<FinanceDeals />} />
             <Route path="scholarships" element={<Scholarships />} />
             <Route path="dues" element={<OutstandingDues />} />
+            <Route path="profile" element={<FinanceProfile />} />
+            <Route path="settings" element={<FinanceSettings />} />
+            <Route path="transactions" element={<FinanceTransactions />} />
+            <Route path="refunds" element={<FinanceRefunds />} />
           </Route>
 
           {/* Sales routes */}
@@ -591,8 +622,7 @@ const AppRouter = () => {
             <Route path="inactive-leads" element={<InactiveLeads />} />
             <Route path="leads-overview" element={<LeadsOverview />} />
             <Route path="meetings-counselling" element={<MeetingsCounselling />} />
-            <Route path="calls/:id" element={<SalesCallPage />} />
-            <Route path="calls/join/:token" element={<JoinCall />} />
+            {/* calls/:id and calls/join/:token are defined outside AppLayout for full-screen meeting mode */}
             <Route path="assessments" element={<Assessments />} />
             <Route path="scholarship-and-offers" element={<ScholarshipAndOffers />} />
             <Route path="deals" element={<SalesDeals />} />

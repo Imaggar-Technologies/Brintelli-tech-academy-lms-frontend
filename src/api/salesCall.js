@@ -102,6 +102,31 @@ const salesCallApi = {
       body: JSON.stringify({ userIds }),
     });
   },
+
+  /**
+   * Resolve meeting ID to sales call ID (for /meetings/join redirect)
+   */
+  resolveByMeetingId: async (meetingId) => {
+    return apiRequest(`/api/sales/calls/resolve-meeting/${meetingId}`);
+  },
+
+  /**
+   * Accept a call invitation
+   */
+  acceptInvitation: async (callId) => {
+    return apiRequest(`/api/sales/calls/${callId}/accept-invitation`, {
+      method: 'POST',
+    });
+  },
+
+  /**
+   * Reject a call invitation
+   */
+  rejectInvitation: async (callId) => {
+    return apiRequest(`/api/sales/calls/${callId}/reject-invitation`, {
+      method: 'POST',
+    });
+  },
 };
 
 export default salesCallApi;

@@ -24,22 +24,40 @@ const Reports = () => {
     try {
       setLoading(true);
       const [menteesRes, progressRes, engagementRes, meetingsRes] = await Promise.all([
-        mentorAPI.getMentees(),
-        mentorAPI.getMenteesProgress(),
-        mentorAPI.getMenteesEngagement(),
-        mentorAPI.getAllMeetings(),
+        mentorAPI.getMentees().catch(err => {
+          console.error('Error fetching mentees:', err);
+          return { success: false, data: { mentees: [] } };
+        }),
+        mentorAPI.getMenteesProgress().catch(err => {
+          console.error('Error fetching progress:', err);
+          return { success: false, data: { progress: [] } };
+        }),
+        mentorAPI.getMenteesEngagement().catch(err => {
+          console.error('Error fetching engagement:', err);
+          return { success: false, data: { engagement: [] } };
+        }),
+        mentorAPI.getAllMeetings().catch(err => {
+          console.error('Error fetching meetings:', err);
+          return { success: false, data: { meetings: [] } };
+        }),
       ]);
 
       if (menteesRes.success) {
         setMentees(menteesRes.data.mentees || []);
+      } else {
+        setMentees([]);
       }
 
       if (progressRes.success) {
         setProgressData(progressRes.data.progress || []);
+      } else {
+        setProgressData([]);
       }
 
       if (engagementRes.success) {
         setEngagementData(engagementRes.data.engagement || []);
+      } else {
+        setEngagementData([]);
       }
 
       if (meetingsRes.success) {
@@ -54,10 +72,17 @@ const Reports = () => {
           return meetingDate >= start && meetingDate <= end;
         });
         setMeetings(filtered);
+      } else {
+        setMeetings([]);
       }
     } catch (error) {
       console.error('Error fetching report data:', error);
       toast.error('Failed to load report data');
+      // Set empty arrays on error
+      setMentees([]);
+      setProgressData([]);
+      setEngagementData([]);
+      setMeetings([]);
     } finally {
       setLoading(false);
     }

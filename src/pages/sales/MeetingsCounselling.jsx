@@ -49,6 +49,13 @@ const MeetingsCounselling = () => {
   const [selectedUserIds, setSelectedUserIds] = useState([]);
   const [inviteLoading, setInviteLoading] = useState(false);
   const [rescheduleLoading, setRescheduleLoading] = useState(false);
+  
+  // Sales Call Report & Lead Management
+  const [showCallReportModal, setShowCallReportModal] = useState(false);
+  const [showPreScreeningModal, setShowPreScreeningModal] = useState(false);
+  const [preScreeningData, setPreScreeningData] = useState(null);
+  const [selectedLeadForCall, setSelectedLeadForCall] = useState(null);
+  const [loadingLead, setLoadingLead] = useState(false);
 
   const isSalesAgent = currentUser?.role === 'sales_agent';
   const userEmail = currentUser?.email;
@@ -661,12 +668,11 @@ const MeetingsCounselling = () => {
                                     />
                                     <div className="absolute right-0 top-full mt-1 w-56 bg-white rounded-lg shadow-lg border border-brintelli-border z-50">
                                       <div className="py-1">
-                                        {/* View/Edit Call Details */}
+                                        {/* View Call Details */}
                                         <button
                                           onClick={(e) => {
                                             e.stopPropagation();
-                                            // Navigate to call details or open edit modal
-                                            navigate(`/sales/calls/${callId}`);
+                                            handleViewCallDetails(call);
                                             setOpenDropdownId(null);
                                           }}
                                           className="w-full px-4 py-2 text-left text-sm text-text hover:bg-brintelli-baseAlt transition-colors flex items-center gap-2"
@@ -674,6 +680,36 @@ const MeetingsCounselling = () => {
                                           <FileText className="h-4 w-4" />
                                           View Call Details
                                         </button>
+                                        
+                                        {/* Submit Report (if completed) */}
+                                        {call.status === 'COMPLETED' && call.leadId && (
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleSubmitCallReport(call);
+                                              setOpenDropdownId(null);
+                                            }}
+                                            className="w-full px-4 py-2 text-left text-sm text-text hover:bg-brintelli-baseAlt transition-colors flex items-center gap-2"
+                                          >
+                                            <ClipboardList className="h-4 w-4" />
+                                            Submit Report
+                                          </button>
+                                        )}
+                                        
+                                        {/* Resubmit Report (if completed and has report) */}
+                                        {call.status === 'COMPLETED' && call.leadId && (
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleResubmitCallReport(call);
+                                              setOpenDropdownId(null);
+                                            }}
+                                            className="w-full px-4 py-2 text-left text-sm text-text hover:bg-brintelli-baseAlt transition-colors flex items-center gap-2"
+                                          >
+                                            <Edit2 className="h-4 w-4" />
+                                            Resubmit Report
+                                          </button>
+                                        )}
                                         
                                         {/* Reschedule */}
                                         {!isOngoing && call.status === 'SCHEDULED' && (
@@ -687,6 +723,21 @@ const MeetingsCounselling = () => {
                                           >
                                             <Edit2 className="h-4 w-4" />
                                             Reschedule
+                                          </button>
+                                        )}
+                                        
+                                        {/* Prescreening */}
+                                        {call.leadId && (
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleCallPreScreening(call);
+                                              setOpenDropdownId(null);
+                                            }}
+                                            className="w-full px-4 py-2 text-left text-sm text-text hover:bg-brintelli-baseAlt transition-colors flex items-center gap-2"
+                                          >
+                                            <ClipboardList className="h-4 w-4" />
+                                            Prescreening
                                           </button>
                                         )}
                                         
@@ -713,11 +764,29 @@ const MeetingsCounselling = () => {
                                               navigate(`/sales/calls/${callId}/insights`);
                                               setOpenDropdownId(null);
                                             }}
-                                            className="w-full px-4 py-2 text-left text-sm text-text hover:bg-brintelli-baseAlt transition-colors flex items-center gap-2 border-t border-brintelli-border"
+                                            className="w-full px-4 py-2 text-left text-sm text-text hover:bg-brintelli-baseAlt transition-colors flex items-center gap-2"
                                           >
                                             <ClipboardList className="h-4 w-4" />
                                             View Insights
                                           </button>
+                                        )}
+                                        
+                                        {/* Deactivate Lead */}
+                                        {call.leadId && (
+                                          <>
+                                            <div className="border-t border-brintelli-border my-1"></div>
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDeactivateCallLead(call);
+                                                setOpenDropdownId(null);
+                                              }}
+                                              className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"
+                                            >
+                                              <ArchiveX className="h-4 w-4" />
+                                              Deactivate Lead
+                                            </button>
+                                          </>
                                         )}
                                         
                                         {/* Cancel Call (if scheduled) */}

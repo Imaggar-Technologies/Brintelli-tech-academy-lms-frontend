@@ -597,7 +597,9 @@ const MeetingsCounselling = () => {
       }
       
       // Check if report is submitted (required before assigning assessment)
-      if (!lead.demoReport?.submitted) {
+      // Sales calls use demoReport, but check both demo and counseling reports
+      const hasReport = lead.demoReport?.submitted || lead.counselingReport?.submitted;
+      if (!hasReport) {
         toast.error('Please submit the meeting report before assigning an assessment');
         return;
       }

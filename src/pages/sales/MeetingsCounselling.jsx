@@ -87,10 +87,10 @@ const MeetingsCounselling = () => {
 
   // Close dropdown when modals open
   useEffect(() => {
-    if (showReportModal || showRescheduleModal || showAssessmentModal || showRescheduleCallModal || showInviteModal) {
+    if (showReportModal || showRescheduleModal || showAssessmentModal || showRescheduleCallModal || showInviteModal || showCallReportModal || showPreScreeningModal || showDeactivateModal) {
       setOpenDropdownId(null);
     }
-  }, [showReportModal, showRescheduleModal, showAssessmentModal, showRescheduleCallModal, showInviteModal]);
+  }, [showReportModal, showRescheduleModal, showAssessmentModal, showRescheduleCallModal, showInviteModal, showCallReportModal, showPreScreeningModal, showDeactivateModal]);
 
   // Fetch leads with booked meetings
   useEffect(() => {
@@ -422,6 +422,163 @@ const MeetingsCounselling = () => {
     handleRefresh();
     setShowInviteModal(false);
     setSelectedCall(null);
+  };
+
+  // ─── Fetch lead data for sales call ────────────────────────────────
+  const fetchLeadForCall = async (leadId) => {
+    if (!leadId) return null;
+    try {
+      setLoadingLead(true);
+      const response = await leadAPI.getLeadById(leadId);
+      if (response.success && response.data?.lead) {
+        return response.data.lead;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error fetching lead:', error);
+      toast.error('Failed to fetch lead details');
+      return null;
+    } finally {
+      setLoadingLead(false);
+    }
+  };
+
+  // ─── Handle view call details ────────────────────────────────────────
+  const handleViewCallDetails = (call) => {
+    navigate(`/sales/calls/${call._id?.toString() || call.id}`);
+  };
+
+  // ─── Handle submit/resubmit report for sales call ──────────────────
+  const handleSubmitCallReport = async (call) => {
+    try {
+      const leadId = call.leadId?.toString();
+      if (!leadId) {
+        toast.error('Lead ID not found for this call');
+        return;
+      }
+      
+      const lead = await fetchLeadForCall(leadId);
+      if (!lead) {
+        toast.error('Lead not found');
+        return;
+      }
+      
+      setSelectedLeadForCall(lead);
+      setSelectedCall(call);
+      setAllowResubmit(false);
+      setShowCallReportModal(true);
+    } catch (error) {
+      console.error('Error opening report modal:', error);
+      toast.error('Failed to open report modal');
+    }
+  };
+
+  // ─── Handle resubmit report for sales call ──────────────────────────
+  const handleResubmitCallReport = async (call) => {
+    try {
+      const leadId = call.leadId?.toString();
+      if (!leadId) {
+        toast.error('Lead ID not found for this call');
+        return;
+      }
+      
+      const lead = await fetchLeadForCall(leadId);
+      if (!lead) {
+        toast.error('Lead not found');
+        return;
+      }
+      
+      setSelectedLeadForCall(lead);
+      setSelectedCall(call);
+      setAllowResubmit(true);
+      setShowCallReportModal(true);
+    } catch (error) {
+      console.error('Error opening resubmit modal:', error);
+      toast.error('Failed to open resubmit modal');
+    }
+  };
+
+  // ─── Handle prescreening for sales call ─────────────────────────────
+  const handleCallPreScreening = async (call) => {
+    try {
+      const leadId = call.leadId?.toString();
+      if (!leadId) {
+        toast.error('Lead ID not found for this call');
+        return;
+      }
+      
+      const lead = await fetchLeadForCall(leadId);
+      if (!lead) {
+        toast.error('Lead not found');
+        return;
+      }
+      
+      const existingData = lead.preScreening || {};
+      setPreScreeningData({
+        leadId: lead.id || lead._id,
+        education: existingData.education || { degree: "", field: "", university: "", graduationYear: "", gpa: "" },
+        financial: existingData.financial || { currentSalary: "", expectedSalary: "", canAfford: "", paymentMethod: "", financialStatus: "" },
+        job: existingData.job || { currentJob: "", company: "", experience: "", position: "", noticePeriod: "" },
+        social: existingData.social || { linkedin: "", github: "", portfolio: "", twitter: "", other: "" },
+        courseInterest: existingData.courseInterest || { primary: "", secondary: "", preferredBatch: "", startDatePreference: "" },
+        notes: existingData.notes || "",
+      });
+      setSelectedLeadForCall(lead);
+      setShowPreScreeningModal(true);
+    } catch (error) {
+      console.error('Error opening prescreening modal:', error);
+      toast.error('Failed to open prescreening modal');
+    }
+  };
+
+  // ─── Handle prescreening submit ─────────────────────────────────────
+  const handlePreScreeningSubmit = async () => {
+    if (!preScreeningData || !preScreeningData.leadId) {
+      toast.error('Invalid prescreening data');
+      return;
+    }
+
+    try {
+      const { leadId, ...preScreeningPayload } = preScreeningData;
+      const response = await leadAPI.updatePreScreening(leadId, preScreeningPayload);
+      
+      if (response.success) {
+        toast.success('Pre-screening updated successfully');
+        setShowPreScreeningModal(false);
+        setPreScreeningData(null);
+        setSelectedLeadForCall(null);
+        // Refresh calls to get updated lead data
+        fetchCalls();
+      } else {
+        toast.error(response.message || 'Failed to update pre-screening');
+      }
+    } catch (error) {
+      console.error('Error submitting prescreening:', error);
+      toast.error(error?.response?.data?.message || 'Failed to update pre-screening');
+    }
+  };
+
+  // ─── Handle deactivate lead for sales call ──────────────────────────
+  const handleDeactivateCallLead = async (call) => {
+    try {
+      const leadId = call.leadId?.toString();
+      if (!leadId) {
+        toast.error('Lead ID not found for this call');
+        return;
+      }
+      
+      const lead = await fetchLeadForCall(leadId);
+      if (!lead) {
+        toast.error('Lead not found');
+        return;
+      }
+      
+      setSelectedLeadForCall(lead);
+      setShowDeactivateModal(true);
+    } catch (error) {
+      console.error('Error opening deactivate modal:', error);
+      toast.error('Failed to open deactivate modal');
+    }
   };
 
   const formatDate = (dateString) => {
@@ -1233,18 +1390,353 @@ const MeetingsCounselling = () => {
       />
 
       {/* Deactivate Lead Modal */}
-      {showDeactivateModal && selectedLead && (
+      {(showDeactivateModal && selectedLead) || (showDeactivateModal && selectedLeadForCall) ? (
         <DeactivateLeadModal
           isOpen={showDeactivateModal}
           onClose={() => {
             setShowDeactivateModal(false);
             setSelectedLead(null);
+            setSelectedLeadForCall(null);
           }}
-          lead={selectedLead}
+          lead={selectedLead || selectedLeadForCall}
           onSuccess={() => {
             handleRefresh();
+            fetchCalls();
+            setShowDeactivateModal(false);
+            setSelectedLead(null);
+            setSelectedLeadForCall(null);
           }}
         />
+      ) : null}
+      
+      {/* Sales Call Report Modal */}
+      {showCallReportModal && selectedLeadForCall && (
+        <MeetingReportModal
+          isOpen={showCallReportModal}
+          onClose={() => {
+            setShowCallReportModal(false);
+            setSelectedLeadForCall(null);
+            setSelectedCall(null);
+            setAllowResubmit(false);
+          }}
+          lead={selectedLeadForCall}
+          meetingType="demo"
+          onSuccess={() => {
+            handleRefresh();
+            fetchCalls();
+            setShowCallReportModal(false);
+            setSelectedLeadForCall(null);
+            setSelectedCall(null);
+            setAllowResubmit(false);
+          }}
+          allowResubmit={allowResubmit}
+        />
+      )}
+      
+      {/* Pre-Screening Modal for Sales Calls */}
+      {showPreScreeningModal && selectedLeadForCall && preScreeningData && (
+        <Modal
+          isOpen={showPreScreeningModal}
+          onClose={() => {
+            setShowPreScreeningModal(false);
+            setSelectedLeadForCall(null);
+            setPreScreeningData(null);
+          }}
+          title={`Pre-Screening: ${selectedLeadForCall.name || "Lead"}`}
+          size="lg"
+        >
+          <div className="space-y-6 max-h-[70vh] overflow-y-auto">
+            {/* Education */}
+            <div>
+              <h3 className="text-lg font-semibold text-text mb-4">Education</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-textMuted mb-1">Degree</label>
+                  <input
+                    type="text"
+                    value={preScreeningData.education?.degree || ""}
+                    onChange={(e) => setPreScreeningData({
+                      ...preScreeningData,
+                      education: { ...preScreeningData.education, degree: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border border-brintelli-border rounded-lg bg-brintelli-card text-text text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-textMuted mb-1">Field</label>
+                  <input
+                    type="text"
+                    value={preScreeningData.education?.field || ""}
+                    onChange={(e) => setPreScreeningData({
+                      ...preScreeningData,
+                      education: { ...preScreeningData.education, field: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border border-brintelli-border rounded-lg bg-brintelli-card text-text text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-textMuted mb-1">University</label>
+                  <input
+                    type="text"
+                    value={preScreeningData.education?.university || ""}
+                    onChange={(e) => setPreScreeningData({
+                      ...preScreeningData,
+                      education: { ...preScreeningData.education, university: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border border-brintelli-border rounded-lg bg-brintelli-card text-text text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-textMuted mb-1">Graduation Year</label>
+                  <input
+                    type="text"
+                    value={preScreeningData.education?.graduationYear || ""}
+                    onChange={(e) => setPreScreeningData({
+                      ...preScreeningData,
+                      education: { ...preScreeningData.education, graduationYear: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border border-brintelli-border rounded-lg bg-brintelli-card text-text text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-textMuted mb-1">GPA</label>
+                  <input
+                    type="text"
+                    value={preScreeningData.education?.gpa || ""}
+                    onChange={(e) => setPreScreeningData({
+                      ...preScreeningData,
+                      education: { ...preScreeningData.education, gpa: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border border-brintelli-border rounded-lg bg-brintelli-card text-text text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Financial */}
+            <div>
+              <h3 className="text-lg font-semibold text-text mb-4">Financial</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-textMuted mb-1">Current Salary</label>
+                  <input
+                    type="text"
+                    value={preScreeningData.financial?.currentSalary || ""}
+                    onChange={(e) => setPreScreeningData({
+                      ...preScreeningData,
+                      financial: { ...preScreeningData.financial, currentSalary: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border border-brintelli-border rounded-lg bg-brintelli-card text-text text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-textMuted mb-1">Expected Salary</label>
+                  <input
+                    type="text"
+                    value={preScreeningData.financial?.expectedSalary || ""}
+                    onChange={(e) => setPreScreeningData({
+                      ...preScreeningData,
+                      financial: { ...preScreeningData.financial, expectedSalary: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border border-brintelli-border rounded-lg bg-brintelli-card text-text text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-textMuted mb-1">Can Afford</label>
+                  <input
+                    type="text"
+                    value={preScreeningData.financial?.canAfford || ""}
+                    onChange={(e) => setPreScreeningData({
+                      ...preScreeningData,
+                      financial: { ...preScreeningData.financial, canAfford: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border border-brintelli-border rounded-lg bg-brintelli-card text-text text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-textMuted mb-1">Payment Method</label>
+                  <input
+                    type="text"
+                    value={preScreeningData.financial?.paymentMethod || ""}
+                    onChange={(e) => setPreScreeningData({
+                      ...preScreeningData,
+                      financial: { ...preScreeningData.financial, paymentMethod: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border border-brintelli-border rounded-lg bg-brintelli-card text-text text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-textMuted mb-1">Financial Status</label>
+                  <input
+                    type="text"
+                    value={preScreeningData.financial?.financialStatus || ""}
+                    onChange={(e) => setPreScreeningData({
+                      ...preScreeningData,
+                      financial: { ...preScreeningData.financial, financialStatus: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border border-brintelli-border rounded-lg bg-brintelli-card text-text text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Job */}
+            <div>
+              <h3 className="text-lg font-semibold text-text mb-4">Job</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-textMuted mb-1">Current Job</label>
+                  <input
+                    type="text"
+                    value={preScreeningData.job?.currentJob || ""}
+                    onChange={(e) => setPreScreeningData({
+                      ...preScreeningData,
+                      job: { ...preScreeningData.job, currentJob: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border border-brintelli-border rounded-lg bg-brintelli-card text-text text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-textMuted mb-1">Company</label>
+                  <input
+                    type="text"
+                    value={preScreeningData.job?.company || ""}
+                    onChange={(e) => setPreScreeningData({
+                      ...preScreeningData,
+                      job: { ...preScreeningData.job, company: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border border-brintelli-border rounded-lg bg-brintelli-card text-text text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-textMuted mb-1">Experience</label>
+                  <input
+                    type="text"
+                    value={preScreeningData.job?.experience || ""}
+                    onChange={(e) => setPreScreeningData({
+                      ...preScreeningData,
+                      job: { ...preScreeningData.job, experience: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border border-brintelli-border rounded-lg bg-brintelli-card text-text text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-textMuted mb-1">Position</label>
+                  <input
+                    type="text"
+                    value={preScreeningData.job?.position || ""}
+                    onChange={(e) => setPreScreeningData({
+                      ...preScreeningData,
+                      job: { ...preScreeningData.job, position: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border border-brintelli-border rounded-lg bg-brintelli-card text-text text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-textMuted mb-1">Notice Period</label>
+                  <input
+                    type="text"
+                    value={preScreeningData.job?.noticePeriod || ""}
+                    onChange={(e) => setPreScreeningData({
+                      ...preScreeningData,
+                      job: { ...preScreeningData.job, noticePeriod: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border border-brintelli-border rounded-lg bg-brintelli-card text-text text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Social */}
+            <div>
+              <h3 className="text-lg font-semibold text-text mb-4">Social Profiles</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-textMuted mb-1">LinkedIn</label>
+                  <input
+                    type="text"
+                    value={preScreeningData.social?.linkedin || ""}
+                    onChange={(e) => setPreScreeningData({
+                      ...preScreeningData,
+                      social: { ...preScreeningData.social, linkedin: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border border-brintelli-border rounded-lg bg-brintelli-card text-text text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-textMuted mb-1">GitHub</label>
+                  <input
+                    type="text"
+                    value={preScreeningData.social?.github || ""}
+                    onChange={(e) => setPreScreeningData({
+                      ...preScreeningData,
+                      social: { ...preScreeningData.social, github: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border border-brintelli-border rounded-lg bg-brintelli-card text-text text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-textMuted mb-1">Portfolio</label>
+                  <input
+                    type="text"
+                    value={preScreeningData.social?.portfolio || ""}
+                    onChange={(e) => setPreScreeningData({
+                      ...preScreeningData,
+                      social: { ...preScreeningData.social, portfolio: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border border-brintelli-border rounded-lg bg-brintelli-card text-text text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-textMuted mb-1">Twitter</label>
+                  <input
+                    type="text"
+                    value={preScreeningData.social?.twitter || ""}
+                    onChange={(e) => setPreScreeningData({
+                      ...preScreeningData,
+                      social: { ...preScreeningData.social, twitter: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 border border-brintelli-border rounded-lg bg-brintelli-card text-text text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div>
+              <h3 className="text-lg font-semibold text-text mb-4">Additional Notes</h3>
+              <textarea
+                value={preScreeningData.notes || ""}
+                onChange={(e) => setPreScreeningData({
+                  ...preScreeningData,
+                  notes: e.target.value
+                })}
+                rows={4}
+                className="w-full px-3 py-2 border border-brintelli-border rounded-lg bg-brintelli-card text-text text-sm"
+                placeholder="Add any additional notes about this lead..."
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4 border-t border-brintelli-border">
+              <Button 
+                variant="ghost" 
+                onClick={() => {
+                  setShowPreScreeningModal(false);
+                  setSelectedLeadForCall(null);
+                  setPreScreeningData(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button 
+                variant="primary" 
+                onClick={handlePreScreeningSubmit}
+              >
+                Save Pre-Screening
+              </Button>
+            </div>
+          </div>
+        </Modal>
       )}
 
       {/* Reschedule Sales Call Modal */}

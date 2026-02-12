@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { FileText, X, ClipboardList } from "lucide-react";
+import { FileText, X, ClipboardList, Clock, User, Globe } from "lucide-react";
 import Button from "./Button";
 import Modal from "./Modal";
 import { leadAPI } from "../api/lead";
@@ -20,6 +20,11 @@ const MeetingReportModal = ({ isOpen, onClose, lead, meetingType, onSuccess, all
   const latestReport = meetingType === 'demo' 
     ? lead?.demoReport 
     : lead?.counselingReport;
+  
+  // Get report logs
+  const reportLogs = meetingType === 'demo'
+    ? (lead?.demoReportLogs || [])
+    : (lead?.counselingReportLogs || []);
   
   // If no reports array exists but latestReport exists, create array from it
   const reportsHistory = allReports.length > 0 
@@ -84,8 +89,19 @@ const MeetingReportModal = ({ isOpen, onClose, lead, meetingType, onSuccess, all
         `${meetingInfo.title} submitted successfully!${reportsHistory.length === 0 ? ' You can now assign assessment.' : ''}`
       );
       
+      // Get updated lead data with report logs
+      let updatedLead = lead;
+      try {
+        const response = await leadAPI.getLeadById(lead.id);
+        if (response.success && response.data?.lead) {
+          updatedLead = response.data.lead;
+        }
+      } catch (error) {
+        console.error('Error fetching updated lead:', error);
+      }
+      
       if (onSuccess) {
-        onSuccess();
+        onSuccess(updatedLead);
       }
       
       // Show option to assign assessment (only for first submission, not subsequent ones)
@@ -187,6 +203,57 @@ const MeetingReportModal = ({ isOpen, onClose, lead, meetingType, onSuccess, all
                     )}
                     <div className="rounded-lg bg-white p-3">
                       <p className="text-sm text-text whitespace-pre-wrap">{r.report}</p>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
+
+        {/* Report Logs */}
+        {reportLogs.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <ClipboardList className="h-5 w-5 text-brand" />
+              <h3 className="text-lg font-semibold text-text">Submission Logs ({reportLogs.length})</h3>
+            </div>
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {[...reportLogs]
+                .sort((a, b) => new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime())
+                .map((log, idx) => (
+                  <div key={idx} className="rounded-lg border border-brintelli-border bg-brintelli-baseAlt p-3">
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
+                          log.action === 'REPORT_SUBMITTED' 
+                            ? 'text-green-700 bg-green-100' 
+                            : 'text-blue-700 bg-blue-100'
+                        }`}>
+                          {log.action === 'REPORT_SUBMITTED' ? 'Submitted' : 'Resubmitted'}
+                        </span>
+                        <span className="text-xs text-textMuted">v{log.version}</span>
+                      </div>
+                      <div className="flex items-center gap-1 text-xs text-textMuted">
+                        <Clock className="h-3 w-3" />
+                        <span>{new Date(log.submittedAt).toLocaleString('en-US')}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4 mt-2 text-xs text-textMuted">
+                      {log.submittedBy && (
+                        <div className="flex items-center gap-1">
+                          <User className="h-3 w-3" />
+                          <span>User: {log.submittedBy}</span>
+                        </div>
+                      )}
+                      {log.reportLength > 0 && (
+                        <span>Length: {log.reportLength} chars</span>
+                      )}
+                      {log.ipAddress && (
+                        <div className="flex items-center gap-1">
+                          <Globe className="h-3 w-3" />
+                          <span className="truncate max-w-[120px]">{log.ipAddress}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}

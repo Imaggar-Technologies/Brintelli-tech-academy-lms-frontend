@@ -1,16 +1,32 @@
-import { X, Phone, Calendar, Clock } from "lucide-react";
+import { useState, useEffect } from "react";
+import { X, Phone, Calendar, Clock, Plus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Button from "./Button";
+import { leadAPI } from "../api/lead";
+import toast from "react-hot-toast";
 
 /**
  * View All Call Notes Modal
  * 
  * Displays all call notes for a lead in a modal
+ * Allows adding new call notes in the same session
  */
-const ViewAllCallNotesModal = ({ isOpen, onClose, lead }) => {
-  if (!isOpen || !lead) return null;
+const ViewAllCallNotesModal = ({ isOpen, onClose, lead, onSuccess }) => {
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [notes, setNotes] = useState("");
+  const [callDate, setCallDate] = useState(new Date().toISOString().split('T')[0]);
+  const [callTime, setCallTime] = useState(new Date().toTimeString().slice(0, 5));
+  const [loading, setLoading] = useState(false);
+  const [currentLead, setCurrentLead] = useState(lead);
 
-  const callNotes = lead.callNotes || [];
+  // Update current lead when prop changes
+  useEffect(() => {
+    setCurrentLead(lead);
+  }, [lead]);
+
+  if (!isOpen || !currentLead) return null;
+
+  const callNotes = currentLead.callNotes || [];
 
   // Sort by createdAt (newest first)
   const sortedNotes = [...callNotes].sort((a, b) => {
@@ -49,6 +65,49 @@ const ViewAllCallNotesModal = ({ isOpen, onClose, lead }) => {
     }
   };
 
+  const handleAddCallNote = async (e) => {
+    e?.preventDefault();
+    
+    if (!notes.trim()) {
+      toast.error("Please enter call notes");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await leadAPI.addCallNotes(currentLead.id, {
+        notes: notes.trim(),
+        callDate,
+        callTime,
+      });
+
+      if (response.success) {
+        toast.success("Call notes added successfully");
+        // Update the lead with new call notes
+        setCurrentLead({
+          ...currentLead,
+          callNotes: response.data.lead.callNotes || [],
+        });
+        // Reset form
+        setNotes("");
+        setCallDate(new Date().toISOString().split('T')[0]);
+        setCallTime(new Date().toTimeString().slice(0, 5));
+        setShowAddForm(false);
+        // Notify parent component
+        if (onSuccess) {
+          onSuccess(response.data.lead);
+        }
+      } else {
+        toast.error(response.message || "Failed to add call notes");
+      }
+    } catch (error) {
+      console.error("Error adding call notes:", error);
+      toast.error(error.message || "Failed to add call notes");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -76,20 +135,112 @@ const ViewAllCallNotesModal = ({ isOpen, onClose, lead }) => {
                 <div>
                   <h2 className="text-xl font-semibold text-text">Call Notes History</h2>
                   <p className="text-sm text-textMuted mt-1">
-                    {lead?.name} • {lead?.email}
+                    {currentLead?.name} • {currentLead?.email}
                   </p>
                 </div>
-                <button
-                  onClick={onClose}
-                  className="p-2 rounded-lg hover:bg-brintelli-border transition-colors"
-                >
-                  <X className="h-5 w-5 text-textMuted" />
-                </button>
+                <div className="flex items-center gap-2">
+                  {!showAddForm && (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => setShowAddForm(true)}
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add Notes
+                    </Button>
+                  )}
+                  <button
+                    onClick={onClose}
+                    className="p-2 rounded-lg hover:bg-brintelli-border transition-colors"
+                  >
+                    <X className="h-5 w-5 text-textMuted" />
+                  </button>
+                </div>
               </div>
 
               {/* Content */}
               <div className="p-6">
-                {sortedNotes.length === 0 ? (
+                {/* Add Call Notes Form */}
+                {showAddForm && (
+                  <div className="mb-6 rounded-xl border border-brand-200 bg-brand-50 p-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-text">Add New Call Note</h3>
+                      <button
+                        onClick={() => {
+                          setShowAddForm(false);
+                          setNotes("");
+                        }}
+                        className="text-textMuted hover:text-text"
+                      >
+                        <X className="h-5 w-5" />
+                      </button>
+                    </div>
+                    <form onSubmit={handleAddCallNote} className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-text mb-1">
+                            Date
+                          </label>
+                          <input
+                            type="date"
+                            value={callDate}
+                            onChange={(e) => setCallDate(e.target.value)}
+                            className="w-full px-3 py-2 border border-brintelli-border rounded-lg bg-white text-text focus:outline-none focus:ring-2 focus:ring-brand-500"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-text mb-1">
+                            Time
+                          </label>
+                          <input
+                            type="time"
+                            value={callTime}
+                            onChange={(e) => setCallTime(e.target.value)}
+                            className="w-full px-3 py-2 border border-brintelli-border rounded-lg bg-white text-text focus:outline-none focus:ring-2 focus:ring-brand-500"
+                            required
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-text mb-1">
+                          Call Notes <span className="text-red-500">*</span>
+                        </label>
+                        <textarea
+                          value={notes}
+                          onChange={(e) => setNotes(e.target.value)}
+                          placeholder="Enter call notes..."
+                          rows="4"
+                          className="w-full px-3 py-2 border border-brintelli-border rounded-lg bg-white text-text focus:outline-none focus:ring-2 focus:ring-brand-500"
+                          required
+                        />
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => {
+                            setShowAddForm(false);
+                            setNotes("");
+                          }}
+                          disabled={loading}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="submit"
+                          variant="primary"
+                          disabled={!notes.trim() || loading}
+                        >
+                          {loading ? "Adding..." : "Add Note"}
+                        </Button>
+                      </div>
+                    </form>
+                  </div>
+                )}
+
+                {/* Call Notes List */}
+                {sortedNotes.length === 0 && !showAddForm ? (
                   <div className="text-center py-12">
                     <Phone className="h-12 w-12 text-textMuted mx-auto mb-4" />
                     <p className="text-textMuted">No call notes yet</p>

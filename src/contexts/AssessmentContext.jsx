@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 
 const AssessmentContext = createContext(null);
 
@@ -10,15 +10,28 @@ export const useAssessment = () => {
   return context;
 };
 
-export const AssessmentProvider = ({ children, questions = [], currentSection = 'mcq' }) => {
-  // Filter questions by section
-  const filteredQuestions = questions.filter(q => {
-    if (currentSection === 'mcq') {
-      return q.type !== 'coding';
+export const AssessmentProvider = ({ children, questions = [], activeSection = 'mcq' }) => {
+  // Separate questions by type
+  const mcqQuestions = questions.filter(q => q.type !== 'coding');
+  const codingQuestions = questions.filter(q => q.type === 'coding');
+  
+  // Filter questions by active section
+  const filteredQuestions = activeSection === 'mcq' ? mcqQuestions : codingQuestions;
+  
+  // Track current question index per section
+  const [mcqCurrentIndex, setMcqCurrentIndex] = useState(0);
+  const [codingCurrentIndex, setCodingCurrentIndex] = useState(0);
+  
+  // Get current index based on active section
+  const currentQuestionIndex = activeSection === 'mcq' ? mcqCurrentIndex : codingCurrentIndex;
+  
+  const setCurrentQuestionIndex = useCallback((index) => {
+    if (activeSection === 'mcq') {
+      setMcqCurrentIndex(index);
     } else {
-      return q.type === 'coding';
+      setCodingCurrentIndex(index);
     }
-  });
+  }, [activeSection]);
 
   // Initialize question states - merge with existing to preserve state
   const [questionStates, setQuestionStates] = useState(() => {
@@ -30,6 +43,11 @@ export const AssessmentProvider = ({ children, questions = [], currentSection = 
         isMarkedForReview: false,
         isVisited: false,
         isAnswered: false,
+        // Coding question specific state
+        code: q.type === 'coding' ? (q.starterCode || '') : undefined,
+        language: q.type === 'coding' ? (q.language || 'javascript') : undefined,
+        runResult: undefined,
+        customInput: '',
       };
     });
     return initialState;
@@ -47,14 +65,17 @@ export const AssessmentProvider = ({ children, questions = [], currentSection = 
             isMarkedForReview: false,
             isVisited: false,
             isAnswered: false,
+            // Coding question specific state
+            code: q.type === 'coding' ? (q.starterCode || '') : undefined,
+            language: q.type === 'coding' ? (q.language || 'javascript') : undefined,
+            runResult: undefined,
+            customInput: '',
           };
         }
       });
       return updated;
     });
   }, [questions.length]);
-
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 
   // Get question status for palette
   const getQuestionStatus = useCallback((questionId) => {
@@ -120,11 +141,11 @@ export const AssessmentProvider = ({ children, questions = [], currentSection = 
 
   // Save and move to next
   const handleSaveAndNext = useCallback(() => {
-    const currentQuestion = questions[currentQuestionIndex];
+    const currentQuestion = filteredQuestions[currentQuestionIndex];
     if (!currentQuestion) return;
 
     const state = questionStates[currentQuestion.id];
-    if (state && state.selectedAnswers.length > 0) {
+    if (state && state.selectedAnswers && state.selectedAnswers.length > 0) {
       setQuestionStates((prev) => ({
         ...prev,
         [currentQuestion.id]: {
@@ -134,11 +155,11 @@ export const AssessmentProvider = ({ children, questions = [], currentSection = 
       }));
     }
 
-    if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex((prev) => prev + 1);
+    if (currentQuestionIndex < filteredQuestions.length - 1) {
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
       
       // Mark next question as visited
-      const nextQuestion = questions[currentQuestionIndex + 1];
+      const nextQuestion = filteredQuestions[currentQuestionIndex + 1];
       if (nextQuestion) {
         setQuestionStates((prev) => ({
           ...prev,
@@ -155,7 +176,7 @@ export const AssessmentProvider = ({ children, questions = [], currentSection = 
         }));
       }
     }
-  }, [currentQuestionIndex, questions, questionStates]);
+  }, [currentQuestionIndex, filteredQuestions, questionStates, setCurrentQuestionIndex]);
 
   // Mark for review
   const handleMarkForReview = useCallback(() => {
@@ -184,7 +205,7 @@ export const AssessmentProvider = ({ children, questions = [], currentSection = 
 
   // Skip question
   const handleSkip = useCallback(() => {
-    const currentQuestion = questions[currentQuestionIndex];
+    const currentQuestion = filteredQuestions[currentQuestionIndex];
     if (!currentQuestion) return;
 
     // Mark as visited but not answered
@@ -204,9 +225,9 @@ export const AssessmentProvider = ({ children, questions = [], currentSection = 
 
     // Move to next
     if (currentQuestionIndex < filteredQuestions.length - 1) {
-      setCurrentQuestionIndex((prev) => prev + 1);
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
     }
-  }, [currentQuestionIndex, filteredQuestions]);
+  }, [currentQuestionIndex, filteredQuestions, setCurrentQuestionIndex]);
 
   // Clear response
   const handleClearResponse = useCallback(() => {
@@ -270,24 +291,91 @@ export const AssessmentProvider = ({ children, questions = [], currentSection = 
     }
   }, [currentQuestionIndex, filteredQuestions, questionStates]);
 
+  // Update code for coding question
+  const updateCode = useCallback((questionId, code) => {
+    setQuestionStates((prev) => ({
+      ...prev,
+      [questionId]: {
+        ...prev[questionId],
+        code,
+        isVisited: true,
+        isAnswered: code && code.trim().length > 0,
+      },
+    }));
+  }, []);
+
+  // Update language for coding question
+  const updateLanguage = useCallback((questionId, language) => {
+    setQuestionStates((prev) => ({
+      ...prev,
+      [questionId]: {
+        ...prev[questionId],
+        language,
+      },
+    }));
+  }, []);
+
+  // Update custom input for coding question
+  const updateCustomInput = useCallback((questionId, input) => {
+    setQuestionStates((prev) => ({
+      ...prev,
+      [questionId]: {
+        ...prev[questionId],
+        customInput: input,
+      },
+    }));
+  }, []);
+
+  // Update run result for coding question
+  const updateRunResult = useCallback((questionId, result) => {
+    setQuestionStates((prev) => ({
+      ...prev,
+      [questionId]: {
+        ...prev[questionId],
+        runResult: result,
+      },
+    }));
+  }, []);
+
   // Get all answers for submission
   const getAllAnswers = useCallback(() => {
     const allAnswers = {};
     Object.keys(questionStates).forEach((questionId) => {
       const state = questionStates[questionId];
-      if (state.selectedAnswers.length > 0) {
-        allAnswers[questionId] = state.selectedAnswers;
+      const question = questions.find(q => q.id === questionId);
+      
+      if (question?.type === 'coding') {
+        // For coding questions, include code and language
+        if (state.code && state.code.trim().length > 0) {
+          allAnswers[questionId] = {
+            code: state.code,
+            language: state.language || 'javascript',
+          };
+        }
+      } else {
+        // For MCQ questions, include selected answers
+        if (state.selectedAnswers.length > 0) {
+          allAnswers[questionId] = state.selectedAnswers;
+        }
       }
     });
     return allAnswers;
-  }, [questionStates]);
+  }, [questionStates, questions]);
 
   const value = {
-    questions: filteredQuestions, // Use filtered questions for current section
-    allQuestions: questions, // Keep all questions for state management
+    // Questions
+    questions: filteredQuestions, // Current section questions
+    allQuestions: questions, // All questions
+    mcqQuestions,
+    codingQuestions,
+    activeSection,
+    
+    // State
     questionStates,
     currentQuestionIndex,
     currentQuestion: filteredQuestions[currentQuestionIndex],
+    
+    // Handlers
     getQuestionStatus,
     handleOptionSelect,
     handleMultiSelect,
@@ -298,6 +386,12 @@ export const AssessmentProvider = ({ children, questions = [], currentSection = 
     navigateToQuestion,
     setCurrentQuestionIndex,
     getAllAnswers, // Export for submission
+    
+    // Coding question handlers
+    updateCode,
+    updateLanguage,
+    updateCustomInput,
+    updateRunResult,
   };
 
   return (

@@ -2,7 +2,18 @@ import { useAssessment } from '../../contexts/AssessmentContext';
 import { CheckCircle2, Circle, Bookmark, AlertCircle } from 'lucide-react';
 
 const QuestionPalette = ({ section = 'mcq' }) => {
-  const { questions, currentQuestionIndex, navigateToQuestion, getQuestionStatus } = useAssessment();
+  const { 
+    questions, 
+    mcqQuestions, 
+    codingQuestions,
+    activeSection,
+    currentQuestionIndex, 
+    navigateToQuestion, 
+    getQuestionStatus 
+  } = useAssessment();
+  
+  // Get questions for the active section
+  const sectionQuestions = activeSection === 'mcq' ? mcqQuestions : codingQuestions;
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -42,12 +53,12 @@ const QuestionPalette = ({ section = 'mcq' }) => {
           Question Navigation
         </h3>
         <div className="text-xs text-gray-500 mb-3">
-          {questions.length} Questions
+          {sectionQuestions.length} Questions
         </div>
       </div>
 
       <div className="grid grid-cols-5 gap-2">
-        {questions.map((question, index) => {
+        {sectionQuestions.map((question, index) => {
           const status = getQuestionStatus(question.id);
           const isCurrent = index === currentQuestionIndex;
           

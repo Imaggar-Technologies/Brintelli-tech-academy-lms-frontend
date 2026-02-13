@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import { ChartSpline, Users, TrendingUp, AlertCircle, CheckCircle2, Clock, Target } from 'lucide-react';
+import { ChartSpline, Users, TrendingUp, AlertCircle, CheckCircle2, Clock, Target, UserPlus, X, Search } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
 import StatsCard from '../../components/StatsCard';
 import Table from '../../components/Table';
+import Modal from '../../components/Modal';
 import lsmAPI from '../../api/lsm';
 import programAPI from '../../api/program';
 
@@ -14,6 +15,11 @@ const BatchHealth = () => {
   const [selectedBatchId, setSelectedBatchId] = useState('');
   const [batchHealth, setBatchHealth] = useState(null);
   const [students, setStudents] = useState([]);
+  const [showEnrollmentModal, setShowEnrollmentModal] = useState(false);
+  const [pendingEnrollments, setPendingEnrollments] = useState([]);
+  const [enrollmentLoading, setEnrollmentLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedEnrollments, setSelectedEnrollments] = useState(new Set());
 
   useEffect(() => {
     fetchBatches();
@@ -24,6 +30,12 @@ const BatchHealth = () => {
       fetchBatchHealth();
     }
   }, [selectedBatchId]);
+
+  useEffect(() => {
+    if (showEnrollmentModal) {
+      fetchPendingEnrollments();
+    }
+  }, [showEnrollmentModal]);
 
   const fetchBatches = async () => {
     try {
@@ -39,6 +51,102 @@ const BatchHealth = () => {
       setLoading(false);
     }
   };
+
+  const fetchPendingEnrollments = async () => {
+    try {
+      setEnrollmentLoading(true);
+      const response = await lsmAPI.getPendingOnboarding();
+      if (response.success && response.data) {
+        const enrollments = response.data.enrollments || response.data || [];
+        // Filter enrollments that don't have a batch assigned or match the selected batch's program
+        const selectedBatch = batches.find(b => (b.id || b._id) === selectedBatchId);
+        const filteredEnrollments = enrollments.filter(enrollment => {
+          // Show enrollments without batch or with matching program
+          if (!enrollment.batchId) {
+            if (selectedBatch && selectedBatch.courseId) {
+              return enrollment.courseId === selectedBatch.courseId || 
+                     enrollment.programId === selectedBatch.courseId;
+            }
+            return true;
+          }
+          return false;
+        });
+        setPendingEnrollments(filteredEnrollments);
+      }
+    } catch (error) {
+      console.error('Error fetching pending enrollments:', error);
+      toast.error('Failed to load pending enrollments');
+    } finally {
+      setEnrollmentLoading(false);
+    }
+  };
+
+  const handleEnrollStudents = async () => {
+    if (selectedEnrollments.size === 0) {
+      toast.error('Please select at least one student to enroll');
+      return;
+    }
+
+    try {
+      setEnrollmentLoading(true);
+      const selectedBatch = batches.find(b => (b.id || b._id) === selectedBatchId);
+      
+      if (!selectedBatch) {
+        toast.error('Batch not found');
+        return;
+      }
+
+      const enrollmentPromises = Array.from(selectedEnrollments).map(enrollmentId => {
+        return lsmAPI.allocateBatch(enrollmentId, {
+          batchId: selectedBatchId,
+          courseId: selectedBatch.courseId || selectedBatch.programId,
+        });
+      });
+
+      const results = await Promise.allSettled(enrollmentPromises);
+      const successful = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
+      const failed = results.length - successful;
+
+      if (successful > 0) {
+        toast.success(`Successfully enrolled ${successful} student(s)`);
+        setShowEnrollmentModal(false);
+        setSelectedEnrollments(new Set());
+        // Refresh batch health data
+        await fetchBatchHealth();
+        await fetchBatches();
+      }
+      
+      if (failed > 0) {
+        toast.error(`Failed to enroll ${failed} student(s)`);
+      }
+    } catch (error) {
+      console.error('Error enrolling students:', error);
+      toast.error('Failed to enroll students');
+    } finally {
+      setEnrollmentLoading(false);
+    }
+  };
+
+  const toggleEnrollmentSelection = (enrollmentId) => {
+    setSelectedEnrollments(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(enrollmentId)) {
+        newSet.delete(enrollmentId);
+      } else {
+        newSet.add(enrollmentId);
+      }
+      return newSet;
+    });
+  };
+
+  const filteredEnrollments = pendingEnrollments.filter(enrollment => {
+    if (!searchTerm) return true;
+    const searchLower = searchTerm.toLowerCase();
+    const leadName = enrollment.lead?.name || enrollment.lead?.fullName || '';
+    const leadEmail = enrollment.lead?.email || '';
+    return leadName.toLowerCase().includes(searchLower) || 
+           leadEmail.toLowerCase().includes(searchLower);
+  });
 
   const fetchBatchHealth = async () => {
     try {
@@ -270,6 +378,18 @@ const BatchHealth = () => {
       <PageHeader
         title="Batch Health"
         description="Monitor batch health metrics including attendance, performance, and progress."
+        actions={
+          selectedBatchId && (
+            <Button
+              variant="primary"
+              onClick={() => setShowEnrollmentModal(true)}
+              className="gap-2"
+            >
+              <UserPlus className="h-4 w-4" />
+              Enroll Students
+            </Button>
+          )
+        }
       />
 
       <div className="space-y-6">
@@ -404,6 +524,129 @@ const BatchHealth = () => {
           </div>
         )}
       </div>
+
+      {/* Enrollment Modal */}
+      <Modal
+        isOpen={showEnrollmentModal}
+        onClose={() => {
+          setShowEnrollmentModal(false);
+          setSelectedEnrollments(new Set());
+          setSearchTerm('');
+        }}
+        title="Enroll Students to Batch"
+        size="large"
+      >
+        <div className="space-y-4">
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-textMuted" />
+            <input
+              type="text"
+              placeholder="Search by name or email..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-brintelli-border rounded-lg bg-white text-text focus:outline-none focus:ring-2 focus:ring-brand-500"
+            />
+          </div>
+
+          {/* Enrollment List */}
+          {enrollmentLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-textMuted">Loading students...</div>
+            </div>
+          ) : filteredEnrollments.length === 0 ? (
+            <div className="text-center py-12 text-textMuted">
+              {searchTerm ? 'No students found matching your search' : 'No students available for enrollment'}
+            </div>
+          ) : (
+            <>
+              <div className="max-h-96 overflow-y-auto border border-brintelli-border rounded-lg">
+                <table className="w-full">
+                  <thead className="bg-brintelli-baseAlt sticky top-0">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-text">
+                        <input
+                          type="checkbox"
+                          checked={filteredEnrollments.length > 0 && filteredEnrollments.every(e => selectedEnrollments.has(e.id || e._id))}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedEnrollments(new Set(filteredEnrollments.map(e => e.id || e._id)));
+                            } else {
+                              setSelectedEnrollments(new Set());
+                            }
+                          }}
+                          className="rounded"
+                        />
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-text">Name</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-text">Email</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-text">Program</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-brintelli-border">
+                    {filteredEnrollments.map((enrollment) => {
+                      const enrollmentId = enrollment.id || enrollment._id;
+                      const isSelected = selectedEnrollments.has(enrollmentId);
+                      const lead = enrollment.lead || {};
+                      return (
+                        <tr
+                          key={enrollmentId}
+                          className={`hover:bg-brintelli-baseAlt cursor-pointer ${isSelected ? 'bg-brand-50' : ''}`}
+                          onClick={() => toggleEnrollmentSelection(enrollmentId)}
+                        >
+                          <td className="px-4 py-3">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleEnrollmentSelection(enrollmentId)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="rounded"
+                            />
+                          </td>
+                          <td className="px-4 py-3 text-sm text-text">
+                            {lead.name || lead.fullName || 'Unknown'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-textMuted">
+                            {lead.email || 'N/A'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-textMuted">
+                            {enrollment.programName || enrollment.courseName || 'N/A'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="flex items-center justify-between pt-4 border-t border-brintelli-border">
+                <div className="text-sm text-textMuted">
+                  {selectedEnrollments.size} student(s) selected
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setShowEnrollmentModal(false);
+                      setSelectedEnrollments(new Set());
+                      setSearchTerm('');
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={handleEnrollStudents}
+                    disabled={selectedEnrollments.size === 0 || enrollmentLoading}
+                  >
+                    {enrollmentLoading ? 'Enrolling...' : `Enroll ${selectedEnrollments.size} Student(s)`}
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </Modal>
     </>
   );
 };

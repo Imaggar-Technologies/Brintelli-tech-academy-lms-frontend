@@ -1,14 +1,19 @@
 import { useState, useEffect } from 'react';
+import { useDispatch } from 'react-redux';
 import { toast } from 'react-hot-toast';
 import { Settings, User, Mail, Phone, BookOpen, Users, Save, AlertCircle, Calendar, CheckCircle, Clock } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
 import mentorAPI from '../../api/mentor';
 import programAPI from '../../api/program';
+import apiRequest from '../../api/apiClient';
+import { updateUser as updateUserInStore } from '../../store/slices/authSlice';
 
 const Profile = () => {
+  const dispatch = useDispatch();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
   const [programs, setPrograms] = useState([]);
   const [stats, setStats] = useState(null);
   const [profileData, setProfileData] = useState({
@@ -41,17 +46,30 @@ const Profile = () => {
   const fetchProfile = async () => {
     try {
       setLoading(true);
+      setError('');
+      
+      // Fetch basic user data from standard endpoint
+      let userData = null;
+      try {
+        const userRes = await apiRequest("/api/users/me");
+        userData = userRes?.data?.user || null;
+      } catch (e) {
+        console.error('Error fetching user data:', e);
+      }
+      
+      // Fetch mentor-specific profile data
       const response = await mentorAPI.getProfile();
       
       if (response.success && response.data) {
         const mentor = response.data.mentor;
         const mentorStats = response.data.stats;
         
+        // Merge user data with mentor data
         setProfileData({
-          name: mentor.name || '',
-          email: mentor.email || '',
-          phone: mentor.phone || '',
-          bio: mentor.bio || '',
+          name: userData?.fullName || mentor.name || userData?.name || '',
+          email: userData?.email || mentor.email || '',
+          phone: userData?.phone || mentor.phone || '',
+          bio: mentor.bio || userData?.bio || '',
           experience: mentor.experience || '',
           maxStudents: mentor.maxStudents || 20,
           specialization: mentor.specialization || [],
@@ -59,31 +77,25 @@ const Profile = () => {
         });
         
         setStats(mentorStats);
-        
-        // If specialization programs are provided, use them to pre-select programs
-        if (mentor.specializationPrograms && mentor.specializationPrograms.length > 0) {
-          // The specialization array contains program IDs
-          // We'll use it as is for the form
-        }
+      } else if (userData) {
+        // Fallback to user data if mentor API fails
+        setProfileData({
+          name: userData.fullName || userData.name || '',
+          email: userData.email || '',
+          phone: userData.phone || '',
+          bio: userData.bio || '',
+          experience: '',
+          maxStudents: 20,
+          specialization: [],
+          isActive: true,
+        });
+        toast.error(response.message || 'Failed to load mentor profile');
       } else {
-        // Fallback: Try to get from user context or localStorage
-        const userStr = localStorage.getItem('user');
-        if (userStr) {
-          try {
-            const user = JSON.parse(userStr);
-            setProfileData(prev => ({
-              ...prev,
-              name: user.fullName || user.name || '',
-              email: user.email || '',
-            }));
-          } catch (e) {
-            console.error('Error parsing user data:', e);
-          }
-        }
         toast.error(response.message || 'Failed to load profile');
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
+      setError(error.message || 'Failed to load profile');
       toast.error(error.message || 'Failed to load profile');
     } finally {
       setLoading(false);
@@ -98,6 +110,31 @@ const Profile = () => {
 
     try {
       setSaving(true);
+      setError('');
+      
+      // Update basic user profile via standard endpoint
+      try {
+        const userRes = await apiRequest("/api/users/me", {
+          method: "PUT",
+          body: JSON.stringify({
+            fullName: profileData.name,
+            phone: profileData.phone,
+            bio: profileData.bio,
+          }),
+        });
+        const user = userRes?.data?.user || null;
+        if (user) {
+          dispatch(updateUserInStore({ 
+            fullName: user.fullName, 
+            phone: user.phone,
+            bio: user.bio,
+          }));
+        }
+      } catch (e) {
+        console.error('Error updating user profile:', e);
+      }
+      
+      // Update mentor-specific profile
       const response = await mentorAPI.updateProfile(profileData);
       
       if (response.success) {
@@ -105,10 +142,12 @@ const Profile = () => {
         // Refresh profile data
         await fetchProfile();
       } else {
+        setError(response.message || 'Failed to save profile');
         toast.error(response.message || 'Failed to save profile');
       }
     } catch (error) {
       console.error('Error saving profile:', error);
+      setError(error.message || 'Failed to save profile');
       toast.error(error.message || 'Failed to save profile');
     } finally {
       setSaving(false);
@@ -135,6 +174,12 @@ const Profile = () => {
         title="Profile & Settings"
         description="Manage your mentor profile and preferences"
       />
+
+      {error && (
+        <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          {error}
+        </div>
+      )}
 
       {loading ? (
         <div className="text-center py-12">

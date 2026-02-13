@@ -1,7 +1,8 @@
 import { useAssessment } from '../../contexts/AssessmentContext';
 import { Radio, CheckSquare, Bookmark } from 'lucide-react';
+import CodingQuestionPanel from './CodingQuestionPanel';
 
-const QuestionPanel = () => {
+const QuestionPanel = ({ onRunCode, onSubmitCode }) => {
   const { 
     currentQuestion, 
     questionStates, 
@@ -15,6 +16,12 @@ const QuestionPanel = () => {
         <p className="text-gray-500">No question available</p>
       </div>
     );
+  }
+
+  // For coding questions, we don't render the full panel here
+  // The layout handles splitting problem and editor
+  if (currentQuestion.type === 'coding') {
+    return null; // ProblemPanel is rendered separately in AssessmentLayout
   }
 
   const questionState = questionStates[currentQuestion.id] || {

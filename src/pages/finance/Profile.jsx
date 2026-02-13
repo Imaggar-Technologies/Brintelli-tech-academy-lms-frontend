@@ -1,16 +1,20 @@
 import { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { User, Mail, Phone, Building2, MapPin, Settings, Shield, Calendar, Edit2, Save } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
-import { selectCurrentUser } from '../../store/slices/authSlice';
+import { selectCurrentUser, updateUser as updateUserInStore } from '../../store/slices/authSlice';
 import { toast } from 'react-hot-toast';
+import apiRequest from '../../api/apiClient';
 
 const FinanceProfile = () => {
-  const user = useSelector(selectCurrentUser);
-  const [isEditing, setIsEditing] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const dispatch = useDispatch();
+  const authUser = useSelector(selectCurrentUser);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [profile, setProfile] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({
     fullName: '',
     email: '',
@@ -20,27 +24,60 @@ const FinanceProfile = () => {
   });
 
   useEffect(() => {
-    if (user) {
-      setEditData({
-        fullName: user.fullName || user.name || '',
-        email: user.email || '',
-        phone: user.phone || '',
-        address: user.address || '',
-        bio: user.bio || '',
-      });
-    }
-  }, [user]);
+    const load = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const res = await apiRequest("/api/users/me");
+        const user = res?.data?.user || null;
+        setProfile(user);
+        setEditData({
+          fullName: user?.fullName || user?.name || '',
+          email: user?.email || '',
+          phone: user?.phone || '',
+          address: user?.address || '',
+          bio: user?.bio || '',
+        });
+      } catch (e) {
+        setError(e?.message || "Failed to load profile");
+        toast.error(e?.message || "Failed to load profile");
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
 
   const handleSave = async () => {
+    setSaving(true);
+    setError('');
     try {
-      setSaving(true);
-      // TODO: Implement API call to update finance profile
-      // await financeAPI.updateProfile(editData);
-      toast.success('Profile updated successfully');
+      const res = await apiRequest("/api/users/me", {
+        method: "PUT",
+        body: JSON.stringify({
+          fullName: editData.fullName,
+          phone: editData.phone,
+          address: editData.address,
+          bio: editData.bio,
+        }),
+      });
+      const user = res?.data?.user || null;
+      setProfile(user);
       setIsEditing(false);
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      toast.error('Failed to update profile');
+
+      // Keep redux user in sync (used across app)
+      if (user) {
+        dispatch(updateUserInStore({ 
+          fullName: user.fullName, 
+          phone: user.phone,
+          address: user.address,
+          bio: user.bio,
+        }));
+      }
+      toast.success('Profile updated successfully');
+    } catch (e) {
+      setError(e?.message || "Failed to update profile");
+      toast.error(e?.message || "Failed to update profile");
     } finally {
       setSaving(false);
     }
@@ -55,6 +92,7 @@ const FinanceProfile = () => {
     return name.substring(0, 2).toUpperCase();
   };
 
+  const user = profile || authUser;
   const displayName = user?.fullName || user?.name || 'Finance User';
   const displayEmail = user?.email || 'finance@brintelli.com';
   const displayPhone = user?.phone || 'Not provided';
@@ -85,7 +123,7 @@ const FinanceProfile = () => {
                   setIsEditing(true);
                 }
               }}
-              disabled={saving}
+              disabled={loading || saving}
             >
               {isEditing ? (
                 <>
@@ -103,7 +141,18 @@ const FinanceProfile = () => {
         }
       />
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      {error && (
+        <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          {error}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-textMuted">Loading profile...</div>
+        </div>
+      ) : (
+        <div className="grid gap-6 lg:grid-cols-3">
         {/* Profile Card */}
         <div className="lg:col-span-2 space-y-6">
           {/* Personal Information */}
@@ -296,6 +345,7 @@ const FinanceProfile = () => {
           </div>
         </div>
       </div>
+      )}
     </>
   );
 };

@@ -557,10 +557,66 @@ const SecureAssessment = () => {
 
   const codingQuestions = Array.from({ length: TOTAL_CODING }, (_, i) => ({
     id: `coding-${i + 1}`,
-    question: `Coding Question ${i + 1}: Write a function to solve the following problem...`,
+    type: 'coding',
+    question: `Coding Question ${i + 1}`,
+    problemData: {
+      title: `Coding Question ${i + 1}`,
+      description: `Write a function to solve the following problem:\n\nGiven an array of integers, find the maximum sum of a contiguous subarray.\n\nExample:\nInput: [-2, 1, -3, 4, -1, 2, 1, -5, 4]\nOutput: 6\nExplanation: The subarray [4, -1, 2, 1] has the largest sum = 6.`,
+      inputFormat: 'The first line contains an integer n (1 ≤ n ≤ 10^5).\nThe second line contains n space-separated integers.',
+      outputFormat: 'Print a single integer representing the maximum sum.',
+      constraints: [
+        '1 ≤ n ≤ 10^5',
+        '-10^9 ≤ arr[i] ≤ 10^9',
+      ],
+      sampleCases: [
+        {
+          input: '9\n-2 1 -3 4 -1 2 1 -5 4',
+          output: '6',
+          explanation: 'The subarray [4, -1, 2, 1] has the largest sum = 6.',
+        },
+        {
+          input: '5\n1 2 3 4 5',
+          output: '15',
+          explanation: 'The entire array has the maximum sum.',
+        },
+      ],
+    },
     language: "javascript",
-    starterCode: `function solution() {\n  // Your code here\n}`,
+    starterCode: `function solution(arr) {\n  // Your code here\n  return 0;\n}`,
   }));
+
+  // Handler for running code
+  const handleRunCode = async (questionId, code, language, customInput) => {
+    // TODO: Integrate with actual code execution API
+    // For now, simulate execution
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    return {
+      status: 'success',
+      stdout: 'Code executed successfully',
+      stderr: '',
+      executionTime: '48ms',
+      memory: '45MB',
+      testCases: [
+        {
+          passed: true,
+          executionTime: '12ms',
+        },
+        {
+          passed: true,
+          executionTime: '15ms',
+        },
+      ],
+    };
+  };
+
+  // Handler for submitting code
+  const handleSubmitCode = async (questionId, code, language) => {
+    // Mark question as answered in context
+    // The actual submission will happen when the user clicks "Submit Assessment"
+    console.log('Code submitted for question:', questionId);
+    return Promise.resolve();
+  };
 
   if (!started) {
     return (
@@ -708,9 +764,6 @@ const SecureAssessment = () => {
     );
   }
 
-  const currentQuestions = currentSection === 'mcq' ? mcqQuestions : codingQuestions;
-  const currentQ = currentQuestions[currentQuestion];
-
   return (
     <>
       {/* Fullscreen Exit Modal */}
@@ -827,25 +880,17 @@ const SecureAssessment = () => {
             ...q,
             questionNumber: index + 1,
           }))}
-          currentSection={currentSection}
+          activeSection={currentSection}
         >
           <AssessmentLayout
-            questions={currentSection === 'mcq' ? mcqQuestions : codingQuestions}
-            currentSection={currentSection}
+            questions={[...mcqQuestions, ...codingQuestions]}
+            activeSection={currentSection}
             onSectionChange={(section) => {
               setCurrentSection(section);
             }}
             onSubmit={() => handleSubmit(false)}
-            onNextSection={() => {
-              if (currentSection === 'mcq') {
-                setCurrentSection('coding');
-              }
-            }}
-            onPreviousSection={() => {
-              if (currentSection === 'coding') {
-                setCurrentSection('mcq');
-              }
-            }}
+            onRunCode={handleRunCode}
+            onSubmitCode={handleSubmitCode}
           />
         </AssessmentProvider>
       </div>
@@ -860,7 +905,8 @@ const SecureAssessment = () => {
           className="w-full h-full object-cover"
         />
       </div>
-    </div>
+      </div>
+    </>
   );
 };
 

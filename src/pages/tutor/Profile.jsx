@@ -1,41 +1,98 @@
 import { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { User, Mail, Phone, Building2, MapPin, Settings, Award, Shield, Calendar, Edit2, BookOpen, GraduationCap } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
 import StatsCard from '../../components/StatsCard';
-import { selectCurrentUser } from '../../store/slices/authSlice';
+import { selectCurrentUser, updateUser as updateUserInStore } from '../../store/slices/authSlice';
 import { toast } from 'react-hot-toast';
+import apiRequest from '../../api/apiClient';
 
 const Profile = () => {
-  const user = useSelector(selectCurrentUser);
+  const dispatch = useDispatch();
+  const authUser = useSelector(selectCurrentUser);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [profile, setProfile] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [editData, setEditData] = useState({});
+  const [editData, setEditData] = useState({
+    fullName: '',
+    email: '',
+    phone: '',
+    address: '',
+    bio: '',
+    specialization: '',
+  });
   const [stats, setStats] = useState(null);
 
   useEffect(() => {
-    if (user) {
-      setEditData({
-        fullName: user.fullName || user.name || '',
-        email: user.email || '',
-        phone: user.phone || '',
-        address: user.address || '',
-        bio: user.bio || '',
-        specialization: user.specialization || '',
-      });
-    }
-    // TODO: Fetch tutor stats from API
-    setStats({
-      totalCourses: 0,
-      activeStudents: 0,
-      sessionsCompleted: 0,
-    });
-  }, [user]);
+    const load = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const res = await apiRequest("/api/users/me");
+        const user = res?.data?.user || null;
+        setProfile(user);
+        setEditData({
+          fullName: user?.fullName || user?.name || '',
+          email: user?.email || '',
+          phone: user?.phone || '',
+          address: user?.address || '',
+          bio: user?.bio || '',
+          specialization: user?.specialization || '',
+        });
+        // TODO: Fetch tutor stats from API
+        setStats({
+          totalCourses: 0,
+          activeStudents: 0,
+          sessionsCompleted: 0,
+        });
+      } catch (e) {
+        setError(e?.message || "Failed to load profile");
+        toast.error(e?.message || "Failed to load profile");
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
 
-  const handleSave = () => {
-    // TODO: Implement API call to update tutor profile
-    toast.success('Profile updated successfully');
-    setIsEditing(false);
+  const handleSave = async () => {
+    setSaving(true);
+    setError('');
+    try {
+      const res = await apiRequest("/api/users/me", {
+        method: "PUT",
+        body: JSON.stringify({
+          fullName: editData.fullName,
+          phone: editData.phone,
+          address: editData.address,
+          bio: editData.bio,
+          specialization: editData.specialization,
+        }),
+      });
+      const user = res?.data?.user || null;
+      setProfile(user);
+      setIsEditing(false);
+
+      // Keep redux user in sync (used across app)
+      if (user) {
+        dispatch(updateUserInStore({ 
+          fullName: user.fullName, 
+          phone: user.phone,
+          address: user.address,
+          bio: user.bio,
+          specialization: user.specialization,
+        }));
+      }
+      toast.success('Profile updated successfully');
+    } catch (e) {
+      setError(e?.message || "Failed to update profile");
+      toast.error(e?.message || "Failed to update profile");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const getInitials = (name) => {
@@ -47,6 +104,7 @@ const Profile = () => {
     return name.substring(0, 2).toUpperCase();
   };
 
+  const user = profile || authUser;
   const displayName = user?.fullName || user?.name || 'Tutor User';
   const displayEmail = user?.email || 'tutor@brintelli.com';
   const displayPhone = user?.phone || 'Not provided';
@@ -68,12 +126,13 @@ const Profile = () => {
                 setIsEditing(true);
               }
             }}
+            disabled={loading || saving}
             className="gap-2"
           >
             {isEditing ? (
               <>
                 <Settings className="h-4 w-4" />
-                Save Changes
+                {saving ? 'Saving...' : 'Save Changes'}
               </>
             ) : (
               <>
@@ -85,7 +144,19 @@ const Profile = () => {
         }
       />
 
-      {/* Stats Cards */}
+      {error && (
+        <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          {error}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-textMuted">Loading profile...</div>
+        </div>
+      ) : (
+        <>
+          {/* Stats Cards */}
       {stats && (
         <div className="grid gap-5 md:grid-cols-3 mb-6">
           <StatsCard
@@ -321,6 +392,8 @@ const Profile = () => {
           </div>
         </div>
       </div>
+        </>
+      )}
     </>
   );
 };

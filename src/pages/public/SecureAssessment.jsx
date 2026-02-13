@@ -37,6 +37,7 @@ const SecureAssessment = () => {
   const [tabSwitches, setTabSwitches] = useState(0);
   const [warnings, setWarnings] = useState([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [permissionError, setPermissionError] = useState(null);
   
   // Assessment state
   const [started, setStarted] = useState(false);
@@ -167,7 +168,30 @@ const SecureAssessment = () => {
       toast.error(errorMessage);
       setCameraEnabled(false);
       setMicEnabled(false);
+      setPermissionError(error.name);
     }
+  };
+
+  // Check current permissions
+  const checkPermissions = async () => {
+    try {
+      if (navigator.permissions) {
+        const cameraPermission = await navigator.permissions.query({ name: 'camera' });
+        const microphonePermission = await navigator.permissions.query({ name: 'microphone' });
+        
+        console.log('Camera permission:', cameraPermission.state);
+        console.log('Microphone permission:', microphonePermission.state);
+        
+        if (cameraPermission.state === 'denied' || microphonePermission.state === 'denied') {
+          setPermissionError('denied');
+          return false;
+        }
+        return true;
+      }
+    } catch (error) {
+      console.log('Permission API not supported or error:', error);
+    }
+    return null;
   };
 
   const setupTabSwitchDetection = () => {
@@ -465,20 +489,70 @@ const SecureAssessment = () => {
             </div>
           </div>
 
-          {/* Instructions */}
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-            <h3 className="font-semibold text-yellow-900 mb-2 flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5" />
-              Important Instructions
-            </h3>
-            <ul className="text-sm text-yellow-800 space-y-1 list-disc list-inside">
-              <li>Do not switch tabs or minimize the window</li>
-              <li>Keep your camera and microphone on throughout the assessment</li>
-              <li>You have 120 minutes to complete 15 MCQ and 5 coding questions</li>
-              <li>Tab switching will result in warnings and may terminate the assessment</li>
-              <li>Keyboard shortcuts are disabled</li>
-            </ul>
-          </div>
+          {/* Permission Error Instructions */}
+          {(!cameraEnabled || !micEnabled) && permissionError && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+              <h3 className="font-semibold text-red-900 mb-3 flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5" />
+                Camera & Microphone Access Required
+              </h3>
+              <div className="text-sm text-red-800 space-y-3">
+                <p className="font-medium">To enable camera and microphone access:</p>
+                <div className="space-y-3">
+                  <div>
+                    <p className="font-semibold mb-1">Chrome/Edge:</p>
+                    <ol className="list-decimal list-inside ml-2 space-y-1 text-xs">
+                      <li>Click the lock icon (🔒) or camera icon in the address bar</li>
+                      <li>Set Camera and Microphone to "Allow"</li>
+                      <li>Refresh the page or click "Try Again" below</li>
+                    </ol>
+                  </div>
+                  <div>
+                    <p className="font-semibold mb-1">Firefox:</p>
+                    <ol className="list-decimal list-inside ml-2 space-y-1 text-xs">
+                      <li>Click the shield icon in the address bar</li>
+                      <li>Click "Permissions" → Allow Camera and Microphone</li>
+                      <li>Refresh the page or click "Try Again" below</li>
+                    </ol>
+                  </div>
+                  <div>
+                    <p className="font-semibold mb-1">Safari:</p>
+                    <ol className="list-decimal list-inside ml-2 space-y-1 text-xs">
+                      <li>Go to Safari → Settings → Websites → Camera/Microphone</li>
+                      <li>Set to "Allow" for this site</li>
+                      <li>Refresh the page or click "Try Again" below</li>
+                    </ol>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setPermissionError(null);
+                    requestMediaAccess();
+                  }}
+                  className="mt-3 w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+                >
+                  Try Again After Enabling Permissions
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Regular Instructions */}
+          {(!permissionError || (cameraEnabled && micEnabled)) && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+              <h3 className="font-semibold text-yellow-900 mb-2 flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5" />
+                Important Instructions
+              </h3>
+              <ul className="text-sm text-yellow-800 space-y-1 list-disc list-inside">
+                <li>Do not switch tabs or minimize the window</li>
+                <li>Keep your camera and microphone on throughout the assessment</li>
+                <li>You have 120 minutes to complete 15 MCQ and 5 coding questions</li>
+                <li>Tab switching will result in warnings and may terminate the assessment</li>
+                <li>Keyboard shortcuts are disabled</li>
+              </ul>
+            </div>
+          )}
 
           <Button
             onClick={handleStart}

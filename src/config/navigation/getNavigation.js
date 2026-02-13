@@ -9,6 +9,7 @@ import { financeNav } from "./base/finance.nav";
 import { hrNav } from "./base/hr.nav";
 import { academicNav } from "./base/academic.nav";
 import { studentNav } from "./base/student.nav";
+import { unenrolledStudentNav } from "./base/unenrolledStudent.nav";
 import { systemNav } from "./base/system.nav";
 
 import { filterByPermissions } from "./filters/permissionFilter";
@@ -38,6 +39,7 @@ import {
   LayoutDashboard,
   Bell,
   TrendingUp,
+  CreditCard,
 } from "lucide-react";
 
 /**
@@ -54,6 +56,20 @@ const domainNavMap = {
   system: systemNav,
   admin: systemNav, // Alias for system
 };
+
+/**
+ * Get navigation based on enrollment status
+ * Returns unenrolled navigation if user has no enrollment
+ */
+function getStudentNavigation(userAttributes = {}) {
+  const hasEnrollment = userAttributes.hasEnrollment || userAttributes.enrolledCourses?.length > 0;
+  
+  if (!hasEnrollment) {
+    return unenrolledStudentNav;
+  }
+  
+  return studentNav;
+}
 
 /**
  * Role to domain mapping
@@ -121,7 +137,13 @@ export function getNavigation({ domain, role, permissions = [], attributes = {} 
   }
 
   // Get base navigation for the domain
-  let nav = domainNavMap[domain] || [];
+  // Special handling for students: check enrollment status
+  let nav;
+  if (domain === "student" || role === "student" || role === "learner") {
+    nav = getStudentNavigation(attributes);
+  } else {
+    nav = domainNavMap[domain] || [];
+  }
 
   // Apply RBAC filtering (permissions)
   nav = filterByPermissions(nav, permissions);
@@ -249,7 +271,7 @@ function getAcademicSubtitle(role) {
 /**
  * Get pinned items for domain/role
  */
-function getPinnedItems(domain, role, permissions) {
+function getPinnedItems(domain, role, permissions, attributes = {}) {
 
   // Pinned items configuration per domain/role
   const pinnedConfig = {
@@ -280,6 +302,11 @@ function getPinnedItems(domain, role, permissions) {
         { label: "Continue Learning", to: "/student/dashboard#continue", icon: Sparkles },
         { label: "Code Playground", to: "/student/code-playground", icon: Terminal },
         { label: "Placement Hub", to: "/student/placement-assistance", icon: BriefcaseBusiness },
+      ],
+      unenrolled: [
+        { label: "Start Enrollment", to: "/student/enrollment", icon: Sparkles },
+        { label: "Take Assessment", to: "/student/enrollment", icon: ClipboardCheck },
+        { label: "Complete Payment", to: "/student/enrollment", icon: CreditCard },
       ],
     },
     academic: {
@@ -329,6 +356,11 @@ function getPinnedItems(domain, role, permissions) {
 
   const domainPinned = pinnedConfig[domain];
   if (!domainPinned) return [];
+
+  // Special handling for unenrolled students
+  if (domain === "student" && !attributes.hasEnrollment && !attributes.enrolledCourses?.length) {
+    return domainPinned.unenrolled || domainPinned.default || [];
+  }
 
   return domainPinned[role] || domainPinned.default || [];
 }

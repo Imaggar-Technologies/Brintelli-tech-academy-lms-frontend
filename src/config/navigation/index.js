@@ -303,6 +303,7 @@ export const getRoleNavigation = (role, user = null) => {
       assignedClasses: user?.assignedClasses || [],
       enrolledCourses: user?.enrolledCourses || [],
       assignedLeads: user?.assignedLeads || [],
+      hasEnrollment: user?.hasEnrollment || false, // From login response
     };
     
     // Use new navigation system - pass parameters correctly

@@ -60,14 +60,15 @@ const AssessmentPage = () => {
             toast.success('Please sign in to take the assessment');
             navigate(`/auth/signin?redirect=/assessment/${leadId}?token=${token}`);
           } else {
-            // Lead doesn't have account, show registration modal
+            // Lead doesn't have account, pre-fill form data but don't auto-open modal
             setFormData(prev => ({
               ...prev,
               email: response.data.lead?.email || '',
               fullName: response.data.lead?.name || '',
               phone: response.data.lead?.phone || '',
             }));
-            setShowRegisterModal(true);
+            // Don't auto-open modal - let user click the register button
+            // setShowRegisterModal(true);
           }
         } else {
           throw new Error(response.message || 'Invalid or expired assessment link');
@@ -121,10 +122,8 @@ const AssessmentPage = () => {
       const response = await apiRequest('/api/auth/register-with-token', {
         method: 'POST',
         body: JSON.stringify({
-          leadId,
           token,
           fullName: formData.fullName.trim(),
-          email: formData.email.trim(),
           phone: formData.phone.trim(),
           password: formData.password,
         }),
@@ -134,11 +133,22 @@ const AssessmentPage = () => {
         toast.success('Registration successful! You can now take the assessment.');
         
         // Auto-login the user
-        if (response.data.token) {
-          localStorage.setItem('token', response.data.token);
+        if (response.data.accessToken) {
+          localStorage.setItem('token', response.data.accessToken);
           localStorage.setItem('refreshToken', response.data.refreshToken);
           
+          // Store user data in Redux if available
+          if (response.data.user) {
+            // Dispatch user data to store if needed
+            window.location.reload(); // Reload to initialize user session
+          }
+          
           // Redirect to assessment test page
+          navigate(`/assessment/${leadId}/test?token=${token}`);
+        } else if (response.data.token) {
+          // Fallback for old API format
+          localStorage.setItem('token', response.data.token);
+          localStorage.setItem('refreshToken', response.data.refreshToken);
           navigate(`/assessment/${leadId}/test?token=${token}`);
         } else {
           // If no token, redirect to login
@@ -188,7 +198,7 @@ const AssessmentPage = () => {
                   <div>
                     <p className="font-medium text-blue-900 mb-1">Assessment Ready</p>
                     <p className="text-sm text-blue-700">
-                      Your assessment link has been verified. Please register or sign in to continue.
+                      Your assessment link has been verified. {showRegisterModal ? 'Please complete your registration to access the assessment.' : 'Please register your account to continue.'}
                     </p>
                   </div>
                 </div>
@@ -196,13 +206,36 @@ const AssessmentPage = () => {
             </div>
           )}
 
-          <div className="text-center">
-            <p className="text-sm text-textMuted mb-4">
-              {showRegisterModal 
-                ? 'Please complete your registration to access the assessment.'
-                : 'Please sign in to take your assessment.'}
-            </p>
-          </div>
+          {!showRegisterModal && (
+            <div className="text-center space-y-4">
+              <div className="rounded-xl border border-brand-200 bg-brand-50 p-4 mb-4">
+                <p className="text-sm font-medium text-brand-900 mb-2">
+                  Create Your Student Account
+                </p>
+                <p className="text-xs text-brand-700">
+                  To take your assessment, you need to create your student account. This will only take a minute!
+                </p>
+              </div>
+              <Button
+                variant="primary"
+                onClick={() => setShowRegisterModal(true)}
+                className="w-full"
+                size="lg"
+              >
+                <UserPlus className="h-5 w-5 mr-2" />
+                Register Your Account
+              </Button>
+              <p className="text-xs text-textMuted mt-2">
+                Already have an account?{' '}
+                <button
+                  onClick={() => navigate(`/auth/signin?redirect=/assessment/${leadId}?token=${token}`)}
+                  className="text-brand hover:underline font-medium"
+                >
+                  Sign in here
+                </button>
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -211,11 +244,16 @@ const AssessmentPage = () => {
         isOpen={showRegisterModal}
         onClose={() => {
           setShowRegisterModal(false);
-          navigate('/auth/signin');
+          // Don't navigate away, just close modal
         }}
-        title="Complete Registration"
+        title="Create Your Student Account"
         size="md"
       >
+        <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50 p-3">
+          <p className="text-sm text-blue-800">
+            <strong>Welcome!</strong> Create your account to access your assessment. Your email ({lead?.email}) will be used for your account.
+          </p>
+        </div>
         <form onSubmit={handleRegister} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-text mb-1">

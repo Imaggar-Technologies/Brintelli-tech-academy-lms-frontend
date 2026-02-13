@@ -29,6 +29,7 @@ const Assessments = () => {
   const [openDropdownId, setOpenDropdownId] = useState(null);
   const [scholarships, setScholarships] = useState({}); // Map of leadId -> scholarship
   const [offers, setOffers] = useState({}); // Map of leadId -> offer
+  const [resendingAssessmentId, setResendingAssessmentId] = useState(null);
 
   const isSalesAgent = currentUser?.role === 'sales_agent';
   const isSalesLead = currentUser?.role === 'sales_lead';
@@ -620,6 +621,47 @@ const Assessments = () => {
                                   <FileText className="h-4 w-4" />
                                   View Details
                                 </button>
+                                
+                                {/* Resend Assessment Link */}
+                                {assessment.assessmentSent || assessment.assessmentLink ? (
+                                  <button
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      const assessmentId = assessment.id || assessment._id;
+                                      setResendingAssessmentId(assessmentId);
+                                      setOpenDropdownId(null);
+                                      
+                                      try {
+                                        const response = await leadAPI.resendAssessment(assessmentId);
+                                        if (response.success) {
+                                          toast.success("Assessment link resent successfully! New link expires in 1 hour.");
+                                          handleRefresh();
+                                        } else {
+                                          toast.error(response.message || "Failed to resend assessment link");
+                                        }
+                                      } catch (error) {
+                                        console.error("Error resending assessment:", error);
+                                        toast.error(error.message || "Failed to resend assessment link");
+                                      } finally {
+                                        setResendingAssessmentId(null);
+                                      }
+                                    }}
+                                    disabled={resendingAssessmentId === (assessment.id || assessment._id)}
+                                    className="w-full px-4 py-2 text-left text-sm text-text hover:bg-brintelli-baseAlt transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    {resendingAssessmentId === (assessment.id || assessment._id) ? (
+                                      <>
+                                        <RefreshCw className="h-4 w-4 animate-spin" />
+                                        Resending...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Send className="h-4 w-4" />
+                                        Resend Link
+                                      </>
+                                    )}
+                                  </button>
+                                ) : null}
                                 
                                 {/* Deactivate Lead */}
                                 <div className="border-t border-brintelli-border my-1"></div>

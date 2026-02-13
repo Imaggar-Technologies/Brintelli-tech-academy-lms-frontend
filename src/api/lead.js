@@ -17,6 +17,10 @@ export const leadAPI = {
     return apiRequest(`/api/leads/${leadId}`);
   },
 
+  getLeadByEmail: async (email) => {
+    return apiRequest(`/api/leads/by-email?email=${encodeURIComponent(email)}`);
+  },
+
   createLead: async (leadData) => {
     return apiRequest('/api/leads', {
       method: 'POST',
@@ -90,6 +94,12 @@ export const leadAPI = {
     return apiRequest(`/api/leads/${leadId}/send-assessment`, {
       method: 'POST',
       body: JSON.stringify(assessmentData),
+    });
+  },
+
+  resendAssessment: async (leadId) => {
+    return apiRequest(`/api/leads/${leadId}/resend-assessment`, {
+      method: 'POST',
     });
   },
   flagLead: async (leadId, flagData) => {

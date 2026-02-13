@@ -1,9 +1,63 @@
 import { useState, useEffect } from "react";
-import { X, Phone, Calendar, Clock, Plus } from "lucide-react";
+import { X, Phone, Calendar, Clock, Plus, PhoneOff, PhoneCall, MessageSquare, UserX, Ban, AlertCircle, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Button from "./Button";
 import { leadAPI } from "../api/lead";
 import toast from "react-hot-toast";
+
+/**
+ * Call Note Templates - Matching the style from CallNotesModal
+ */
+const CALL_NOTE_TEMPLATES = [
+  {
+    id: "no-answer",
+    label: "Didn't Pick Call",
+    notes: "Called the lead but they didn't answer. Will try again later.",
+    icon: PhoneOff,
+  },
+  {
+    id: "not-interested",
+    label: "Not Interested",
+    notes: "Lead picked up the call but expressed no interest in the program. Reason: [Add reason]",
+    icon: X,
+  },
+  {
+    id: "interested",
+    label: "Interested - Follow Up Needed",
+    notes: "Lead showed interest in the program. Discussed course details and next steps. Follow-up scheduled.",
+    icon: CheckCircle2,
+  },
+  {
+    id: "callback-requested",
+    label: "Callback Requested",
+    notes: "Lead requested a callback at a more convenient time. Preferred time: [Add time]",
+    icon: Calendar,
+  },
+  {
+    id: "wrong-number",
+    label: "Wrong Number",
+    notes: "The number provided is incorrect or doesn't belong to the lead.",
+    icon: X,
+  },
+  {
+    id: "busy",
+    label: "Busy - Will Call Back",
+    notes: "Lead was busy during the call. They mentioned they will call back later.",
+    icon: PhoneCall,
+  },
+  {
+    id: "interested-demo",
+    label: "Interested - Demo Scheduled",
+    notes: "Lead is interested and wants to see a demo. Demo scheduled for [Add date/time].",
+    icon: Calendar,
+  },
+  {
+    id: "needs-time",
+    label: "Needs Time to Decide",
+    notes: "Lead needs more time to think about it. Will follow up in [Add timeframe].",
+    icon: Clock,
+  },
+];
 
 /**
  * View All Call Notes Modal
@@ -18,6 +72,7 @@ const ViewAllCallNotesModal = ({ isOpen, onClose, lead, onSuccess }) => {
   const [callTime, setCallTime] = useState(new Date().toTimeString().slice(0, 5));
   const [loading, setLoading] = useState(false);
   const [currentLead, setCurrentLead] = useState(lead);
+  const [selectedReason, setSelectedReason] = useState(null);
 
   // Update current lead when prop changes
   useEffect(() => {
@@ -65,6 +120,11 @@ const ViewAllCallNotesModal = ({ isOpen, onClose, lead, onSuccess }) => {
     }
   };
 
+  const handleTemplateSelect = (template) => {
+    setSelectedReason(template);
+    setNotes(template.notes);
+  };
+
   const handleAddCallNote = async (e) => {
     e?.preventDefault();
     
@@ -92,6 +152,7 @@ const ViewAllCallNotesModal = ({ isOpen, onClose, lead, onSuccess }) => {
         setNotes("");
         setCallDate(new Date().toISOString().split('T')[0]);
         setCallTime(new Date().toTimeString().slice(0, 5));
+        setSelectedReason(null);
         setShowAddForm(false);
         // Notify parent component
         if (onSuccess) {
@@ -169,6 +230,7 @@ const ViewAllCallNotesModal = ({ isOpen, onClose, lead, onSuccess }) => {
                         onClick={() => {
                           setShowAddForm(false);
                           setNotes("");
+                          setSelectedReason(null);
                         }}
                         className="text-textMuted hover:text-text"
                       >
@@ -176,6 +238,35 @@ const ViewAllCallNotesModal = ({ isOpen, onClose, lead, onSuccess }) => {
                       </button>
                     </div>
                     <form onSubmit={handleAddCallNote} className="space-y-4">
+                      {/* Quick Templates - 2 rows x 4 columns */}
+                      <div>
+                        <label className="block text-sm font-semibold text-text mb-3">
+                          Quick Templates
+                        </label>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                          {CALL_NOTE_TEMPLATES.map((template) => {
+                            const Icon = template.icon;
+                            return (
+                              <button
+                                key={template.id}
+                                type="button"
+                                onClick={() => handleTemplateSelect(template)}
+                                className={`p-3 rounded-xl border-2 transition-all text-left ${
+                                  selectedReason?.id === template.id
+                                    ? "border-brand bg-brand/10"
+                                    : "border-brintelli-border hover:border-brand/50"
+                                }`}
+                              >
+                                <Icon className={`h-4 w-4 mb-1 ${
+                                  selectedReason?.id === template.id ? "text-brand" : "text-textMuted"
+                                }`} />
+                                <p className="text-xs font-medium text-text">{template.label}</p>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-sm font-medium text-text mb-1">
@@ -209,11 +300,14 @@ const ViewAllCallNotesModal = ({ isOpen, onClose, lead, onSuccess }) => {
                         <textarea
                           value={notes}
                           onChange={(e) => setNotes(e.target.value)}
-                          placeholder="Enter call notes..."
-                          rows="4"
-                          className="w-full px-3 py-2 border border-brintelli-border rounded-lg bg-white text-text focus:outline-none focus:ring-2 focus:ring-brand-500"
+                          placeholder="Enter call notes... You can use a template above or write your own notes."
+                          rows="6"
+                          className="w-full px-3 py-2 border border-brintelli-border rounded-lg bg-white text-text focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
                           required
                         />
+                        <p className="text-xs text-textMuted mt-1">
+                          {notes.length} characters
+                        </p>
                       </div>
                       <div className="flex justify-end gap-2">
                         <Button
@@ -222,6 +316,7 @@ const ViewAllCallNotesModal = ({ isOpen, onClose, lead, onSuccess }) => {
                           onClick={() => {
                             setShowAddForm(false);
                             setNotes("");
+                            setSelectedReason(null);
                           }}
                           disabled={loading}
                         >

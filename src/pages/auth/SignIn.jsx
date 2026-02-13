@@ -147,6 +147,18 @@ const handleSubmit = async (event) => {
                     {isLoading ? "Signing in..." : "Sign In"}
                   </Button>
                 </form>
+
+                <div className="mt-6 text-center">
+                  <p className="text-sm text-textMuted">
+                    Don't have an account?{" "}
+                    <Link
+                      to="/auth/signup"
+                      className="font-semibold text-brand-500 hover:text-brand-600 transition-colors"
+                    >
+                      Sign up
+                    </Link>
+                  </p>
+                </div>
               </div>
 
               <div className="mt-6 text-center text-textMuted text-xs">

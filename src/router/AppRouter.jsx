@@ -7,6 +7,7 @@ import ProtectedRoute from "../components/ProtectedRoute";
 import PublicRoute from "../components/PublicRoute";
 // Auth pages
 import SignIn from "../pages/auth/SignIn";
+import SignUp from "../pages/auth/SignUp";
 import ForgotPassword from "../pages/auth/ForgotPassword";
 import ChooseRole from "../pages/auth/ChooseRole";
 import Register from "../pages/auth/Register";
@@ -15,6 +16,7 @@ import RegisterStaff from "../pages/auth/RegisterStaff";
 
 // Student pages
 import StudentDashboard from "../pages/student/Dashboard";
+import EnrollmentFlow from "../pages/student/EnrollmentFlow";
 import StudentMyCourses from "../pages/student/MyCourses";
 import StudentProgramDetail from "../pages/student/ProgramDetail";
 import StudentCourseDetail from "../pages/student/CourseDetail";
@@ -233,6 +235,8 @@ import ScholarshipAndOffers from "../pages/sales/ScholarshipAndOffers";
 import SalesFinancialProcessing from "../pages/sales/FinancialProcessing";
 import LSMAllocation from "../pages/sales/LSMAllocation";
 import OfferPage from "../pages/candidate/OfferPage";
+import AssessmentPage from "../pages/public/AssessmentPage";
+import SecureAssessment from "../pages/public/SecureAssessment";
 import SalesNotifications from "../pages/sales/Notifications";
 import InactiveLeads from "../pages/sales/InactiveLeads";
 
@@ -297,6 +301,7 @@ const AppRouter = () => {
         {/* Auth routes - only accessible when NOT logged in */}
         <Route path="/auth">
           <Route path="signin" element={<PublicRoute><SignIn /></PublicRoute>} />
+          <Route path="signup" element={<PublicRoute><SignUp /></PublicRoute>} />
           <Route path="register" element={<PublicRoute><Register /></PublicRoute>} />
           <Route path="register/student" element={<PublicRoute><RegisterStudent /></PublicRoute>} />
           <Route path="register/staff" element={<PublicRoute><RegisterStaff /></PublicRoute>} />
@@ -305,6 +310,11 @@ const AppRouter = () => {
           <Route path="choose-role" element={<ChooseRole />} />
           <Route path="select-user" element={<ChooseRole />} />
         </Route>
+        
+        {/* Public assessment route - accessible without enrollment */}
+        <Route path="/assessment/:leadId" element={<PublicRoute><AssessmentPage /></PublicRoute>} />
+        <Route path="/assessment/:leadId/test" element={<ProtectedRoute><AssessmentPage /></ProtectedRoute>} />
+        <Route path="/assessment" element={<ProtectedRoute><SecureAssessment /></ProtectedRoute>} />
         
         {/* Admin portal routes - protected */}
         <Route path="/admin-portal" element={
@@ -370,6 +380,7 @@ const AppRouter = () => {
           <Route path="student">
             <Route path="onboarding" element={<StudentOnboarding />} />
             <Route path="dashboard" element={<StudentDashboard />} />
+            <Route path="enrollment" element={<EnrollmentFlow />} />
             <Route path="my-courses" element={<StudentMyCourses />} />
             <Route path="program/:enrollmentId" element={<StudentProgramDetail />} />
             <Route path="course/:id" element={<StudentCourseDetail />} />

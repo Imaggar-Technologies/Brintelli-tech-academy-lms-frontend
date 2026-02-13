@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { Phone, Calendar, MessageSquare, FileText, Video, Clock, CheckCircle, XCircle, Search, RefreshCw, ClipboardList, Edit2, Plus, MoreVertical, ArchiveX } from "lucide-react";
+import { Phone, Calendar, MessageSquare, FileText, Video, Clock, CheckCircle, XCircle, Search, RefreshCw, ClipboardList, Edit2, Plus, MoreVertical, ArchiveX, Send } from "lucide-react";
 import PageHeader from "../../components/PageHeader";
 import Button from "../../components/Button";
 import StatsCard from "../../components/StatsCard";
@@ -11,6 +11,7 @@ import RescheduleMeetingModal from "../../components/RescheduleMeetingModal";
 import ScheduleAssessmentModal from "../../components/ScheduleAssessmentModal";
 import BookingOptionsMenu from "../../components/BookingOptionsMenu";
 import DeactivateLeadModal from "../../components/DeactivateLeadModal";
+import ViewAllCallNotesModal from "../../components/ViewAllCallNotesModal";
 import Modal from "../../components/Modal";
 import { leadAPI } from "../../api/lead";
 import salesCallApi from "../../api/salesCall";
@@ -56,6 +57,7 @@ const MeetingsCounselling = () => {
   const [preScreeningData, setPreScreeningData] = useState(null);
   const [selectedLeadForCall, setSelectedLeadForCall] = useState(null);
   const [loadingLead, setLoadingLead] = useState(false);
+  const [showCallNotesModal, setShowCallNotesModal] = useState(false);
 
   const isSalesAgent = currentUser?.role === 'sales_agent';
   const userEmail = currentUser?.email;
@@ -87,10 +89,10 @@ const MeetingsCounselling = () => {
 
   // Close dropdown when modals open
   useEffect(() => {
-    if (showReportModal || showRescheduleModal || showAssessmentModal || showRescheduleCallModal || showInviteModal || showCallReportModal || showPreScreeningModal || showDeactivateModal) {
+    if (showReportModal || showRescheduleModal || showAssessmentModal || showRescheduleCallModal || showInviteModal || showCallReportModal || showPreScreeningModal || showDeactivateModal || showCallNotesModal) {
       setOpenDropdownId(null);
     }
-  }, [showReportModal, showRescheduleModal, showAssessmentModal, showRescheduleCallModal, showInviteModal, showCallReportModal, showPreScreeningModal, showDeactivateModal]);
+  }, [showReportModal, showRescheduleModal, showAssessmentModal, showRescheduleCallModal, showInviteModal, showCallReportModal, showPreScreeningModal, showDeactivateModal, showCallNotesModal]);
 
   // Fetch leads with booked meetings
   useEffect(() => {
@@ -294,6 +296,33 @@ const MeetingsCounselling = () => {
     setShowAssessmentModal(true);
   };
 
+  const handleSendAssessmentForCall = async (call) => {
+    try {
+      if (!call.leadId) {
+        toast.error('Lead ID not found for this call');
+        return;
+      }
+
+      // Fetch the lead data
+      setLoadingLead(true);
+      const leadResponse = await leadAPI.getLeadById(call.leadId);
+      
+      if (leadResponse.success && leadResponse.data?.lead) {
+        const lead = leadResponse.data.lead;
+        setSelectedLead(lead);
+        setSelectedLeadForCall(lead);
+        setShowAssessmentModal(true);
+      } else {
+        toast.error('Failed to fetch lead data');
+      }
+    } catch (error) {
+      console.error('Error fetching lead for assessment:', error);
+      toast.error('Failed to load lead data');
+    } finally {
+      setLoadingLead(false);
+    }
+  };
+
   const handleDeactivateLead = (lead) => {
     setSelectedLead(lead);
     setShowDeactivateModal(true);
@@ -443,9 +472,27 @@ const MeetingsCounselling = () => {
     }
   };
 
-  // ─── Handle view call details ────────────────────────────────────────
-  const handleViewCallDetails = (call) => {
-    navigate(`/sales/calls/${call._id?.toString() || call.id}`);
+  // ─── Handle view call notes ────────────────────────────────────────
+  const handleViewCallNotes = async (call) => {
+    try {
+      const leadId = call.leadId?.toString();
+      if (!leadId) {
+        toast.error('Lead ID not found for this call');
+        return;
+      }
+      
+      const lead = await fetchLeadForCall(leadId);
+      if (!lead) {
+        toast.error('Lead not found');
+        return;
+      }
+      
+      setSelectedLeadForCall(lead);
+      setShowCallNotesModal(true);
+    } catch (error) {
+      console.error('Error opening call notes:', error);
+      toast.error('Failed to open call notes');
+    }
   };
 
   // ─── Handle submit/resubmit report for sales call ──────────────────
@@ -856,21 +903,23 @@ const MeetingsCounselling = () => {
                                     />
                                     <div className="absolute right-0 top-full mt-1 w-56 bg-white rounded-lg shadow-lg border border-brintelli-border z-50">
                                       <div className="py-1">
-                                        {/* View Call Details */}
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleViewCallDetails(call);
-                                            setOpenDropdownId(null);
-                                          }}
-                                          className="w-full px-4 py-2 text-left text-sm text-text hover:bg-brintelli-baseAlt transition-colors flex items-center gap-2"
-                                        >
-                                          <FileText className="h-4 w-4" />
-                                          View Call Details
-                                        </button>
+                                        {/* Call Notes */}
+                                        {call.leadId && (
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleViewCallNotes(call);
+                                              setOpenDropdownId(null);
+                                            }}
+                                            className="w-full px-4 py-2 text-left text-sm text-text hover:bg-brintelli-baseAlt transition-colors flex items-center gap-2"
+                                          >
+                                            <Phone className="h-4 w-4" />
+                                            Call Notes
+                                          </button>
+                                        )}
                                         
-                                        {/* Submit Report (if completed) */}
-                                        {call.status === 'COMPLETED' && call.leadId && (
+                                        {/* Submit Report */}
+                                        {call.leadId && (
                                           <button
                                             onClick={(e) => {
                                               e.stopPropagation();
@@ -879,7 +928,7 @@ const MeetingsCounselling = () => {
                                             }}
                                             className="w-full px-4 py-2 text-left text-sm text-text hover:bg-brintelli-baseAlt transition-colors flex items-center gap-2"
                                           >
-                                            <ClipboardList className="h-4 w-4" />
+                                            <FileText className="h-4 w-4" />
                                             Submit Report
                                           </button>
                                         )}
@@ -971,6 +1020,21 @@ const MeetingsCounselling = () => {
                                           >
                                             <ClipboardList className="h-4 w-4" />
                                             View Insights
+                                          </button>
+                                        )}
+                                        
+                                        {/* Send Assessment */}
+                                        {call.leadId && (
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleSendAssessmentForCall(call);
+                                              setOpenDropdownId(null);
+                                            }}
+                                            className="w-full px-4 py-2 text-left text-sm text-text hover:bg-brintelli-baseAlt transition-colors flex items-center gap-2"
+                                          >
+                                            <Send className="h-4 w-4" />
+                                            Send Assessment
                                           </button>
                                         )}
                                         
@@ -1437,6 +1501,24 @@ const MeetingsCounselling = () => {
           handleRefresh();
           fetchCalls();
           setSelectedLeadForCall(null);
+        }}
+      />
+
+      {/* View Call Notes Modal */}
+      <ViewAllCallNotesModal
+        isOpen={showCallNotesModal}
+        onClose={() => {
+          setShowCallNotesModal(false);
+          setSelectedLeadForCall(null);
+        }}
+        lead={selectedLeadForCall}
+        onSuccess={(updatedLead) => {
+          // Refresh data when call notes are added
+          handleRefresh();
+          fetchCalls();
+          if (updatedLead) {
+            setSelectedLeadForCall(updatedLead);
+          }
         }}
       />
 

@@ -17,6 +17,9 @@ import {
   EyeOff
 } from "lucide-react";
 import Button from "../../components/Button";
+import Modal from "../../components/Modal";
+import AssessmentLayout from "../../components/assessment/AssessmentLayout";
+import { AssessmentProvider } from "../../contexts/AssessmentContext";
 import toast from "react-hot-toast";
 import { apiRequest } from "../../api/apiClient";
 
@@ -38,6 +41,10 @@ const SecureAssessment = () => {
   const [warnings, setWarnings] = useState([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [permissionError, setPermissionError] = useState(null);
+  const [showFullscreenModal, setShowFullscreenModal] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [pausedTimeRemaining, setPausedTimeRemaining] = useState(null);
+  const audioRef = useRef(null);
   
   // Assessment state
   const [started, setStarted] = useState(false);
@@ -81,7 +88,7 @@ const SecureAssessment = () => {
 
   // Timer countdown
   useEffect(() => {
-    if (started && timeRemaining > 0) {
+    if (started && timeRemaining > 0 && !isPaused && isFullscreen) {
       intervalRef.current = setInterval(() => {
         setTimeRemaining((prev) => {
           if (prev <= 1) {
@@ -91,6 +98,12 @@ const SecureAssessment = () => {
           return prev - 1;
         });
       }, 1000);
+    } else {
+      // Clear interval if paused or not in fullscreen
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
     }
 
     return () => {
@@ -98,7 +111,7 @@ const SecureAssessment = () => {
         clearInterval(intervalRef.current);
       }
     };
-  }, [started, timeRemaining]);
+  }, [started, timeRemaining, isPaused, isFullscreen]);
 
   const requestMediaAccess = async () => {
     try {
@@ -299,17 +312,144 @@ const SecureAssessment = () => {
   };
 
   const setupFullscreenDetection = () => {
-    document.addEventListener("fullscreenchange", () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    });
+    const handleFullscreenChange = () => {
+      const isCurrentlyFullscreen = !!(
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.mozFullScreenElement ||
+        document.msFullscreenElement
+      );
+      
+      // If user exits fullscreen during assessment
+      if (started && !isCurrentlyFullscreen && isFullscreen) {
+        handleFullscreenExit();
+      }
+      
+      // If user re-enters fullscreen
+      if (started && isCurrentlyFullscreen && !isFullscreen && isPaused) {
+        setIsPaused(false);
+        setShowFullscreenModal(false);
+        toast.success("Fullscreen mode restored. Assessment resumed.");
+      }
+      
+      setIsFullscreen(isCurrentlyFullscreen);
+    };
     
-    document.addEventListener("webkitfullscreenchange", () => {
-      setIsFullscreen(!!document.webkitFullscreenElement);
-    });
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+    document.addEventListener("mozfullscreenchange", handleFullscreenChange);
+    document.addEventListener("MSFullscreenChange", handleFullscreenChange);
     
-    document.addEventListener("mozfullscreenchange", () => {
-      setIsFullscreen(!!document.mozFullScreenElement);
-    });
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      document.removeEventListener("webkitfullscreenchange", handleFullscreenChange);
+      document.removeEventListener("mozfullscreenchange", handleFullscreenChange);
+      document.removeEventListener("MSFullscreenChange", handleFullscreenChange);
+    };
+  };
+
+  const handleFullscreenExit = () => {
+    if (!started) return;
+    
+    // Pause the timer
+    setIsPaused(true);
+    setPausedTimeRemaining(timeRemaining);
+    
+    // Stop the timer interval
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    
+    // Play alert sound
+    playAlertSound();
+    
+    // Show modal
+    setShowFullscreenModal(true);
+    
+    // Add warning
+    const warning = {
+      id: Date.now(),
+      message: "Fullscreen mode exited. Assessment paused.",
+      type: "error",
+      timestamp: new Date().toLocaleTimeString(),
+    };
+    setWarnings((prev) => [...prev, warning]);
+  };
+
+  const playAlertSound = () => {
+    try {
+      // Create audio context for beep sound
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.value = 800; // Beep frequency
+      oscillator.type = 'sine';
+      
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.5);
+      
+      // Play second beep after short delay
+      setTimeout(() => {
+        const oscillator2 = audioContext.createOscillator();
+        const gainNode2 = audioContext.createGain();
+        oscillator2.connect(gainNode2);
+        gainNode2.connect(audioContext.destination);
+        oscillator2.frequency.value = 800;
+        oscillator2.type = 'sine';
+        gainNode2.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gainNode2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+        oscillator2.start(audioContext.currentTime);
+        oscillator2.stop(audioContext.currentTime + 0.5);
+      }, 300);
+    } catch (error) {
+      console.error("Error playing alert sound:", error);
+    }
+  };
+
+  const handleReenterFullscreen = async () => {
+    try {
+      let entered = false;
+      
+      if (document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen();
+        entered = true;
+      } else if (document.documentElement.webkitRequestFullscreen) {
+        await document.documentElement.webkitRequestFullscreen();
+        entered = true;
+      } else if (document.documentElement.mozRequestFullScreen) {
+        await document.documentElement.mozRequestFullScreen();
+        entered = true;
+      } else if (document.documentElement.msRequestFullscreen) {
+        await document.documentElement.msRequestFullscreen();
+        entered = true;
+      }
+      
+      if (entered) {
+        // Resume the timer
+        setIsPaused(false);
+        setShowFullscreenModal(false);
+        
+        // Restart timer if time remaining
+        if (pausedTimeRemaining !== null && pausedTimeRemaining > 0) {
+          setTimeRemaining(pausedTimeRemaining);
+        }
+        
+        toast.success("Fullscreen mode restored. Assessment resumed.");
+      } else {
+        toast.error("Unable to enter fullscreen mode. Please press F11 or use browser menu.");
+      }
+    } catch (error) {
+      console.error("Error entering fullscreen:", error);
+      toast.error("Unable to enter fullscreen mode. Please press F11 or use browser menu.");
+    }
   };
 
   const startTimer = () => {
@@ -403,10 +543,12 @@ const SecureAssessment = () => {
 
   // Mock questions - replace with API call
   const mcqQuestions = Array.from({ length: TOTAL_MCQ }, (_, i) => ({
-    id: i + 1,
+    id: `mcq-${i + 1}`,
+    type: i % 3 === 0 ? 'multiple' : 'single', // Every 3rd question is multiple choice
+    allowMultiple: i % 3 === 0,
     question: `MCQ Question ${i + 1}: What is the output of the following code?`,
     options: [
-      { value: "a", label: "Option A" },
+      { value: "a", label: "Option A", description: i === 0 ? "First option description" : null },
       { value: "b", label: "Option B" },
       { value: "c", label: "Option C" },
       { value: "d", label: "Option D" },
@@ -414,7 +556,7 @@ const SecureAssessment = () => {
   }));
 
   const codingQuestions = Array.from({ length: TOTAL_CODING }, (_, i) => ({
-    id: i + 1,
+    id: `coding-${i + 1}`,
     question: `Coding Question ${i + 1}: Write a function to solve the following problem...`,
     language: "javascript",
     starterCode: `function solution() {\n  // Your code here\n}`,
@@ -570,7 +712,63 @@ const SecureAssessment = () => {
   const currentQ = currentQuestions[currentQuestion];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <>
+      {/* Fullscreen Exit Modal */}
+      {showFullscreenModal && (
+        <Modal
+          isOpen={showFullscreenModal}
+          onClose={() => {}} // Prevent closing without fullscreen
+          title="Fullscreen Mode Required"
+          size="md"
+        >
+          <div className="space-y-6">
+            <div className="text-center">
+              <AlertTriangle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+              <h3 className="text-xl font-bold text-gray-900 mb-2">
+                Assessment Paused
+              </h3>
+              <p className="text-gray-600 mb-4">
+                You have exited fullscreen mode. The assessment has been paused.
+              </p>
+            </div>
+
+            {/* Time Remaining Display */}
+            <div className="bg-gray-50 rounded-lg p-4 text-center">
+              <p className="text-sm text-gray-600 mb-2">Time Remaining</p>
+              <p className="text-3xl font-mono font-bold text-red-600">
+                {formatTime(pausedTimeRemaining !== null ? pausedTimeRemaining : timeRemaining)}
+              </p>
+            </div>
+
+            {/* Instructions */}
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <h4 className="font-semibold text-yellow-900 mb-2">Instructions:</h4>
+              <ul className="text-sm text-yellow-800 space-y-1 list-disc list-inside">
+                <li>Fullscreen mode is required to continue the assessment</li>
+                <li>Click the button below to re-enter fullscreen mode</li>
+                <li>Alternatively, press F11 on your keyboard</li>
+                <li>The timer will resume once fullscreen is restored</li>
+              </ul>
+            </div>
+
+            {/* Action Button */}
+            <div className="flex gap-3">
+              <Button
+                onClick={handleReenterFullscreen}
+                className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              >
+                Enter Fullscreen Mode
+              </Button>
+            </div>
+
+            <p className="text-xs text-center text-gray-500">
+              The assessment will remain paused until fullscreen mode is restored.
+            </p>
+          </div>
+        </Modal>
+      )}
+
+      <div className="min-h-screen bg-gray-50">
       {/* Top Bar - Fixed */}
       <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-50 shadow-sm">
         <div className="flex items-center gap-4">
@@ -623,124 +821,33 @@ const SecureAssessment = () => {
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto p-6">
-        <div className="grid grid-cols-12 gap-6">
-          {/* Sidebar - Question Navigation */}
-          <div className="col-span-3">
-            <div className="bg-white rounded-lg border border-gray-200 p-4 sticky top-24">
-              <div className="mb-4">
-                <Button
-                  variant={currentSection === 'mcq' ? 'primary' : 'ghost'}
-                  onClick={() => {
-                    setCurrentSection('mcq');
-                    setCurrentQuestion(0);
-                  }}
-                  className="w-full mb-2"
-                >
-                  <FileText className="h-4 w-4 mr-2" />
-                  MCQ ({TOTAL_MCQ})
-                </Button>
-                <Button
-                  variant={currentSection === 'coding' ? 'primary' : 'ghost'}
-                  onClick={() => {
-                    setCurrentSection('coding');
-                    setCurrentQuestion(0);
-                  }}
-                  className="w-full"
-                >
-                  <Code className="h-4 w-4 mr-2" />
-                  Coding ({TOTAL_CODING})
-                </Button>
-              </div>
-
-              <div className="mb-4">
-                <h3 className="text-sm font-semibold text-gray-700 mb-2">
-                  {currentSection === 'mcq' ? 'MCQ Questions' : 'Coding Questions'}
-                </h3>
-                <div className="grid grid-cols-5 gap-2">
-                  {currentQuestions.map((q, idx) => {
-                    const hasAnswer = currentSection === 'mcq' 
-                      ? answers[q.id] 
-                      : codingAnswers[q.id];
-                    return (
-                      <button
-                        key={q.id}
-                        onClick={() => setCurrentQuestion(idx)}
-                        className={`h-10 rounded-lg border text-xs font-medium transition ${
-                          currentQuestion === idx
-                            ? "border-blue-600 bg-blue-600 text-white"
-                            : hasAnswer
-                            ? "border-green-500 bg-green-50 text-green-700"
-                            : "border-gray-300 bg-white text-gray-700 hover:border-blue-300"
-                        }`}
-                      >
-                        {idx + 1}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <Button
-                onClick={() => handleSubmit(false)}
-                className="w-full bg-red-600 hover:bg-red-700"
-              >
-                Submit Assessment
-              </Button>
-            </div>
-          </div>
-
-          {/* Main Content */}
-          <div className="col-span-9">
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              {currentSection === 'mcq' ? (
-                <MCQQuestion
-                  question={currentQ}
-                  answer={answers[currentQ.id]}
-                  onAnswerChange={(answer) => {
-                    setAnswers({ ...answers, [currentQ.id]: answer });
-                  }}
-                />
-              ) : (
-                <CodingQuestion
-                  question={currentQ}
-                  answer={codingAnswers[currentQ.id]}
-                  onAnswerChange={(answer) => {
-                    setCodingAnswers({ ...codingAnswers, [currentQ.id]: answer });
-                  }}
-                />
-              )}
-
-              {/* Navigation */}
-              <div className="flex justify-between mt-6 pt-6 border-t border-gray-200">
-                <Button
-                  variant="ghost"
-                  onClick={() => setCurrentQuestion(Math.max(0, currentQuestion - 1))}
-                  disabled={currentQuestion === 0}
-                >
-                  Previous
-                </Button>
-                <Button
-                  onClick={() => {
-                    if (currentQuestion < currentQuestions.length - 1) {
-                      setCurrentQuestion(currentQuestion + 1);
-                    } else if (currentSection === 'mcq') {
-                      setCurrentSection('coding');
-                      setCurrentQuestion(0);
-                    }
-                  }}
-                  disabled={currentQuestion === currentQuestions.length - 1 && currentSection === 'coding'}
-                >
-                  {currentQuestion === currentQuestions.length - 1 && currentSection === 'mcq'
-                    ? 'Go to Coding'
-                    : currentQuestion === currentQuestions.length - 1
-                    ? 'Review'
-                    : 'Next'}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div className={`${isPaused ? 'pointer-events-none opacity-50' : ''}`}>
+        <AssessmentProvider 
+          questions={[...mcqQuestions, ...codingQuestions].map((q, index) => ({
+            ...q,
+            questionNumber: index + 1,
+          }))}
+          currentSection={currentSection}
+        >
+          <AssessmentLayout
+            questions={currentSection === 'mcq' ? mcqQuestions : codingQuestions}
+            currentSection={currentSection}
+            onSectionChange={(section) => {
+              setCurrentSection(section);
+            }}
+            onSubmit={() => handleSubmit(false)}
+            onNextSection={() => {
+              if (currentSection === 'mcq') {
+                setCurrentSection('coding');
+              }
+            }}
+            onPreviousSection={() => {
+              if (currentSection === 'coding') {
+                setCurrentSection('mcq');
+              }
+            }}
+          />
+        </AssessmentProvider>
       </div>
 
       {/* Camera Preview - Small */}
@@ -751,61 +858,6 @@ const SecureAssessment = () => {
           playsInline
           muted
           className="w-full h-full object-cover"
-        />
-      </div>
-    </div>
-  );
-};
-
-// MCQ Question Component
-const MCQQuestion = ({ question, answer, onAnswerChange }) => {
-  return (
-    <div>
-      <h2 className="text-xl font-semibold text-gray-900 mb-6">
-        {question.question}
-      </h2>
-      <div className="space-y-3">
-        {question.options.map((option) => (
-          <label
-            key={option.value}
-            className={`flex items-center gap-4 p-4 rounded-lg border-2 cursor-pointer transition ${
-              answer === option.value
-                ? "border-blue-600 bg-blue-50"
-                : "border-gray-200 hover:border-gray-300"
-            }`}
-          >
-            <input
-              type="radio"
-              name={`question-${question.id}`}
-              value={option.value}
-              checked={answer === option.value}
-              onChange={(e) => onAnswerChange(e.target.value)}
-              className="h-5 w-5 text-blue-600"
-            />
-            <span className="text-gray-900">{option.label}</span>
-          </label>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-// Coding Question Component
-const CodingQuestion = ({ question, answer, onAnswerChange }) => {
-  return (
-    <div>
-      <h2 className="text-xl font-semibold text-gray-900 mb-4">
-        {question.question}
-      </h2>
-      <div className="mt-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Write your solution:
-        </label>
-        <textarea
-          value={answer || question.starterCode}
-          onChange={(e) => onAnswerChange(e.target.value)}
-          className="w-full h-96 font-mono text-sm border border-gray-300 rounded-lg p-4 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          placeholder="Write your code here..."
         />
       </div>
     </div>

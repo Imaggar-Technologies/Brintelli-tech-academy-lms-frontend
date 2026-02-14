@@ -60,12 +60,13 @@ const CodingNavigationControls = () => {
 };
 
 const AssessmentLayout = ({ 
-  questions = [], 
+  questions = [],
   activeSection = 'mcq',
   onSectionChange,
   onSubmit,
   onRunCode,
   onSubmitCode,
+  cameraPreview,
 }) => {
   const { 
     mcqQuestions, 
@@ -91,8 +92,8 @@ const AssessmentLayout = ({
     <div className="h-screen flex flex-col bg-gray-50">
       {/* 3-Column Layout */}
       <div className="flex-1 flex overflow-hidden">
-        {/* LEFT SIDEBAR */}
-        <div className="w-64 flex-shrink-0 border-r border-gray-200 bg-white overflow-y-auto">
+        {/* LEFT SIDEBAR - Question List (15%) */}
+        <div className="w-[15%] flex-shrink-0 border-r border-gray-200 bg-white overflow-y-auto">
           <div className="p-4 space-y-4">
             {/* Section Switcher */}
             <div className="bg-gray-50 rounded-lg border border-gray-200 p-3">
@@ -124,11 +125,18 @@ const AssessmentLayout = ({
             >
               Submit Assessment
             </Button>
+
+            {/* Camera Preview (PIP) - Below Submit Button */}
+            {cameraPreview && (
+              <div className="mt-4">
+                {cameraPreview}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* CENTER - Question Display */}
-        <div className="flex-1 overflow-y-auto bg-white">
+        {/* CENTER - Question Display (35% for coding, flex-1 for MCQ) */}
+        <div className={isCoding ? "w-[35%] flex-shrink-0 overflow-y-auto bg-white border-r border-gray-200" : "flex-1 overflow-y-auto bg-white border-r border-gray-200"}>
           {isCoding ? (
             // For coding: Show problem panel in center with navigation
             <div className="h-full flex flex-col">
@@ -149,9 +157,9 @@ const AssessmentLayout = ({
           )}
         </div>
 
-        {/* RIGHT PANEL - Editor (only for coding) */}
+        {/* RIGHT PANEL - Editor (50% for coding, hidden for MCQ) */}
         {isCoding && currentQuestionState && (
-          <div className="w-96 flex-shrink-0 border-l border-gray-200 bg-white overflow-hidden flex flex-col">
+          <div className="w-[50%] flex-shrink-0 border-l border-gray-200 bg-white overflow-hidden flex flex-col">
             <EditorPanel 
               question={currentQuestion}
               questionState={currentQuestionState}

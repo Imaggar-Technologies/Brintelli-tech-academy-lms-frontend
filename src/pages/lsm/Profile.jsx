@@ -33,19 +33,19 @@ const Profile = () => {
         const res = await apiRequest("/api/users/me");
         const user = res?.data?.user || null;
         setProfile(user);
-        setEditData({
+      setEditData({
           fullName: user?.fullName || user?.name || '',
           email: user?.email || '',
           phone: user?.phone || '',
           address: user?.address || '',
           bio: user?.bio || '',
-        });
-        // TODO: Fetch LSM stats from API
-        setStats({
-          totalMentees: 0,
-          activeBatches: 0,
-          pendingOnboarding: 0,
-        });
+      });
+    // TODO: Fetch LSM stats from API
+    setStats({
+      totalMentees: 0,
+      activeBatches: 0,
+      pendingOnboarding: 0,
+    });
       } catch (e) {
         setError(e?.message || "Failed to load profile");
         toast.error(e?.message || "Failed to load profile");
@@ -82,7 +82,7 @@ const Profile = () => {
           bio: user.bio,
         }));
       }
-      toast.success('Profile updated successfully');
+    toast.success('Profile updated successfully');
     } catch (e) {
       setError(e?.message || "Failed to update profile");
       toast.error(e?.message || "Failed to update profile");
@@ -152,7 +152,7 @@ const Profile = () => {
         </div>
       ) : (
         <>
-          {/* Stats Cards */}
+      {/* Stats Cards */}
       {stats && (
         <div className="grid gap-5 md:grid-cols-3 mb-6">
           <StatsCard

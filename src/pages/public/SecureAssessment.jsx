@@ -22,6 +22,7 @@ import AssessmentLayout from "../../components/assessment/AssessmentLayout";
 import { AssessmentProvider } from "../../contexts/AssessmentContext";
 import toast from "react-hot-toast";
 import { apiRequest } from "../../api/apiClient";
+import codeExecutionAPI from "../../api/codeExecution";
 
 const TOTAL_MCQ = 15;
 const TOTAL_CODING = 5;
@@ -53,6 +54,9 @@ const SecureAssessment = () => {
   const [timeRemaining, setTimeRemaining] = useState(TOTAL_TIME);
   const [answers, setAnswers] = useState({});
   const [codingAnswers, setCodingAnswers] = useState({});
+  const [tokenValid, setTokenValid] = useState(null); // null = checking, true = valid, false = invalid/expired
+  const [tokenError, setTokenError] = useState(null);
+  const [assessmentId, setAssessmentId] = useState(null);
   
   // Media streams
   const videoRef = useRef(null);
@@ -60,12 +64,61 @@ const SecureAssessment = () => {
   const intervalRef = useRef(null);
   const warningTimeoutRef = useRef(null);
 
+  // Verify token on component mount
+  useEffect(() => {
+    const verifyToken = async () => {
+      if (!leadId || !token) {
+        setTokenValid(false);
+        setTokenError('Missing assessment link parameters. Please use the link provided in your email.');
+        return;
+      }
+
+      try {
+        setTokenValid(null); // Checking
+        const response = await apiRequest(`/api/assessments/verify/${leadId}?token=${token}`, {
+          method: 'GET',
+        });
+
+        if (response.success) {
+          setTokenValid(true);
+          setTokenError(null);
+          // Store assessment ID for code execution
+          if (response.data?.assessment?.id) {
+            setAssessmentId(response.data.assessment.id);
+            console.log('Assessment ID stored:', response.data.assessment.id);
+          } else {
+            console.warn('Assessment ID not found in token verification response');
+            // Try to get assessmentId from lead if available
+            // This is a fallback - normally it should be in the response
+          }
+        } else {
+          setTokenValid(false);
+          setTokenError(response.message || 'Invalid assessment link');
+        }
+      } catch (error) {
+        console.error('Error verifying token:', error);
+        setTokenValid(false);
+        const errorMessage = error?.response?.data?.message || error?.message || 'Invalid or expired assessment link';
+        setTokenError(errorMessage);
+        
+        // Check if it's an expiration error
+        if (errorMessage.toLowerCase().includes('expired')) {
+          toast.error('Assessment link has expired. Please request a new link.');
+        } else {
+          toast.error(errorMessage);
+        }
+      }
+    };
+
+    verifyToken();
+  }, [leadId, token]);
+
   // Request media access on component mount (before starting assessment)
   useEffect(() => {
-    if (!started) {
+    if (!started && tokenValid === true) {
       requestMediaAccess();
     }
-  }, []); // Run once on mount
+  }, [tokenValid]); // Run when token is validated
 
   // Initialize proctoring when assessment starts
   useEffect(() => {
@@ -587,36 +640,148 @@ const SecureAssessment = () => {
 
   // Handler for running code
   const handleRunCode = async (questionId, code, language, customInput) => {
-    // TODO: Integrate with actual code execution API
-    // For now, simulate execution
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    return {
-      status: 'success',
-      stdout: 'Code executed successfully',
-      stderr: '',
-      executionTime: '48ms',
-      memory: '45MB',
-      testCases: [
-        {
-          passed: true,
-          executionTime: '12ms',
-        },
-        {
-          passed: true,
-          executionTime: '15ms',
-        },
-      ],
-    };
+    try {
+      console.log('Running code:', { questionId, language, codeLength: code.length, assessmentId });
+      
+      // Use assessment-specific code execution endpoint if assessmentId is available
+      if (assessmentId) {
+        const response = await codeExecutionAPI.executeAssessmentCode(
+          assessmentId,
+          code,
+          language,
+          questionId,
+          customInput || ''
+        );
+        
+        if (response.success && response.data) {
+          return response.data;
+        } else {
+          throw new Error(response.message || 'Failed to execute code');
+        }
+      } else {
+        // Fallback to general code execution API (requires auth)
+        // This should not happen if token validation worked correctly
+        const response = await codeExecutionAPI.runCode(code, language, customInput || '');
+        
+        if (response.success && response.data) {
+          return response.data;
+        } else if (response.status) {
+          return response;
+        } else {
+          throw new Error('Invalid response format from code execution service');
+        }
+      }
+    } catch (error) {
+      console.error('Error running code:', error);
+      const errorMessage = error.message || 'Failed to execute code';
+      toast.error(errorMessage);
+      
+      // Return error result in expected format
+      return {
+        status: 'error',
+        error: errorMessage,
+        stdout: '',
+        stderr: errorMessage,
+        executionTime: '0ms',
+        memory: '0MB',
+      };
+    }
   };
 
   // Handler for submitting code
   const handleSubmitCode = async (questionId, code, language) => {
-    // Mark question as answered in context
-    // The actual submission will happen when the user clicks "Submit Assessment"
-    console.log('Code submitted for question:', questionId);
-    return Promise.resolve();
+    try {
+      console.log('Submitting code:', { questionId, language, codeLength: code.length });
+      
+      // Get test cases from the question (if available)
+      const currentQuestion = codingQuestions.find(q => q.id === questionId);
+      const testCases = currentQuestion?.testCases || currentQuestion?.problemData?.sampleCases?.map(tc => ({
+        input: tc.input,
+        expectedOutput: tc.output,
+      })) || [];
+
+      if (testCases.length === 0) {
+        // If no test cases, just mark as answered
+        toast.success('Code saved successfully');
+        return { status: 'success', message: 'Code saved' };
+      }
+
+      // Submit code with test cases
+      const response = await codeExecutionAPI.submitCode(code, language, questionId, testCases);
+      
+      // Handle response format
+      const result = response.success && response.data ? response.data : response;
+
+      if (result.score !== undefined) {
+        toast.success(`Code submitted! Score: ${result.score}% (${result.passedTests}/${result.totalTests} tests passed)`);
+      } else {
+        toast.success('Code submitted successfully');
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Error submitting code:', error);
+      const errorMessage = error.message || 'Failed to submit code';
+      toast.error(errorMessage);
+      throw error;
+    }
   };
+
+  // Show token validation error
+  if (tokenValid === false) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
+        <div className="max-w-2xl w-full bg-white rounded-2xl shadow-2xl p-8">
+          <div className="text-center mb-8">
+            <XCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Assessment Link Expired</h1>
+            <p className="text-gray-600 mb-6">{tokenError || 'This assessment link has expired or is invalid.'}</p>
+            
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6 text-left">
+              <h3 className="font-semibold text-yellow-900 mb-2">What to do next:</h3>
+              <ul className="text-sm text-yellow-800 space-y-2">
+                <li>• Assessment links are valid for 1 hour from the time they are sent</li>
+                <li>• Please contact your sales representative or administrator to request a new assessment link</li>
+                <li>• You can also check your email for a new assessment invitation</li>
+              </ul>
+            </div>
+
+            <div className="flex gap-4 justify-center">
+              <Button
+                onClick={() => navigate('/auth/signin')}
+                variant="primary"
+                className="px-6"
+              >
+                Go to Sign In
+              </Button>
+              <Button
+                onClick={() => window.location.reload()}
+                variant="ghost"
+                className="px-6"
+              >
+                Retry
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading while verifying token
+  if (tokenValid === null) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
+        <div className="max-w-2xl w-full bg-white rounded-2xl shadow-2xl p-8">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Verifying Assessment Link</h1>
+            <p className="text-gray-600">Please wait while we verify your assessment access...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!started) {
     return (
@@ -891,19 +1056,22 @@ const SecureAssessment = () => {
             onSubmit={() => handleSubmit(false)}
             onRunCode={handleRunCode}
             onSubmitCode={handleSubmitCode}
+            cameraPreview={
+              cameraEnabled ? (
+                <div className="w-full bg-gray-900 rounded-lg overflow-hidden border-2 border-gray-700 shadow-lg">
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full h-full object-cover"
+                    style={{ maxHeight: '144px' }}
+                  />
+                </div>
+              ) : null
+            }
           />
         </AssessmentProvider>
-      </div>
-
-      {/* Camera Preview - Small */}
-      <div className="fixed bottom-4 right-4 w-48 h-36 bg-gray-900 rounded-lg overflow-hidden border-2 border-gray-700 shadow-2xl">
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          muted
-          className="w-full h-full object-cover"
-        />
       </div>
       </div>
     </>

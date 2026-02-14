@@ -10,6 +10,7 @@ import { hrNav } from "./base/hr.nav";
 import { academicNav } from "./base/academic.nav";
 import { studentNav } from "./base/student.nav";
 import { unenrolledStudentNav } from "./base/unenrolledStudent.nav";
+import { onboardingStudentNav } from "./base/onboardingStudent.nav";
 import { systemNav } from "./base/system.nav";
 
 import { filterByPermissions } from "./filters/permissionFilter";
@@ -40,6 +41,7 @@ import {
   Bell,
   TrendingUp,
   CreditCard,
+  Calendar,
 } from "lucide-react";
 
 /**
@@ -58,16 +60,28 @@ const domainNavMap = {
 };
 
 /**
- * Get navigation based on enrollment status
- * Returns unenrolled navigation if user has no enrollment
+ * Get navigation based on enrollment and onboarding status
+ * Returns appropriate navigation based on student state:
+ * - Not enrolled: unenrolledStudentNav (assessment flow)
+ * - Enrolled but onboarding incomplete: onboardingStudentNav (onboarding flow)
+ * - Enrolled and onboarding complete: studentNav (regular student flow)
  */
 function getStudentNavigation(userAttributes = {}) {
   const hasEnrollment = userAttributes.hasEnrollment || userAttributes.enrolledCourses?.length > 0;
+  const onboardingStatus = userAttributes.onboardingStatus || userAttributes.enrollment?.onboardingStatus;
+  const isOnboardingComplete = onboardingStatus === 'COMPLETED' || userAttributes.isOnboardingComplete === true;
   
+  // Not enrolled - show assessment/enrollment flow
   if (!hasEnrollment) {
     return unenrolledStudentNav;
   }
   
+  // Enrolled but onboarding not complete - show onboarding flow
+  if (hasEnrollment && !isOnboardingComplete) {
+    return onboardingStudentNav;
+  }
+  
+  // Enrolled and onboarding complete - show regular student navigation
   return studentNav;
 }
 
@@ -308,6 +322,11 @@ function getPinnedItems(domain, role, permissions, attributes = {}) {
         { label: "Take Assessment", to: "/student/enrollment", icon: ClipboardCheck },
         { label: "Complete Payment", to: "/student/enrollment", icon: CreditCard },
       ],
+      onboarding: [
+        { label: "Complete Onboarding", to: "/student/onboarding", icon: ClipboardCheck },
+        { label: "Choose Batch", to: "/student/onboarding#batch", icon: Calendar },
+        { label: "Choose Mentor", to: "/student/onboarding#mentor", icon: UsersRound },
+      ],
     },
     academic: {
       lsm: [
@@ -357,9 +376,21 @@ function getPinnedItems(domain, role, permissions, attributes = {}) {
   const domainPinned = pinnedConfig[domain];
   if (!domainPinned) return [];
 
-  // Special handling for unenrolled students
-  if (domain === "student" && !attributes.hasEnrollment && !attributes.enrolledCourses?.length) {
-    return domainPinned.unenrolled || domainPinned.default || [];
+  // Special handling for student states
+  if (domain === "student") {
+    const hasEnrollment = attributes.hasEnrollment || attributes.enrolledCourses?.length > 0;
+    const onboardingStatus = attributes.onboardingStatus || attributes.enrollment?.onboardingStatus;
+    const isOnboardingComplete = onboardingStatus === 'COMPLETED' || attributes.isOnboardingComplete === true;
+    
+    // Not enrolled - show enrollment flow pinned items
+    if (!hasEnrollment) {
+      return domainPinned.unenrolled || domainPinned.default || [];
+    }
+    
+    // Enrolled but onboarding incomplete - show onboarding pinned items (if defined)
+    if (hasEnrollment && !isOnboardingComplete) {
+      return domainPinned.onboarding || domainPinned.default || [];
+    }
   }
 
   return domainPinned[role] || domainPinned.default || [];

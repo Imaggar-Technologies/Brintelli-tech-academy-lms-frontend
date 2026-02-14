@@ -31,13 +31,13 @@ const FinanceProfile = () => {
         const res = await apiRequest("/api/users/me");
         const user = res?.data?.user || null;
         setProfile(user);
-        setEditData({
+      setEditData({
           fullName: user?.fullName || user?.name || '',
           email: user?.email || '',
           phone: user?.phone || '',
           address: user?.address || '',
           bio: user?.bio || '',
-        });
+      });
       } catch (e) {
         setError(e?.message || "Failed to load profile");
         toast.error(e?.message || "Failed to load profile");
@@ -152,7 +152,7 @@ const FinanceProfile = () => {
           <div className="text-textMuted">Loading profile...</div>
         </div>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-3">
         {/* Profile Card */}
         <div className="lg:col-span-2 space-y-6">
           {/* Personal Information */}

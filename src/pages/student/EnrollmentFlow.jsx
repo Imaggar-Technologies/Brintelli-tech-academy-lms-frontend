@@ -17,6 +17,7 @@ import {
 import Button from "../../components/Button";
 import toast from "react-hot-toast";
 import { apiRequest } from "../../api/apiClient";
+import studentAPI from "../../api/student";
 
 const steps = [
   { id: 1, name: "Assessment", icon: ClipboardCheck, color: "blue" },
@@ -93,6 +94,14 @@ const EnrollmentFlow = () => {
 
   const checkEnrollmentStatus = async () => {
     try {
+      // Check if student is already enrolled
+      const enrollmentResponse = await studentAPI.getMyEnrollment();
+      if (enrollmentResponse.success && enrollmentResponse.data?.enrollment) {
+        // Student is already enrolled, redirect to dashboard
+        navigate('/student/dashboard');
+        return;
+      }
+      
       // Check if user has completed assessment
       // Check if user has applied for scholarship
       // Check if user has completed payment
@@ -150,9 +159,9 @@ const EnrollmentFlow = () => {
     try {
       // Complete enrollment process
       toast.success("Enrollment completed successfully!");
-      // Redirect to dashboard or refresh user data
+      // Redirect to dashboard after enrollment
       setTimeout(() => {
-        window.location.reload();
+        navigate('/student/dashboard');
       }, 2000);
     } catch (error) {
       console.error("Error completing enrollment:", error);
@@ -512,7 +521,7 @@ const CompletionStep = () => {
         Your enrollment has been completed successfully. You'll receive a confirmation email shortly.
       </p>
       <Button
-        onClick={() => window.location.reload()}
+        onClick={() => navigate('/student/dashboard')}
         className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
       >
         Go to Dashboard

@@ -34,6 +34,8 @@ const EnrollmentFlow = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [completedSteps, setCompletedSteps] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [alreadyEnrolled, setAlreadyEnrolled] = useState(false);
+  const [enrollmentCheckDone, setEnrollmentCheckDone] = useState(false);
   
   // Form data for each step
   const [formData, setFormData] = useState({
@@ -94,23 +96,22 @@ const EnrollmentFlow = () => {
 
   const checkEnrollmentStatus = async () => {
     try {
-      // Check if student is already enrolled
       const enrollmentResponse = await studentAPI.getMyEnrollment();
       if (enrollmentResponse.success && enrollmentResponse.data?.enrollment) {
-        // Student is already enrolled, redirect to dashboard
-        navigate('/student/dashboard');
-        return;
+        const enrollment = enrollmentResponse.data.enrollment;
+        const isOnboardingComplete = enrollment.onboardingStatus === 'COMPLETED' || enrollment.isOnboardingComplete === true;
+        const status = enrollment.status ? String(enrollment.status).toUpperCase() : '';
+        const isActive = ['ENROLLED', 'ACTIVE'].includes(status);
+        if (isActive && isOnboardingComplete) {
+          setAlreadyEnrolled(true);
+          setEnrollmentCheckDone(true);
+          return;
+        }
       }
-      
-      // Check if user has completed assessment
-      // Check if user has applied for scholarship
-      // Check if user has completed payment
-      // Set completed steps accordingly
-      
-      // For now, we'll start from step 1
-      // In production, fetch from API
+      setEnrollmentCheckDone(true);
     } catch (error) {
       console.error("Error checking enrollment status:", error);
+      setEnrollmentCheckDone(true);
     }
   };
 
@@ -202,6 +203,39 @@ const EnrollmentFlow = () => {
         return null;
     }
   };
+
+  // Already fully enrolled: show message and link to dashboard (no redirect)
+  if (alreadyEnrolled) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/50 to-indigo-50/50 p-6 flex items-center justify-center">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl border border-gray-200 p-8 text-center">
+          <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+            <CheckCircle2 className="h-10 w-10 text-green-600" />
+          </div>
+          <h2 className="text-xl font-bold text-text mb-2">You're already enrolled</h2>
+          <p className="text-textMuted mb-6">Your enrollment is complete. Go to your dashboard to continue.</p>
+          <Button
+            onClick={() => navigate('/student/dashboard')}
+            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+          >
+            Go to Dashboard
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Brief loading while we check enrollment (avoid flash of content before check)
+  if (!enrollmentCheckDone) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/50 to-indigo-50/50 p-6 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-10 w-10 animate-spin text-brand mx-auto mb-3" />
+          <p className="text-textMuted">Loading enrollment...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/50 to-indigo-50/50 p-6">

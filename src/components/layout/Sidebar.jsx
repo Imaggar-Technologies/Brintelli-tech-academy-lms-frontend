@@ -13,12 +13,11 @@ const Sidebar = ({ collapsed, mobileOpen, onCloseMobile, role }) => {
     return config || {
       title: "Brintelli LMS",
       subtitle: "Dashboard",
-      pinned: [],
       navigation: [],
     };
   }, [role]);
 
-  const { title, subtitle, pinned = [], navigation = [] } = navConfig;
+  const { title, subtitle, navigation = [] } = navConfig;
 
   const toggleGroup = (groupId) => {
     setOpenGroups((prev) => {
@@ -100,16 +99,7 @@ const Sidebar = ({ collapsed, mobileOpen, onCloseMobile, role }) => {
             className="mt-6 flex-1 overflow-y-auto overflow-x-hidden sidebar-scroll"
           >
             <div className="sidebar-content">
-              {pinned && pinned.length > 0 && (
-                <div className="flex flex-col gap-2">
-                  {!collapsed && (
-                    <p className="px-2 text-xs font-semibold uppercase tracking-wide text-textMuted">Pinned tools</p>
-                  )}
-                  <div className="flex flex-col gap-1.5">{pinned.map((tool) => renderLink(tool))}</div>
-                </div>
-              )}
-
-              <div className="mt-6 flex flex-col gap-2">
+              <div className="flex flex-col gap-2">
                 {!collapsed && (
                   <p className="px-2 text-xs font-semibold uppercase tracking-wide text-textMuted">Navigation</p>
                 )}

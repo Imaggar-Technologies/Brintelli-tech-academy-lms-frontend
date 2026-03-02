@@ -73,6 +73,16 @@ export const studentAPI = {
       body: JSON.stringify({ batchId }),
     });
   },
+
+  // Get assessments allocated to this student (from lead/sales)
+  getMyAssessments: async () => {
+    return apiRequest('/api/students/assessments');
+  },
+
+  // Check if prerequisite courses are met (for Fees & Onboarding access)
+  getPrerequisitesStatus: async () => {
+    return apiRequest('/api/students/prerequisites-status');
+  },
 };
 
 export default studentAPI;

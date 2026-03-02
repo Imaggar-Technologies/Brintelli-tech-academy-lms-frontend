@@ -19,7 +19,6 @@ import {
   UserSquare2,
   BriefcaseBusiness,
   Settings,
-  Rocket,
   FileText,
   Terminal,
   Star,
@@ -78,31 +77,6 @@ const navConfig = {
   ],
 };
 
-const pinnedConfig = {
-  student: [
-    { label: "Dashboard", href: "/student/dashboard", icon: LayoutDashboard, pinned: true },
-    { label: "MCQ Practice", href: "/student/mcq-practice", icon: FileText, pinned: true },
-    { label: "Code Playground", href: "/student/code-playground", icon: Terminal, pinned: true },
-    { label: "Placement Assistance", href: "/student/placement-assistance", icon: BriefcaseBusiness, pinned: true },
-  ],
-  tutor: [
-    { label: "Dashboard", href: "/tutor/dashboard", icon: LayoutDashboard, pinned: true },
-    { label: "Lessons", href: "/tutor/lessons", icon: BookOpen, pinned: true },
-  ],
-  lsm: [
-    { label: "Dashboard", href: "/lsm/dashboard", icon: LayoutDashboard, pinned: true },
-    { label: "Mentees", href: "/lsm/mentees", icon: UsersRound, pinned: true },
-  ],
-  admin: [
-    { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard, pinned: true },
-    { label: "Placement", href: "/admin/placement", icon: BriefcaseBusiness, pinned: true },
-  ],
-  placement: [
-    { label: "Dashboard", href: "/placement/dashboard", icon: LayoutDashboard, pinned: true },
-    { label: "Company Pipeline", href: "/placement/dashboard#companies", icon: Rocket, pinned: true },
-  ],
-};
-
 const roleMeta = {
   student: { title: "Brintelli Learn", subtitle: "Student Portal" },
   tutor: { title: "Brintelli Teach", subtitle: "Tutor Console" },
@@ -119,7 +93,6 @@ const SidebarNav = ({
 }) => {
   const { pathname } = useLocation();
   const items = navConfig[role] ?? navConfig.student;
-  const pinnedItems = pinnedConfig[role] ?? [];
   const meta = roleMeta[role] ?? roleMeta.student;
 
   const sidebarWidth = collapsed ? "w-20" : "w-64 lg:w-72";
@@ -189,35 +162,6 @@ const SidebarNav = ({
               </>
             )}
           </div>
-
-          {pinnedItems.length > 0 && (
-            <div className="mt-4 flex flex-col gap-1.5">
-              {showLabels && (
-                <p className="px-1 text-xs font-semibold uppercase tracking-wide text-textMuted">
-                  Pinned tools
-                </p>
-              )}
-              <ul className="flex flex-col gap-1.5">
-                {pinnedItems.map((item) => {
-                  const Icon = item.icon;
-                  const targetPath = item.href.split("#")[0];
-                  const isActive = pathname.startsWith(targetPath);
-                  return (
-                    <li key={item.href}>
-                      <NavLink
-                        to={item.href}
-                        title={!showLabels ? item.label : undefined}
-                        className={navItemClass(isActive)}
-                        onClick={onCloseMobile}
-                      >
-                        {renderNavItemContent(Icon, item.label, isActive, true)}
-                      </NavLink>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          )}
 
           <nav className="mt-5 flex-1 overflow-y-auto">
             {showLabels && (

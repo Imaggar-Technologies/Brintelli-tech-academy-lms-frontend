@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
+import PrerequisiteGate from '../../components/student/PrerequisiteGate';
 import studentAPI from '../../api/student';
 
 const StudentOnboarding = () => {
@@ -173,6 +174,7 @@ const StudentOnboarding = () => {
         description="Confirm your batch and select your mentor to get started"
       />
 
+      <PrerequisiteGate fallbackMessage="Complete prerequisite courses before you can choose your batch and mentor.">
       {/* Onboarding Steps */}
       <div className="grid gap-6 md:grid-cols-2">
         {/* Batch Confirmation Step */}
@@ -509,6 +511,7 @@ const StudentOnboarding = () => {
           )}
         </div>
       </div>
+      </PrerequisiteGate>
 
       {/* Batch Selection Modal */}
       {showBatchModal && (

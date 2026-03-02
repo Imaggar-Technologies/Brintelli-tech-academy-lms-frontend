@@ -78,160 +78,102 @@ export const roleNavigationConfig = {
     title: "Brintelli LMS",
     subtitle: "Learner Workspace",
     nav: learnerNav,
-    pinned: [
-      { label: "Continue Learning", to: "/student/dashboard#continue", icon: Sparkles },
-      { label: "Code Playground", to: "/student/code-playground", icon: Terminal },
-      { label: "Placement Hub", to: "/student/placement-assistance", icon: BriefcaseBusiness },
-    ],
+    pinned: [],
   },
   student: {
     title: "Brintelli LMS",
     subtitle: "Learner Workspace",
     nav: learnerNav,
-    pinned: [
-      { label: "Continue Learning", to: "/student/dashboard#continue", icon: Sparkles },
-      { label: "Code Playground", to: "/student/code-playground", icon: Terminal },
-      { label: "Placement Hub", to: "/student/placement-assistance", icon: BriefcaseBusiness },
-    ],
+    pinned: [],
   },
   lsm: {
     title: "Brintelli LMS",
     subtitle: "Learning Success Manager",
     nav: lsmNav,
-    pinned: [
-      { label: "My Mentees", to: "/lsm/mentees", icon: UsersRound },
-      { label: "Session Schedule", to: "/lsm/sessions", icon: CalendarDays },
-      { label: "Escalations", to: "/lsm/escalations", icon: ShieldCheck },
-    ],
+    pinned: [],
   },
   tutor: {
     title: "Brintelli LMS",
     subtitle: "Tutor Console",
     nav: tutorNav,
-    pinned: [
-      { label: "Manage Courses", to: "/tutor/courses", icon: BookOpen },
-      { label: "Lesson Planner", to: "/tutor/planner", icon: CalendarDays },
-      { label: "Live Classes", to: "/tutor/live", icon: MonitorPlay },
-    ],
+    pinned: [],
   },
   mentor: {
     title: "Brintelli LMS",
     subtitle: "Mentor Portal",
     nav: mentorNav,
-    pinned: [
-      { label: "My Mentees", to: "/mentor/mentees", icon: UsersRound },
-      { label: "Session Schedule", to: "/mentor/schedule", icon: CalendarDays },
-      { label: "Share Resources", to: "/mentor/share-resources", icon: Sparkles },
-    ],
+    pinned: [],
   },
   finance: {
     title: "Brintelli Finance",
     subtitle: "Revenue Operations",
     nav: financeNav,
-    pinned: [
-      { label: "Collections", to: "/finance/dues", icon: Wallet },
-      { label: "Revenue Analytics", to: "/finance/revenue", icon: BarChart3 },
-      { label: "Outstanding Dues", to: "/finance/dues", icon: Target },
-    ],
+    pinned: [],
   },
   sales: {
     title: "Brintelli LMS",
     subtitle: "Dashboard",
     nav: salesNav,
-    pinned: [
-      { label: "Pipeline Overview", to: "/sales/pipeline", icon: BarChart3 },
-      { label: "Demo Schedule", to: "/sales/demos", icon: CalendarClock },
-      { label: "Active Deals", to: "/sales/deals", icon: Handshake },
-    ],
+    pinned: [],
   },
-  // Sales sub-roles will override the base sales config
   sales_agent: {
     title: "Brintelli LMS",
     subtitle: "Dashboard",
     nav: salesAgentNav,
-    pinned: [
-      { label: "Pipeline", to: "/sales/pipeline", icon: ArrowRightLeft },
-      { label: "Dashboard", to: "/sales/dashboard", icon: LayoutDashboard },
-      { label: "Notification", to: "/sales/notifications", icon: Bell },
-    ],
+    pinned: [],
   },
   sales_lead: {
     title: "Brintelli LMS",
     subtitle: "Dashboard",
     nav: salesLeadNav,
-    pinned: [
-      { label: "Pipeline Overview", to: "/sales/pipeline", icon: BarChart3 },
-      { label: "Team Management", to: "/sales/team", icon: UsersRound },
-      { label: "Active Leads", to: "/sales/active-leads", icon: Target },
-    ],
+    pinned: [],
   },
   sales_head: {
     title: "Brintelli LMS",
     subtitle: "Dashboard",
     nav: salesHeadNav,
-    pinned: [
-      { label: "Pipeline Overview", to: "/sales/pipeline", icon: BarChart3 },
-      { label: "Team Management", to: "/sales/team", icon: UsersRound },
-      { label: "Sales Analytics", to: "/sales/analytics", icon: TrendingUp },
-    ],
+    pinned: [],
   },
   marketing: {
     title: "Brintelli Marketing",
     subtitle: "Marketing Operations",
     nav: marketingNav,
-    pinned: [
-      { label: "Campaigns", to: "/marketing/campaigns", icon: Megaphone },
-      { label: "Social Media", to: "/marketing/social", icon: MessageSquare },
-      { label: "Marketing Analytics", to: "/marketing/analytics", icon: BarChart3 },
-    ],
+    pinned: [],
   },
   programManager: {
     title: "Brintelli LMS",
     subtitle: "Program Manager",
     nav: programManagerNav,
-    pinned: [
-      { label: "Academic Ops", to: "/program-manager/syllabus", icon: CalendarClock },
-      { label: "Batch Health", to: "/program-manager/batch-health", icon: ChartSpline },
-      { label: "Content Review", to: "/program-manager/content-review", icon: ClipboardCheck },
-    ],
+    pinned: [],
   },
   placement: {
     title: "Brintelli LMS",
     subtitle: "Placement Officer",
     nav: placementNav,
-    pinned: [
-      { label: "Pipeline", to: "/placement/dashboard", icon: Target },
-      { label: "Interviews", to: "/placement/interviews", icon: CalendarClock },
-      { label: "Offers", to: "/placement/offers", icon: Award },
-    ],
+    pinned: [],
   },
   externalHR: {
     title: "Brintelli Hiring Portal",
     subtitle: "External HR Partner",
     nav: externalHrNav,
-    pinned: [
-      { label: "Pipeline Overview", to: "/external-hr/pipeline", icon: BriefcaseBusiness },
-      { label: "Shortlisted Candidates", to: "/external-hr/shortlisted", icon: UserCheck },
-      { label: "Interview Schedule", to: "/external-hr/schedule", icon: CalendarClock },
-    ],
+    pinned: [],
   },
   admin: {
     title: "Brintelli Control",
     subtitle: "Admin Control Panel",
     nav: adminNav,
-    pinned: [
-      { label: "Dashboard", to: "/admin-portal/dashboard", icon: Sparkles },
-      { label: "LMS Management", to: "/admin-portal/lms/programs", icon: BriefcaseBusiness },
-      { label: "Analytics", to: "/admin-portal/analytics", icon: BarChart3 },
-    ],
+    pinned: [],
   },
 };
 
 /**
  * Legacy getRoleNavigation - now uses new enterprise system
  * Maintains backward compatibility while using RBAC/ABAC filtering
+ * @param {string} role - User role
+ * @param {object} user - User object (permissions, enrollment, etc.)
+ * @param {string} [pathname] - Current pathname (for student's 3 layout sidebars: assessment, fees, onboarding)
  */
-export const getRoleNavigation = (role, user = null) => {
+export const getRoleNavigation = (role, user = null, pathname = "") => {
   // CRITICAL: For sales roles, ALWAYS use new RBAC system - no legacy fallback
   const isSalesRole = role && (role.startsWith('sales_') || role === 'sales');
   
@@ -284,9 +226,10 @@ export const getRoleNavigation = (role, user = null) => {
   
   // Try new enterprise navigation system first
   try {
-    // Get user permissions from role
-    // Priority: user.permissions > ROLE_PERMISSIONS[role] > []
-    const userPermissions = user?.permissions || ROLE_PERMISSIONS[role] || [];
+    // Get user permissions: use role defaults when user has none (so student nav is not empty)
+    const userPermissions = (user?.permissions && user.permissions.length > 0)
+      ? user.permissions
+      : (ROLE_PERMISSIONS[role] || []);
     
     // Debug logging
     if (process.env.NODE_ENV === 'development') {
@@ -309,8 +252,8 @@ export const getRoleNavigation = (role, user = null) => {
       enrollment: user?.enrollment || null, // Full enrollment object
     };
     
-    // Use new navigation system - pass parameters correctly
-    const newConfig = getNewRoleNavigation(role, userPermissions, userAttributes);
+    // Use new navigation system - pass parameters correctly (pathname for student layout sidebar)
+    const newConfig = getNewRoleNavigation(role, userPermissions, userAttributes, pathname);
     
     if (newConfig && newConfig.navigation && newConfig.navigation.length > 0) {
       if (process.env.NODE_ENV === 'development') {

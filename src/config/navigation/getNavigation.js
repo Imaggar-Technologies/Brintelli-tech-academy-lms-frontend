@@ -11,6 +11,9 @@ import { academicNav } from "./base/academic.nav";
 import { studentNav } from "./base/student.nav";
 import { unenrolledStudentNav } from "./base/unenrolledStudent.nav";
 import { onboardingStudentNav } from "./base/onboardingStudent.nav";
+import { studentAssessmentNav } from "./base/studentAssessment.nav";
+import { studentFeesNav } from "./base/studentFees.nav";
+import { studentOnboardingLayoutNav } from "./base/studentOnboardingLayout.nav";
 import { systemNav } from "./base/system.nav";
 
 import { filterByPermissions } from "./filters/permissionFilter";
@@ -60,13 +63,28 @@ const domainNavMap = {
 };
 
 /**
+ * Get navigation for student layout by pathname (3 layout types)
+ * When student is on /student/assessment, /student/fees, or /student/onboarding, show the matching sidebar.
+ */
+function getStudentLayoutNavByPath(pathname = "") {
+  if (pathname.startsWith("/student/assessment")) return studentAssessmentNav;
+  if (pathname.startsWith("/student/fees")) return studentFeesNav;
+  if (pathname.startsWith("/student/onboarding")) return studentOnboardingLayoutNav;
+  return null;
+}
+
+/**
  * Get navigation based on enrollment and onboarding status
  * Returns appropriate navigation based on student state:
  * - Not enrolled: unenrolledStudentNav (assessment flow)
  * - Enrolled but onboarding incomplete: onboardingStudentNav (onboarding flow)
  * - Enrolled and onboarding complete: studentNav (regular student flow)
  */
-function getStudentNavigation(userAttributes = {}) {
+function getStudentNavigation(userAttributes = {}, pathname = "") {
+  // If pathname matches one of the 3 layout routes, use that layout's sidebar
+  const layoutNav = getStudentLayoutNavByPath(pathname);
+  if (layoutNav) return layoutNav;
+
   const hasEnrollment = userAttributes.hasEnrollment || userAttributes.enrolledCourses?.length > 0;
   const onboardingStatus = userAttributes.onboardingStatus || userAttributes.enrollment?.onboardingStatus;
   const isOnboardingComplete = onboardingStatus === 'COMPLETED' || userAttributes.isOnboardingComplete === true;
@@ -144,17 +162,17 @@ const roleDomainMap = {
  * @param {Object} options.attributes - User's attributes object (e.g., { assignedClasses: [...], enrolledCourses: [...] })
  * @returns {Array} Filtered navigation items
  */
-export function getNavigation({ domain, role, permissions = [], attributes = {} }) {
+export function getNavigation({ domain, role, permissions = [], attributes = {}, pathname = "" }) {
   // Determine domain from role if not provided
   if (!domain && role) {
     domain = roleDomainMap[role] || "student";
   }
 
   // Get base navigation for the domain
-  // Special handling for students: check enrollment status
+  // Special handling for students: check pathname for 3 layout types, else enrollment status
   let nav;
   if (domain === "student" || role === "student" || role === "learner") {
-    nav = getStudentNavigation(attributes);
+    nav = getStudentNavigation(attributes, pathname);
   } else {
     nav = domainNavMap[domain] || [];
   }
@@ -206,7 +224,7 @@ function normalizePermissions(permissions) {
  * Legacy compatibility function
  * Maps old role-based navigation to new domain-based system
  */
-export function getRoleNavigation(role, userPermissions = [], userAttributes = {}) {
+export function getRoleNavigation(role, userPermissions = [], userAttributes = {}, pathname = "") {
   // Get domain from role
   const domain = roleDomainMap[role] || "student";
   
@@ -221,20 +239,21 @@ export function getRoleNavigation(role, userPermissions = [], userAttributes = {
     console.log('[getRoleNavigation] Normalized permissions:', normalizedPermissions);
   }
   
-  // Get filtered navigation
+  // Get filtered navigation (pathname used for student's 3 layout sidebars)
   const navigation = getNavigation({
     domain,
     role,
     permissions: normalizedPermissions,
     attributes: userAttributes,
+    pathname,
   });
 
-  // Return in the format expected by existing components
+  // Return in the format expected by existing components (pinned tools removed from all navigation)
   return {
     navigation,
     title: getDomainTitle(domain),
     subtitle: getDomainSubtitle(domain, role),
-    pinned: getPinnedItems(domain, role, normalizedPermissions),
+    pinned: [],
   };
 }
 
@@ -281,118 +300,3 @@ function getAcademicSubtitle(role) {
   };
   return academicSubtitles[role] || "Academic Operations";
 }
-
-/**
- * Get pinned items for domain/role
- */
-function getPinnedItems(domain, role, permissions, attributes = {}) {
-
-  // Pinned items configuration per domain/role
-  const pinnedConfig = {
-    sales: {
-      sales_agent: [
-        { label: "Pipeline", to: "/sales/pipeline", icon: ArrowRightLeft },
-        { label: "Dashboard", to: "/sales/dashboard", icon: LayoutDashboard },
-        { label: "Notification", to: "/sales/notifications", icon: Bell },
-      ],
-      sales_lead: [
-        { label: "Pipeline Overview", to: "/sales/pipeline", icon: BarChart3 },
-        { label: "Team Management", to: "/sales/team", icon: UsersRound },
-        { label: "Active Leads", to: "/sales/active-leads", icon: Target },
-      ],
-      sales_head: [
-        { label: "Pipeline Overview", to: "/sales/pipeline", icon: BarChart3 },
-        { label: "Team Management", to: "/sales/team", icon: UsersRound },
-        { label: "Sales Analytics", to: "/sales/analytics", icon: TrendingUp },
-      ],
-      default: [
-        { label: "Pipeline Overview", to: "/sales/pipeline", icon: BarChart3 },
-        { label: "Demo Schedule", to: "/sales/demos", icon: CalendarClock },
-        { label: "Active Deals", to: "/sales/deals", icon: Handshake },
-      ],
-    },
-    student: {
-      default: [
-        { label: "Continue Learning", to: "/student/dashboard#continue", icon: Sparkles },
-        { label: "Code Playground", to: "/student/code-playground", icon: Terminal },
-        { label: "Placement Hub", to: "/student/placement-assistance", icon: BriefcaseBusiness },
-      ],
-      unenrolled: [
-        { label: "Start Enrollment", to: "/student/enrollment", icon: Sparkles },
-        { label: "Take Assessment", to: "/student/enrollment", icon: ClipboardCheck },
-        { label: "Complete Payment", to: "/student/enrollment", icon: CreditCard },
-      ],
-      onboarding: [
-        { label: "Complete Onboarding", to: "/student/onboarding", icon: ClipboardCheck },
-        { label: "Choose Batch", to: "/student/onboarding#batch", icon: Calendar },
-        { label: "Choose Mentor", to: "/student/onboarding#mentor", icon: UsersRound },
-      ],
-    },
-    academic: {
-      lsm: [
-        { label: "My Mentees", to: "/lsm/mentees", icon: UsersRound },
-        { label: "Session Schedule", to: "/lsm/sessions", icon: CalendarDays },
-        { label: "Escalations", to: "/lsm/escalations", icon: ShieldCheck },
-      ],
-      tutor: [
-        { label: "Manage Courses", to: "/tutor/courses", icon: BookOpen },
-        { label: "Lesson Planner", to: "/tutor/planner", icon: CalendarDays },
-        { label: "Live Classes", to: "/tutor/live", icon: MonitorPlay },
-      ],
-      mentor: [
-        { label: "My Mentees", to: "/mentor/mentees", icon: UsersRound },
-        { label: "Session Schedule", to: "/mentor/schedule", icon: CalendarDays },
-        { label: "Share Resources", to: "/mentor/share-resources", icon: Sparkles },
-      ],
-      programManager: [
-        { label: "Academic Ops", to: "/program-manager/syllabus", icon: CalendarClock },
-        { label: "Batch Health", to: "/program-manager/batch-health", icon: ChartSpline },
-        { label: "Content Review", to: "/program-manager/content-review", icon: ClipboardCheck },
-      ],
-    },
-    marketing: {
-      default: [
-        { label: "Campaigns", to: "/marketing/campaigns", icon: Megaphone },
-        { label: "Social Media", to: "/marketing/social", icon: MessageSquare },
-        { label: "Marketing Analytics", to: "/marketing/analytics", icon: BarChart3 },
-      ],
-    },
-    finance: {
-      default: [
-        { label: "Collections", to: "/finance/dues", icon: Wallet },
-        { label: "Revenue Analytics", to: "/finance/revenue", icon: BarChart3 },
-        { label: "Outstanding Dues", to: "/finance/dues", icon: Target },
-      ],
-    },
-    system: {
-      default: [
-        { label: "Dashboard", to: "/admin-portal/dashboard", icon: Sparkles },
-        { label: "LMS Management", to: "/admin-portal/lms/programs", icon: BriefcaseBusiness },
-        { label: "Analytics", to: "/admin-portal/analytics", icon: BarChart3 },
-      ],
-    },
-  };
-
-  const domainPinned = pinnedConfig[domain];
-  if (!domainPinned) return [];
-
-  // Special handling for student states
-  if (domain === "student") {
-    const hasEnrollment = attributes.hasEnrollment || attributes.enrolledCourses?.length > 0;
-    const onboardingStatus = attributes.onboardingStatus || attributes.enrollment?.onboardingStatus;
-    const isOnboardingComplete = onboardingStatus === 'COMPLETED' || attributes.isOnboardingComplete === true;
-    
-    // Not enrolled - show enrollment flow pinned items
-    if (!hasEnrollment) {
-      return domainPinned.unenrolled || domainPinned.default || [];
-    }
-    
-    // Enrolled but onboarding incomplete - show onboarding pinned items (if defined)
-    if (hasEnrollment && !isOnboardingComplete) {
-      return domainPinned.onboarding || domainPinned.default || [];
-    }
-  }
-
-  return domainPinned[role] || domainPinned.default || [];
-}
-

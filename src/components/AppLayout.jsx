@@ -1,8 +1,11 @@
 import { Outlet, useLocation, Navigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import Navigation from "./layout/Navigation";
 import Topbar from "./layout/Topbar";
 import SecureContextBanner from "./SecureContextBanner";
+import { updateUser } from "../store/slices/authSlice";
+import { selectCurrentUser } from "../store/slices/authSlice";
 
 const getRoleFromPath = (pathname) => {
   // Redirect admin routes to admin portal
@@ -32,15 +35,46 @@ const getRoleFromPath = (pathname) => {
 
 const AppLayout = () => {
   const location = useLocation();
+  const dispatch = useDispatch();
+  const user = useSelector(selectCurrentUser);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const role = getRoleFromPath(location.pathname);
   const isLiveMeetingPage = /\/sessions\/[^/]+\/live$/.test(location.pathname);
+  const enrollmentSyncedRef = useRef(false);
 
   // Redirect admin routes to admin portal
   if (!role && (location.pathname.startsWith("/admin-portal") || location.pathname.startsWith("/admin/"))) {
     return <Navigate to="/admin-portal/dashboard" replace />;
   }
+
+  // Sync enrollment from API for students so sidebar shows full nav (Dashboard, Live Classes, Playground, etc.) when enrolled
+  useEffect(() => {
+    if (role !== "student" || !user) return;
+    if (enrollmentSyncedRef.current) return;
+    enrollmentSyncedRef.current = true;
+    (async () => {
+      try {
+        const studentAPI = (await import("../api/student")).default;
+        const res = await studentAPI.getMyEnrollment();
+        if (res?.success && res?.data?.enrollment) {
+          const enrollment = res.data.enrollment;
+          const isOnboardingComplete = enrollment.onboardingStatus === "COMPLETED" || enrollment.isOnboardingComplete === true;
+          dispatch(
+            updateUser({
+              hasEnrollment: true,
+              enrollment,
+              onboardingStatus: enrollment.onboardingStatus ?? null,
+              isOnboardingComplete,
+              enrolledCourses: enrollment.programId || enrollment.courseId ? [{ id: enrollment.programId || enrollment.courseId }] : [],
+            })
+          );
+        }
+      } catch (e) {
+        enrollmentSyncedRef.current = false;
+      }
+    })();
+  }, [role, user, dispatch]);
 
   useEffect(() => {
     setIsMobileSidebarOpen(false);

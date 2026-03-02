@@ -58,6 +58,8 @@ import StudentAchievements from "../pages/student/Achievements";
 import StudentForum from "../pages/student/Forum";
 import StudentSupport from "../pages/student/Support";
 import StudentOnboarding from "../pages/student/Onboarding";
+import StudentAssessments from "../pages/student/StudentAssessments";
+import StudentFees from "../pages/student/StudentFees";
 
 // Tutor pages
 import TutorDashboard from "../pages/tutor/Dashboard";
@@ -378,6 +380,8 @@ const AppRouter = () => {
           <Route index element={<Navigate to="/student/dashboard" replace />} />
 
           <Route path="student">
+            <Route path="assessment" element={<StudentAssessments />} />
+            <Route path="fees" element={<StudentFees />} />
             <Route path="onboarding" element={<StudentOnboarding />} />
             <Route path="dashboard" element={<StudentDashboard />} />
             <Route path="enrollment" element={<EnrollmentFlow />} />

@@ -1,4 +1,4 @@
-import { NavLink, Link } from "react-router-dom";
+import { NavLink, Link, useLocation } from "react-router-dom";
 import { Sparkles, LogOut, ChevronsLeft, ChevronsRight, ChevronDown } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -43,6 +43,7 @@ const LinkItem = ({ item, collapsed, onClick }) => {
 };
 
 const Navigation = ({ role = "student", collapsed, mobileOpen, onCloseMobile, onToggleCollapse }) => {
+  const location = useLocation();
   const sidebarWidth = collapsed ? "w-20" : "w-72";
   const [openGroups, setOpenGroups] = useState(new Set());
   const navigate = useNavigate();
@@ -51,21 +52,18 @@ const Navigation = ({ role = "student", collapsed, mobileOpen, onCloseMobile, on
   
   const navConfig = useMemo(() => {
     // Use user.role if available, otherwise fall back to role prop from URL
-    // This ensures RBAC filtering uses the actual user role (e.g., sales_agent, sales_lead, sales_head)
-    // instead of just the domain (e.g., sales)
     const actualRole = user?.role || role;
-    
-    // Pass user object to getRoleNavigation for RBAC/ABAC filtering
-    const config = getRoleNavigation(actualRole, user);
+    // Pass pathname so student gets the correct layout sidebar (Assessment / Fees / Onboarding)
+    const config = getRoleNavigation(actualRole, user, location.pathname);
     return config || {
       title: "Brintelli LMS",
       subtitle: "Dashboard",
       pinned: [],
       navigation: [],
     };
-  }, [role, user]);
+  }, [role, user, location.pathname]);
   
-  const { title, subtitle, pinned = [], navigation = [] } = navConfig;
+  const { title, subtitle, navigation = [] } = navConfig;
   const defaultIcon = Sparkles;
   
   const toggleGroup = (groupId) => {
@@ -131,25 +129,7 @@ const Navigation = ({ role = "student", collapsed, mobileOpen, onCloseMobile, on
 
           <nav className="mt-8 flex-1 overflow-y-auto overflow-x-hidden sidebar-scroll">
             <div className="sidebar-content">
-              <div className="flex flex-col gap-2">
-              {!collapsed && pinned.length > 0 && (
-                <p className="px-3 mb-1 text-[10px] font-bold uppercase tracking-wider text-white/50">
-                  Pinned Tools
-                </p>
-              )}
-              <div className="flex flex-col gap-1">
-                {pinned.map((item) => (
-                  <LinkItem
-                    key={item.label}
-                    item={{ ...item, icon: item.icon ?? defaultIcon }}
-                    collapsed={collapsed}
-                    onClick={onCloseMobile}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-6 flex flex-col gap-2">
+            <div className="flex flex-col gap-2">
               {!collapsed && navigation.length > 0 && (
                 <p className="px-3 mb-1 text-[10px] font-bold uppercase tracking-wider text-white/50">
                   Navigation

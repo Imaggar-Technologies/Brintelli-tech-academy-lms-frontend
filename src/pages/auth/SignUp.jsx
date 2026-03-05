@@ -1,17 +1,13 @@
 import { useNavigate, Link } from "react-router-dom";
 import { useState } from "react";
-import { useDispatch } from "react-redux";
 import { Mail, User, Phone, Lock, UserPlus } from "lucide-react";
 import Button from "../../components/Button";
 import PasswordInput from "../../components/PasswordInput";
 import AuthImageCarousel from "../../components/AuthImageCarousel";
-import { setCredentials } from "../../store/slices/authSlice";
-import { getRoleDashboard } from "../../utils/roleRoutes";
 import toast from "react-hot-toast";
 
 const SignUp = () => {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
   const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -92,28 +88,8 @@ const SignUp = () => {
 
       if (response.success) {
         toast.success("Registration successful! Please verify your email.");
-
-        // If token is provided, auto-login
-        if (response.data?.token) {
-          const loginData = response.data;
-
-          dispatch(
-            setCredentials({
-              user: loginData.user,
-              token: loginData.token,
-              refreshToken: loginData.refreshToken,
-            })
-          );
-
-          // Navigate to dashboard
-          const dashboardRoute = getRoleDashboard(loginData.user.role);
-          navigate(dashboardRoute);
-        } else {
-          // Redirect to signin with success message
-          navigate("/auth/signin", {
-            state: { message: "Registration successful! Please sign in." },
-          });
-        }
+        // Redirect to check-email page so user can verify and resend if needed
+        navigate(`/auth/check-email?email=${encodeURIComponent(formData.email.trim())}`, { replace: true });
       } else {
         throw new Error(response.message || "Registration failed");
       }

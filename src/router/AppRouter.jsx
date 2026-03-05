@@ -9,6 +9,9 @@ import PublicRoute from "../components/PublicRoute";
 import SignIn from "../pages/auth/SignIn";
 import SignUp from "../pages/auth/SignUp";
 import ForgotPassword from "../pages/auth/ForgotPassword";
+import VerifyEmail from "../pages/auth/VerifyEmail";
+import CheckEmail from "../pages/auth/CheckEmail";
+import UpcomingWorkshops from "../pages/public/UpcomingWorkshops";
 import ChooseRole from "../pages/auth/ChooseRole";
 import Register from "../pages/auth/Register";
 import RegisterStudent from "../pages/auth/RegisterStudent";
@@ -312,11 +315,15 @@ const AppRouter = () => {
           <Route path="register/student" element={<PublicRoute><RegisterStudent /></PublicRoute>} />
           <Route path="register/staff" element={<PublicRoute><RegisterStaff /></PublicRoute>} />
           <Route path="forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
+          <Route path="verify-email" element={<PublicRoute><VerifyEmail /></PublicRoute>} />
+          <Route path="check-email" element={<PublicRoute><CheckEmail /></PublicRoute>} />
           <Route path="offer/:offerId" element={<PublicRoute><OfferPage /></PublicRoute>} />
           <Route path="choose-role" element={<ChooseRole />} />
           <Route path="select-user" element={<ChooseRole />} />
         </Route>
         
+        {/* Public upcoming workshops - no login required to view; login/signup to register */}
+        <Route path="/upcoming-workshops" element={<PublicRoute><UpcomingWorkshops /></PublicRoute>} />
         {/* Public assessment route - accessible without enrollment */}
         <Route path="/assessment/:leadId" element={<PublicRoute><AssessmentPage /></PublicRoute>} />
         <Route path="/assessment/:leadId/test" element={<ProtectedRoute><AssessmentPage /></ProtectedRoute>} />

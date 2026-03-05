@@ -1,4 +1,13 @@
+import { API_BASE_URL } from './constant';
 import { apiRequest } from './apiClient';
+
+// Public upcoming workshops (no auth) - for landing/marketing pages
+export const getPublicUpcomingWorkshops = async (limit = 50) => {
+  const res = await fetch(`${API_BASE_URL}/api/public/workshops?limit=${limit}`);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to load workshops');
+  return data;
+};
 
 // Workshop API
 export const workshopAPI = {

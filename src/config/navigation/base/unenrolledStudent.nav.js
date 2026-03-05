@@ -8,6 +8,11 @@ import {
   HelpCircle,
   FileText,
   Sparkles,
+  CalendarDays,
+  GraduationCap,
+  Calendar,
+  BookOpen,
+  FolderKanban,
 } from "lucide-react";
 
 /**
@@ -29,6 +34,30 @@ export const unenrolledStudentNav = [
     icon: Sparkles,
     path: "/student/enrollment",
     pageId: "student-enrollment",
+    permissions: ["student:read"],
+  },
+  {
+    id: "workshops",
+    label: "Workshops",
+    icon: CalendarDays,
+    path: "/student/workshops",
+    pageId: "student-workshops",
+    permissions: ["student:read"],
+  },
+  {
+    id: "programs-catalog",
+    label: "All Programs",
+    icon: BookOpen,
+    path: "/student/programs",
+    pageId: "student-program-catalog",
+    permissions: ["student:read"],
+  },
+  {
+    id: "batches-catalog",
+    label: "All Batches",
+    icon: FolderKanban,
+    path: "/student/batches",
+    pageId: "student-batches",
     permissions: ["student:read"],
   },
   {

@@ -60,6 +60,10 @@ import StudentSupport from "../pages/student/Support";
 import StudentOnboarding from "../pages/student/Onboarding";
 import StudentAssessments from "../pages/student/StudentAssessments";
 import StudentFees from "../pages/student/StudentFees";
+import StudentWorkshops from "../pages/student/StudentWorkshops";
+import StudentWorkshopDetail from "../pages/student/StudentWorkshopDetail";
+import StudentProgramCatalog from "../pages/student/StudentProgramCatalog";
+import StudentBatches from "../pages/student/StudentBatches";
 
 // Tutor pages
 import TutorDashboard from "../pages/tutor/Dashboard";
@@ -386,6 +390,10 @@ const AppRouter = () => {
             <Route path="dashboard" element={<StudentDashboard />} />
             <Route path="enrollment" element={<EnrollmentFlow />} />
             <Route path="my-courses" element={<StudentMyCourses />} />
+            <Route path="programs" element={<StudentProgramCatalog />} />
+            <Route path="batches" element={<StudentBatches />} />
+            <Route path="workshops" element={<StudentWorkshops />} />
+            <Route path="workshops/:workshopId" element={<StudentWorkshopDetail />} />
             <Route path="program/:enrollmentId" element={<StudentProgramDetail />} />
             <Route path="course/:id" element={<StudentCourseDetail />} />
             {/* Sessions */}

@@ -55,6 +55,7 @@ export const adminNav = [
       { label: "Notes / Quizzes / Poll Approvals", icon: ClipboardCheck, path: "/admin-portal/lms/content-approvals", pageId: "lms-content-approvals" },
       { label: "Learning Paths", icon: Layers3, path: "/admin-portal/lms/learning-paths", pageId: "lms-learning-paths" },
       { label: "Recordings Library", icon: Video, path: "/admin-portal/lms/recordings-library", pageId: "lms-recordings" },
+      { label: "Workshops / Events", icon: CalendarClock, path: "/admin-portal/workshops", pageId: "admin-workshops" },
     ],
   },
   {

@@ -71,23 +71,27 @@ export const apiRequest = async (endpoint, options = {}) => {
     };
 
     const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-    const data = await response.json();
+    let data;
+    try {
+      const text = await response.text();
+      data = text ? JSON.parse(text) : {};
+    } catch {
+      data = {};
+    }
 
     // Handle 401 Unauthorized - try to refresh token
     if (response.status === 401 && authToken && endpoint !== '/api/auth/refresh') {
       try {
-        // Attempt to refresh token
         const newToken = await refreshAuthToken();
-        // Retry the original request with new token
         return makeRequest(newToken);
       } catch (refreshError) {
-        // Refresh failed, throw original error
-        throw new Error(data.error || 'Authentication failed');
+        throw new Error(data?.error || data?.message || 'Authentication failed');
       }
     }
 
     if (!response.ok) {
-      throw new Error(data.error || 'Request failed');
+      const message = data?.error || data?.message || response.statusText || 'Request failed';
+      throw new Error(typeof message === 'string' ? message : 'Request failed');
     }
 
     return data;

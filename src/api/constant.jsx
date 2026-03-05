@@ -4,7 +4,8 @@
 // Local backend default (Express)
 const DEFAULT_DEV_API_BASE_URL = 'https://app.brintellitechacademy.in';
 const DEFAULT_PROD_API_BASE_URL = 'https://app.brintellitechacademy.in';
-
+// const DEFAULT_DEV_API_BASE_URL = 'http://localhost:3000';
+// const DEFAULT_PROD_API_BASE_URL ='http://localhost:3000';
 const envBaseUrl = (import.meta?.env?.VITE_API_BASE_URL || '').trim();
 
 // Detect development mode: check Vite env vars

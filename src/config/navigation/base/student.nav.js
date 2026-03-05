@@ -15,6 +15,8 @@ import {
   Settings,
   MessageSquare,
   HelpCircle,
+  BookOpen,
+  FolderKanban,
 } from "lucide-react";
 
 /**
@@ -36,6 +38,30 @@ export const studentNav = [
     icon: GraduationCap,
     path: "/student/my-courses",
     pageId: "student-programs",
+    permissions: ["student:read"],
+  },
+  {
+    id: "programs-catalog",
+    label: "All Programs",
+    icon: BookOpen,
+    path: "/student/programs",
+    pageId: "student-program-catalog",
+    permissions: ["student:read"],
+  },
+  {
+    id: "batches-catalog",
+    label: "All Batches",
+    icon: FolderKanban,
+    path: "/student/batches",
+    pageId: "student-batches",
+    permissions: ["student:read"],
+  },
+  {
+    id: "workshops",
+    label: "Workshops",
+    icon: CalendarDays,
+    path: "/student/workshops",
+    pageId: "student-workshops",
     permissions: ["student:read"],
   },
   {

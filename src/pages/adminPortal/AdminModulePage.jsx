@@ -5,6 +5,7 @@ import RolesManagement from "./RolesManagement";
 import AccessControls from "./AccessControls";
 import ActivityLogs from "./ActivityLogs";
 import Notifications from "./Notifications";
+import AdminWorkshops from "./AdminWorkshops";
 
 const AdminModulePage = ({ pageId }) => {
   // Route to the appropriate page based on pageId
@@ -34,6 +35,10 @@ const AdminModulePage = ({ pageId }) => {
 
   if (pageId === "notifications") {
     return <Notifications />;
+  }
+
+  if (pageId === "admin-workshops") {
+    return <AdminWorkshops />;
   }
 
   // For other pages, you can add more routing logic here

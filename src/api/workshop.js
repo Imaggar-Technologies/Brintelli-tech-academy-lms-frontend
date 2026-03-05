@@ -57,6 +57,42 @@ export const workshopAPI = {
       body: JSON.stringify({ studentId }),
     });
   },
+
+  // Get workshop participants (enrolled users with details)
+  getParticipants: async (id) => {
+    return apiRequest(`/api/workshops/${id}/participants`);
+  },
+
+  // Send email to all enrolled participants
+  sendEmailToEnrolled: async (id, { subject, body, type = 'custom' }) => {
+    return apiRequest(`/api/workshops/${id}/send-email`, {
+      method: 'POST',
+      body: JSON.stringify({ subject, body, type }),
+    });
+  },
+
+  // Assignments
+  getAssignments: (id) => apiRequest(`/api/workshops/${id}/assignments`),
+  createAssignment: (id, data) => apiRequest(`/api/workshops/${id}/assignments`, { method: 'POST', body: JSON.stringify(data) }),
+  getSubmissions: (id, assignmentId) => apiRequest(`/api/workshops/${id}/assignments/${assignmentId}/submissions`),
+  submitAssignment: (id, assignmentId, data) => apiRequest(`/api/workshops/${id}/assignments/${assignmentId}/submit`, { method: 'POST', body: JSON.stringify(data) }),
+
+  // Feedback
+  getMyFeedback: (id) => apiRequest(`/api/workshops/${id}/feedback/me`),
+  getFeedback: (id) => apiRequest(`/api/workshops/${id}/feedback`),
+  submitFeedback: (id, data) => apiRequest(`/api/workshops/${id}/feedback`, { method: 'POST', body: JSON.stringify(data) }),
+
+  // Quiz
+  getQuiz: (id) => apiRequest(`/api/workshops/${id}/quiz`),
+  createOrUpdateQuiz: (id, data) => apiRequest(`/api/workshops/${id}/quiz`, { method: 'POST', body: JSON.stringify(data) }),
+  submitQuizAttempt: (id, data) => apiRequest(`/api/workshops/${id}/quiz/attempt`, { method: 'POST', body: JSON.stringify(data) }),
+  getLeaderboard: (id) => apiRequest(`/api/workshops/${id}/quiz/leaderboard`),
+
+  // Vouchers
+  getVouchers: (id) => apiRequest(`/api/workshops/${id}/vouchers`),
+  getMyVoucher: (id) => apiRequest(`/api/workshops/${id}/vouchers/me`),
+  createVoucher: (id, data) => apiRequest(`/api/workshops/${id}/vouchers`, { method: 'POST', body: JSON.stringify(data) }),
+  sendVoucherToAttendees: (id, voucherId) => apiRequest(`/api/workshops/${id}/vouchers/${voucherId}/send`, { method: 'POST' }),
 };
 
 export default workshopAPI;

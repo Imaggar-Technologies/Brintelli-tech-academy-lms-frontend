@@ -5,6 +5,7 @@ import { Save, ChevronLeft, ChevronRight, Plus, X, Layers3, FileText, BookOpen, 
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
 import programAPI from '../../api/program';
+import { SUBJECTS, CURRENCIES } from '../../config/domainConstants';
 
 const CreateProgram = () => {
   const navigate = useNavigate();
@@ -19,6 +20,13 @@ const CreateProgram = () => {
     duration: 6,
     price: 0,
     status: 'DRAFT',
+    coverImage: '',
+    thumbnailImage: '',
+    heroImages: [],
+    icon: '',
+    subject: '',
+    feeCurrency: 'INR',
+    feeAmount: 0,
   });
   const [modules, setModules] = useState([]);
 
@@ -59,6 +67,13 @@ const CreateProgram = () => {
           duration: program.duration || 6,
           price: program.price || 0,
           status: program.status || 'DRAFT',
+          coverImage: program.coverImage || '',
+          thumbnailImage: program.thumbnailImage || '',
+          heroImages: Array.isArray(program.heroImages) ? program.heroImages : [],
+          icon: program.icon || '',
+          subject: program.subject || '',
+          feeCurrency: program.feeCurrency || 'INR',
+          feeAmount: program.feeAmount ?? program.price ?? 0,
         });
 
         // Load modules (which now includes sub-modules from backend)
@@ -395,6 +410,98 @@ const CreateProgram = () => {
               />
             </div>
 
+            <div className="border-t border-gray-200 pt-6">
+              <h3 className="text-lg font-semibold text-text mb-3">Subject / Domain</h3>
+              <select
+                value={programData.subject}
+                onChange={(e) => handleProgramChange('subject', e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white text-text focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/10"
+              >
+                <option value="">Select subject</option>
+                {SUBJECTS.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="border-t border-gray-200 pt-6">
+              <h3 className="text-lg font-semibold text-text mb-3">Media & branding</h3>
+              <p className="text-sm text-textMuted mb-3">Cover (FB-style), thumbnail (YouTube-style), hero (19:6), icon/logo</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-text">Cover image URL</label>
+                  <input
+                    type="url"
+                    value={programData.coverImage}
+                    onChange={(e) => handleProgramChange('coverImage', e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-xl bg-white text-text"
+                    placeholder="https://..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-text">Thumbnail image URL</label>
+                  <input
+                    type="url"
+                    value={programData.thumbnailImage}
+                    onChange={(e) => handleProgramChange('thumbnailImage', e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-xl bg-white text-text"
+                    placeholder="https://..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-text">Icon / logo URL</label>
+                  <input
+                    type="url"
+                    value={programData.icon}
+                    onChange={(e) => handleProgramChange('icon', e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-xl bg-white text-text"
+                    placeholder="https://..."
+                  />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <label className="block text-sm font-medium text-text">Hero section images (19:6) – one URL per line</label>
+                  <textarea
+                    value={(programData.heroImages || []).join('\n')}
+                    onChange={(e) => handleProgramChange('heroImages', e.target.value.split('\n').map(u => u.trim()).filter(Boolean))}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-xl bg-white text-text"
+                    rows={2}
+                    placeholder="https://..."
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-gray-200 pt-6">
+              <h3 className="text-lg font-semibold text-text mb-3">Course fee</h3>
+              <div className="flex flex-wrap gap-4 items-end">
+                <div className="space-y-2 min-w-[140px]">
+                  <label className="block text-sm font-medium text-text">Currency</label>
+                  <select
+                    value={programData.feeCurrency}
+                    onChange={(e) => handleProgramChange('feeCurrency', e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white text-text focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/10"
+                  >
+                    {CURRENCIES.map((c) => (
+                      <option key={c.code} value={c.code}>{c.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2 min-w-[160px]">
+                  <label className="block text-sm font-medium text-text">Amount</label>
+                  <input
+                    type="number"
+                    value={programData.feeAmount ?? ''}
+                    onChange={(e) => handleProgramChange('feeAmount', parseFloat(e.target.value) || 0)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white text-text focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/10"
+                    min="0"
+                    step="0.01"
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-textMuted mt-2">Legacy price (₹) is kept for compatibility; fee above is the primary display.</p>
+            </div>
+
             <div className="grid grid-cols-3 gap-6">
               <div className="space-y-2">
                 <label className="block text-sm font-semibold text-text">Duration (months)</label>
@@ -407,7 +514,7 @@ const CreateProgram = () => {
                 />
               </div>
               <div className="space-y-2">
-                <label className="block text-sm font-semibold text-text">Price (₹)</label>
+                <label className="block text-sm font-semibold text-text">Legacy price (₹)</label>
                 <input
                   type="number"
                   value={programData.price}

@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useSelector } from "react-redux";
 import { toast } from "react-hot-toast";
 import {
   Presentation,
@@ -22,12 +21,8 @@ import PageHeader from "../../components/PageHeader";
 import Button from "../../components/Button";
 import Modal from "../../components/Modal";
 import workshopAPI from "../../api/workshop";
-import { selectCurrentUser } from "../../store/slices/authSlice";
 
-const TutorWorkshops = () => {
-  const user = useSelector(selectCurrentUser);
-  const tutorId = user?.id || user?._id?.toString();
-
+const LsmWorkshops = () => {
   const [loading, setLoading] = useState(true);
   const [workshops, setWorkshops] = useState([]);
   const [feedbackPollLoading, setFeedbackPollLoading] = useState(null);
@@ -61,14 +56,13 @@ const TutorWorkshops = () => {
   const [certsSending, setCertsSending] = useState(false);
 
   useEffect(() => {
-    if (tutorId) fetchWorkshops();
-  }, [tutorId]);
+    fetchWorkshops();
+  }, []);
 
   const fetchWorkshops = async () => {
-    if (!tutorId) return;
     setLoading(true);
     try {
-      const res = await workshopAPI.getAllWorkshops({ tutorId });
+      const res = await workshopAPI.getAllWorkshops();
       if (res.success) setWorkshops(res.data?.workshops || []);
       else setWorkshops([]);
     } catch (e) {
@@ -404,8 +398,8 @@ const TutorWorkshops = () => {
       ) : workshops.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-brintelli-border/60 bg-brintelli-baseAlt/30 p-12 text-center">
           <Presentation className="h-12 w-12 text-textMuted mx-auto mb-3" />
-          <p className="text-text font-medium">No workshops assigned</p>
-          <p className="text-sm text-textMuted mt-1">Workshops you are tutoring will appear here.</p>
+          <p className="text-text font-medium">No workshops</p>
+          <p className="text-sm text-textMuted mt-1">Workshops will appear here.</p>
         </div>
       ) : (
         <div className="rounded-2xl border border-brintelli-border/60 bg-white shadow-sm overflow-hidden">
@@ -821,4 +815,4 @@ const TutorWorkshops = () => {
   );
 };
 
-export default TutorWorkshops;
+export default LsmWorkshops;

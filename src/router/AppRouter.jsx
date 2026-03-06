@@ -126,6 +126,7 @@ import Performance from "../pages/lsm/Performance";
 import WeeklyReports from "../pages/lsm/WeeklyReports";
 import Readiness from "../pages/lsm/Readiness";
 import InterviewPrep from "../pages/lsm/InterviewPrep";
+import LsmWorkshops from "../pages/lsm/LsmWorkshops";
 
 // Admin pages
 import AdminDashboard from "../pages/admin/Dashboard";
@@ -524,6 +525,7 @@ const AppRouter = () => {
 
           <Route path="lsm">
             <Route path="dashboard" element={<LsmDashboard />} />
+            <Route path="workshops" element={<LsmWorkshops />} />
             <Route path="onboarding" element={<LsmOnboarding />} />
             <Route path="batches" element={<LsmBatches />} />
             <Route path="batches/:batchId/sessions" element={<LsmBatchSessions />} />

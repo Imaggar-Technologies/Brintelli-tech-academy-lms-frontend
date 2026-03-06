@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { Presentation, Plus, Search, RefreshCw, Calendar, Users, Clock, Edit2, Trash2, X, Settings, Mail, FileText, UserCircle, Trophy, Gift, MessageSquare } from 'lucide-react';
+import { Presentation, Plus, Search, RefreshCw, Calendar, Users, Clock, Edit2, Trash2, X, Settings, Mail, FileText, UserCircle, Trophy, Gift, MessageSquare, Award } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
 import Modal from '../../components/Modal';
@@ -79,6 +79,12 @@ const Workshops = () => {
   const [newVoucherExpiry, setNewVoucherExpiry] = useState('');
   const [savingAssignment, setSavingAssignment] = useState(false);
   const [savingVoucher, setSavingVoucher] = useState(false);
+  const [manageLeaderboard, setManageLeaderboard] = useState([]);
+  const [manageCertificates, setManageCertificates] = useState([]);
+  const [notifyParticipantsOnSave, setNotifyParticipantsOnSave] = useState(false);
+  const [quizPublishing, setQuizPublishing] = useState(false);
+  const [certsGenerating, setCertsGenerating] = useState(false);
+  const [certsSending, setCertsSending] = useState(false);
 
   useEffect(() => {
     fetchWorkshops();
@@ -276,19 +282,25 @@ const Workshops = () => {
     setManageFeedback([]);
     setManageQuiz(null);
     setManageVouchers([]);
+    setManageLeaderboard([]);
+    setManageCertificates([]);
     try {
-      const [pRes, aRes, fRes, qRes, vRes] = await Promise.all([
+      const [pRes, aRes, fRes, qRes, vRes, lbRes, certRes] = await Promise.all([
         workshopAPI.getParticipants(id),
         workshopAPI.getAssignments(id),
         workshopAPI.getFeedback(id),
         workshopAPI.getQuiz(id),
         workshopAPI.getVouchers(id),
+        workshopAPI.getLeaderboard(id),
+        workshopAPI.getCertificates(id),
       ]);
       if (pRes.success && pRes.data?.participants) setManageParticipants(pRes.data.participants);
       if (aRes.success && aRes.data?.assignments) setManageAssignments(aRes.data.assignments);
       if (fRes.success && fRes.data?.feedback) setManageFeedback(fRes.data.feedback);
       if (qRes.success && qRes.data?.quiz) setManageQuiz(qRes.data.quiz);
       if (vRes.success && vRes.data?.vouchers) setManageVouchers(vRes.data.vouchers);
+      if (lbRes.success && lbRes.data?.leaderboard) setManageLeaderboard(lbRes.data.leaderboard);
+      if (certRes.success && certRes.data?.certificates) setManageCertificates(certRes.data.certificates);
     } catch (e) {
       console.error('Error fetching manage data:', e);
       toast.error('Failed to load some data');
@@ -299,6 +311,8 @@ const Workshops = () => {
     setShowManageModal(false);
     setManageWorkshop(null);
     setManageParticipants([]);
+    setManageLeaderboard([]);
+    setManageCertificates([]);
     setShowAllUsersModal(false);
   };
 
@@ -991,6 +1005,10 @@ const Workshops = () => {
                   className="flex-1 min-w-[160px] px-2 py-1.5 border border-gray-300 rounded text-sm"
                 />
                 <Button type="button" variant="secondary" size="sm" onClick={addManageResource}>Add</Button>
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={notifyParticipantsOnSave} onChange={(e) => setNotifyParticipantsOnSave(e.target.checked)} className="rounded border-gray-300" />
+                  Notify participants when saving
+                </label>
                 <Button type="button" variant="primary" size="sm" onClick={saveManageResources} disabled={savingResources}>{savingResources ? 'Saving...' : 'Save resources'}</Button>
               </div>
             </div>
@@ -1125,15 +1143,50 @@ const Workshops = () => {
               </div>
             </div>
 
-            {/* PM: Quiz & Leaderboard */}
+            {/* PM: Quiz, Publish & Leaderboard */}
             <div className="border-t pt-4">
               <h3 className="text-sm font-semibold flex items-center gap-2 mb-2">
                 <Trophy className="h-4 w-4" /> Quiz
               </h3>
               {manageQuiz ? (
-                <p className="text-sm text-textMuted">Quiz &quot;{manageQuiz.title}&quot; is set. Attendees see it on the workshop page. Leaderboard available there too.</p>
+                <div className="space-y-2">
+                  <p className="text-sm text-textMuted">Quiz &quot;{manageQuiz.title}&quot;. Students can attempt only when published.</p>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    disabled={quizPublishing}
+                    onClick={async () => {
+                      setQuizPublishing(true);
+                      try {
+                        const res = await workshopAPI.publishQuiz(manageWorkshop.id || manageWorkshop._id, !manageQuiz.published);
+                        if (res?.success && res?.data?.quiz) setManageQuiz(res.data.quiz);
+                        toast.success(res?.message || (manageQuiz.published ? 'Quiz unpublished' : 'Quiz published'));
+                      } catch (e) {
+                        toast.error(e.message || 'Failed');
+                      } finally {
+                        setQuizPublishing(false);
+                      }
+                    }}
+                  >
+                    {manageQuiz.published ? 'Unpublish quiz' : 'Publish quiz'}
+                  </Button>
+                </div>
               ) : (
-                <p className="text-sm text-textMuted">No quiz yet. Create one from the workshop detail API (POST /api/workshops/:id/quiz with questions array).</p>
+                <p className="text-sm text-textMuted">No quiz yet. Create one via API (POST /api/workshops/:id/quiz).</p>
+              )}
+              <h4 className="text-sm font-medium mt-3 mb-1">Leaderboard</h4>
+              {manageLeaderboard.length === 0 ? (
+                <p className="text-sm text-textMuted">No attempts yet.</p>
+              ) : (
+                <ul className="max-h-32 overflow-y-auto text-sm space-y-1">
+                  {manageLeaderboard.map((r, i) => (
+                    <li key={r.userId || i} className="flex justify-between py-0.5">
+                      <span>#{r.rank} {r.userName}</span>
+                      <span className="font-medium">{r.score}</span>
+                    </li>
+                  ))}
+                </ul>
               )}
             </div>
 
@@ -1171,6 +1224,68 @@ const Workshops = () => {
                   {savingVoucher ? 'Creating...' : 'Create voucher & send to attendees'}
                 </Button>
               </div>
+            </div>
+
+            {/* Certificates */}
+            <div className="border-t pt-4">
+              <h3 className="text-sm font-semibold flex items-center gap-2 mb-2">
+                <Award className="h-4 w-4" /> Certificates
+              </h3>
+              <p className="text-sm text-textMuted mb-2">Generate certificates for participants, then send by email.</p>
+              <div className="flex flex-wrap gap-2 mb-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={certsGenerating}
+                  onClick={async () => {
+                    setCertsGenerating(true);
+                    try {
+                      const res = await workshopAPI.generateCertificates(manageWorkshop.id || manageWorkshop._id);
+                      if (res?.success) {
+                        toast.success(`Generated ${(res.data?.certificates || []).length} certificate(s)`);
+                        const cRes = await workshopAPI.getCertificates(manageWorkshop.id || manageWorkshop._id);
+                        if (cRes?.success && cRes.data?.certificates) setManageCertificates(cRes.data.certificates);
+                      }
+                    } catch (e) {
+                      toast.error(e.message || 'Failed to generate');
+                    } finally {
+                      setCertsGenerating(false);
+                    }
+                  }}
+                >
+                  {certsGenerating ? 'Generating...' : 'Generate certificates'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={certsSending || manageCertificates.length === 0}
+                  onClick={async () => {
+                    setCertsSending(true);
+                    try {
+                      await workshopAPI.sendCertificatesToParticipants(manageWorkshop.id || manageWorkshop._id);
+                      toast.success('Certificates sent to participants');
+                    } catch (e) {
+                      toast.error(e.message || 'Failed to send');
+                    } finally {
+                      setCertsSending(false);
+                    }
+                  }}
+                >
+                  {certsSending ? 'Sending...' : 'Send to participants'}
+                </Button>
+              </div>
+              {manageCertificates.length === 0 ? (
+                <p className="text-sm text-textMuted">No certificates yet.</p>
+              ) : (
+                <ul className="max-h-28 overflow-y-auto text-sm space-y-1">
+                  {manageCertificates.map((c) => (
+                    <li key={c.id} className="flex justify-between py-0.5 border-b border-gray-100">
+                      <span>{c.userName} – {c.certificateNumber}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
         )}

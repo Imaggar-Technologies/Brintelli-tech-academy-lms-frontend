@@ -13,6 +13,7 @@ const StudentInviteFriend = () => {
   const [referralLink, setReferralLink] = useState('');
   const [referrals, setReferrals] = useState([]);
   const [totalReferralPoints, setTotalReferralPoints] = useState(0);
+  const [myWelcomeCouponCode, setMyWelcomeCouponCode] = useState('');
   const [couponCode, setCouponCode] = useState('');
   const [couponAmount, setCouponAmount] = useState('');
   const [couponResult, setCouponResult] = useState(null);
@@ -34,6 +35,7 @@ const StudentInviteFriend = () => {
         setReferralLink(res.referralLink || '');
         setReferrals(Array.isArray(res.referrals) ? res.referrals : []);
         setTotalReferralPoints(res.totalReferralPoints ?? 0);
+        setMyWelcomeCouponCode(res.myWelcomeCouponCode || '');
       }
     } catch (err) {
       console.error('Referral fetch error', err);
@@ -106,8 +108,41 @@ const StudentInviteFriend = () => {
     <>
       <PageHeader
         title="Invite your friend"
-        description="Share your referral link and get rewarded. You can also check coupon codes here."
+        description="Share your referral link and get rewarded. You can also check coupon codes and vouchers here."
       />
+
+      {totalReferralPoints > 0 && (
+        <div className="mb-6 rounded-2xl border border-brand-200/60 bg-gradient-to-r from-brand-50 to-brand-100/50 p-4 flex items-center gap-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-500 text-white">
+            <Sparkles className="h-6 w-6" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-text">Your referral points</h3>
+            <p className="text-sm text-textMuted">You earn 100 points for each friend who joins using your link. Keep sharing!</p>
+          </div>
+          <div className="ml-auto text-3xl font-bold text-brand-600">{totalReferralPoints}</div>
+        </div>
+      )}
+
+      {myWelcomeCouponCode && (
+        <div className="mb-6 rounded-2xl border-2 border-amber-200 bg-amber-50/80 p-4 flex flex-wrap items-center gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white">
+            <Ticket className="h-6 w-6" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-lg font-bold text-text">Your 10% welcome voucher</h3>
+            <p className="text-sm text-textMuted">You joined using a friend&apos;s link. Use this code at checkout for 10% off.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <code className="rounded-lg bg-white border border-amber-200 px-3 py-2 font-mono font-bold text-amber-800">
+              {myWelcomeCouponCode}
+            </code>
+            <Button variant="secondary" size="sm" onClick={() => copyToClipboard(myWelcomeCouponCode, 'Voucher code')}>
+              Copy
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Referral */}

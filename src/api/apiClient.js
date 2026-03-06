@@ -105,5 +105,23 @@ export const apiRequest = async (endpoint, options = {}) => {
   }
 };
 
+/** Fetch endpoint with auth and return response as blob (e.g. PDF download) */
+export const apiRequestBlob = async (endpoint) => {
+  let token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (res.status === 401 && token) {
+    try {
+      token = await refreshAuthToken();
+      return apiRequestBlob(endpoint);
+    } catch {
+      throw new Error('Authentication failed');
+    }
+  }
+  if (!res.ok) throw new Error(res.statusText || 'Download failed');
+  return res.blob();
+};
+
 export default apiRequest;
 

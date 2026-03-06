@@ -13,6 +13,7 @@ import {
   ChartSpline,
   ClipboardCheck,
   FileSpreadsheet,
+  Presentation,
 } from "lucide-react";
 
 const lsmNav = [
@@ -46,6 +47,14 @@ const lsmNav = [
     icon: UsersRound,
     path: "/lsm/mentors",
     pageId: "lsm-mentors",
+    permissions: ["lsm:read"],
+  },
+  {
+    id: "workshops",
+    label: "Workshops",
+    icon: Presentation,
+    path: "/lsm/workshops",
+    pageId: "lsm-workshops",
     permissions: ["lsm:read"],
   },
   {

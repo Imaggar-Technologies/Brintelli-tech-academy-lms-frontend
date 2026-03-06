@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { Bell, Menu, Search } from "lucide-react";
+import { Bell, Menu, Search, Sparkles } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { selectCurrentUser } from "../../store/slices/authSlice";
 import NotificationsDropdown from "../NotificationsDropdown";
 import UserMenu from "../UserMenu";
 import notificationApi from "../../api/notification";
+import referralAPI from "../../api/referral";
 import toast from "react-hot-toast";
 
 const notificationSeed = [
@@ -123,6 +124,7 @@ const Topbar = ({ onToggleMobileSidebar, role, roleLabelOverride, roleOptions, c
   const [notifications, setNotifications] = useState([]);
   const [panelOpen, setPanelOpen] = useState(false);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const [referralPoints, setReferralPoints] = useState(0);
 
   const unreadCount = useMemo(() => notifications.filter((item) => !item.read).length, [notifications]);
   
@@ -175,6 +177,22 @@ const Topbar = ({ onToggleMobileSidebar, role, roleLabelOverride, roleOptions, c
     const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
   }, [user]);
+
+  // Referral points for learner/student (show in topbar)
+  useEffect(() => {
+    const roleKey = (user?.role || '').toLowerCase();
+    const isLearner = roleKey === 'student' || roleKey === 'learner';
+    if (!isLearner || !user?.id) return;
+    const fetchPoints = async () => {
+      try {
+        const res = await referralAPI.getMyReferral();
+        if (res?.success && (res.totalReferralPoints ?? 0) > 0) {
+          setReferralPoints(res.totalReferralPoints);
+        }
+      } catch (_) {}
+    };
+    fetchPoints();
+  }, [user?.id, user?.role]);
 
   useEffect(() => {
     setPanelOpen(false);
@@ -243,6 +261,16 @@ const Topbar = ({ onToggleMobileSidebar, role, roleLabelOverride, roleOptions, c
           </div>
 
           <div className="flex items-center justify-end gap-2.5 sm:gap-3">
+            {referralPoints > 0 && (
+              <a
+                href="/student/invite-friend"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-brand-200/60 bg-brand-50/80 px-3 py-2 text-sm font-semibold text-brand-700 shadow-sm hover:bg-brand-100/80"
+                title="Referral points – 100 per friend who joins"
+              >
+                <Sparkles className="h-4 w-4" />
+                <span>{referralPoints} pts</span>
+              </a>
+            )}
             {roleOptions && onRoleChange && (
               <div className="hidden items-center gap-2 rounded-xl border border-brintelli-border/60 bg-white/90 px-3 py-1.5 text-xs font-medium text-textSoft shadow-sm backdrop-blur sm:inline-flex">
                 <span className="text-textMuted">Role</span>

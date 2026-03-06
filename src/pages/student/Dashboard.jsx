@@ -223,7 +223,7 @@ const StudentDashboard = () => {
       {/* Referral points (when user has points from invites) */}
       {referralPoints > 0 && (
         <div className="rounded-2xl border border-brand-200/60 bg-brand-50/50 p-4 flex items-center justify-between">
-          <span className="text-text font-medium">You have <strong>{referralPoints}</strong> points from inviting friends who joined.</span>
+          <span className="text-text font-medium">You have <strong>{referralPoints}</strong> referral points (100 per friend who joins).</span>
           <Button variant="secondary" size="sm" onClick={() => navigate('/student/invite-friend')}>
             Invite more
           </Button>

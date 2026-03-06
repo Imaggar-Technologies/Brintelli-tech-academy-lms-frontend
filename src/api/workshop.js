@@ -1,5 +1,5 @@
 import { API_BASE_URL } from './constant';
-import { apiRequest } from './apiClient';
+import { apiRequest, apiRequestBlob } from './apiClient';
 
 // Public upcoming workshops (no auth) - for landing/marketing pages
 export const getPublicUpcomingWorkshops = async (limit = 50) => {
@@ -99,8 +99,26 @@ export const workshopAPI = {
   // Quiz
   getQuiz: (id) => apiRequest(`/api/workshops/${id}/quiz`),
   createOrUpdateQuiz: (id, data) => apiRequest(`/api/workshops/${id}/quiz`, { method: 'POST', body: JSON.stringify(data) }),
+  publishQuiz: (id, published) => apiRequest(`/api/workshops/${id}/quiz/publish`, { method: 'PATCH', body: JSON.stringify({ published }) }),
   submitQuizAttempt: (id, data) => apiRequest(`/api/workshops/${id}/quiz/attempt`, { method: 'POST', body: JSON.stringify(data) }),
   getLeaderboard: (id) => apiRequest(`/api/workshops/${id}/quiz/leaderboard`),
+
+  // Resources
+  updateResources: (id, data) => apiRequest(`/api/workshops/${id}/resources`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+  // Certificates
+  generateCertificates: (id, participantIds = null) =>
+    apiRequest(`/api/workshops/${id}/certificates/generate`, {
+      method: 'POST',
+      body: JSON.stringify(participantIds != null ? { participantIds } : {}),
+    }),
+  getCertificates: (id) => apiRequest(`/api/workshops/${id}/certificates`),
+  downloadCertificate: (id, certId) => apiRequestBlob(`/api/workshops/${id}/certificates/${certId}/download`),
+  sendCertificatesToParticipants: (id, participantIds = null) =>
+    apiRequest(`/api/workshops/${id}/certificates/send`, {
+      method: 'POST',
+      body: JSON.stringify(participantIds != null ? { participantIds } : {}),
+    }),
 
   // Vouchers
   getVouchers: (id) => apiRequest(`/api/workshops/${id}/vouchers`),

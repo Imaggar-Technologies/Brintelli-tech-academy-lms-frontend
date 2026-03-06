@@ -67,6 +67,7 @@ import StudentWorkshops from "../pages/student/StudentWorkshops";
 import StudentWorkshopDetail from "../pages/student/StudentWorkshopDetail";
 import StudentProgramCatalog from "../pages/student/StudentProgramCatalog";
 import StudentBatches from "../pages/student/StudentBatches";
+import StudentInviteFriend from "../pages/student/StudentInviteFriend";
 
 // Tutor pages
 import TutorDashboard from "../pages/tutor/Dashboard";
@@ -401,6 +402,7 @@ const AppRouter = () => {
             <Route path="batches" element={<StudentBatches />} />
             <Route path="workshops" element={<StudentWorkshops />} />
             <Route path="workshops/:workshopId" element={<StudentWorkshopDetail />} />
+            <Route path="invite-friend" element={<StudentInviteFriend />} />
             <Route path="program/:enrollmentId" element={<StudentProgramDetail />} />
             <Route path="course/:id" element={<StudentCourseDetail />} />
             {/* Sessions */}

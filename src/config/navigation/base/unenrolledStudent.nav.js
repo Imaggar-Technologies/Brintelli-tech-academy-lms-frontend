@@ -12,7 +12,7 @@ import {
   GraduationCap,
   Calendar,
   BookOpen,
-  FolderKanban,
+  UserPlus,
 } from "lucide-react";
 
 /**
@@ -26,14 +26,6 @@ export const unenrolledStudentNav = [
     icon: LayoutDashboard,
     path: "/student/dashboard",
     pageId: "student-dashboard",
-    permissions: ["student:read"],
-  },
-  {
-    id: "enrollment-flow",
-    label: "Enrollment",
-    icon: Sparkles,
-    path: "/student/enrollment",
-    pageId: "student-enrollment",
     permissions: ["student:read"],
   },
   {
@@ -53,11 +45,11 @@ export const unenrolledStudentNav = [
     permissions: ["student:read"],
   },
   {
-    id: "batches-catalog",
-    label: "All Batches",
-    icon: FolderKanban,
-    path: "/student/batches",
-    pageId: "student-batches",
+    id: "invite-friend",
+    label: "Invite your friend",
+    icon: UserPlus,
+    path: "/student/invite-friend",
+    pageId: "student-invite-friend",
     permissions: ["student:read"],
   },
   {

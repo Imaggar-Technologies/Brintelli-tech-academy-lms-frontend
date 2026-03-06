@@ -1,4 +1,4 @@
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useState } from "react";
 import { Mail, User, Phone, Lock, UserPlus } from "lucide-react";
 import Button from "../../components/Button";
@@ -8,6 +8,8 @@ import toast from "react-hot-toast";
 
 const SignUp = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const referralCode = searchParams.get("ref") || "";
   const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -79,12 +81,14 @@ const SignUp = () => {
     try {
       const { authAPI } = await import("../../api/auth");
 
-      const response = await authAPI.register({
+      const payload = {
         email: formData.email.trim(),
         password: formData.password,
         fullName: formData.fullName.trim(),
         phone: formData.phone.trim(),
-      });
+      };
+      if (referralCode.trim()) payload.referralCode = referralCode.trim();
+      const response = await authAPI.register(payload);
 
       if (response.success) {
         toast.success("Registration successful! Please verify your email.");

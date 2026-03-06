@@ -16,7 +16,7 @@ import {
   MessageSquare,
   HelpCircle,
   BookOpen,
-  FolderKanban,
+  UserPlus,
 } from "lucide-react";
 
 /**
@@ -49,11 +49,11 @@ export const studentNav = [
     permissions: ["student:read"],
   },
   {
-    id: "batches-catalog",
-    label: "All Batches",
-    icon: FolderKanban,
-    path: "/student/batches",
-    pageId: "student-batches",
+    id: "invite-friend",
+    label: "Invite your friend",
+    icon: UserPlus,
+    path: "/student/invite-friend",
+    pageId: "student-invite-friend",
     permissions: ["student:read"],
   },
   {

@@ -74,6 +74,7 @@ const Workshops = () => {
   const [manageVouchers, setManageVouchers] = useState([]);
   const [newAssignmentTitle, setNewAssignmentTitle] = useState('');
   const [newVoucherCode, setNewVoucherCode] = useState('');
+  const [newVoucherExpiry, setNewVoucherExpiry] = useState('');
   const [savingAssignment, setSavingAssignment] = useState(false);
   const [savingVoucher, setSavingVoucher] = useState(false);
 
@@ -364,11 +365,16 @@ const Workshops = () => {
     if (!manageWorkshop) return;
     setSavingVoucher(true);
     try {
-      const res = await workshopAPI.createVoucher(manageWorkshop.id || manageWorkshop._id, { code: newVoucherCode.trim() || undefined, type: 'ATTENDANCE' });
+      const res = await workshopAPI.createVoucher(manageWorkshop.id || manageWorkshop._id, {
+        code: newVoucherCode.trim() || undefined,
+        type: 'ATTENDANCE',
+        expiresAt: newVoucherExpiry.trim() ? new Date(newVoucherExpiry).toISOString() : undefined,
+      });
       if (res.success && res.data?.voucher) {
         await workshopAPI.sendVoucherToAttendees(manageWorkshop.id || manageWorkshop._id, res.data.voucher.id);
         setManageVouchers((v) => [res.data.voucher, ...v]);
         setNewVoucherCode('');
+        setNewVoucherExpiry('');
         toast.success('Voucher created and sent to attendees');
       }
     } catch (e) {
@@ -1136,14 +1142,23 @@ const Workshops = () => {
                   </li>
                 ))}
               </ul>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2 items-center">
                 <input
                   type="text"
                   value={newVoucherCode}
                   onChange={(e) => setNewVoucherCode(e.target.value)}
                   placeholder="Code (optional, auto-generated)"
-                  className="flex-1 max-w-[140px] px-2 py-1.5 border border-gray-300 rounded text-sm"
+                  className="flex-1 min-w-[120px] max-w-[140px] px-2 py-1.5 border border-gray-300 rounded text-sm"
                 />
+                <label className="text-xs text-textMuted flex items-center gap-1">
+                  Expires:
+                  <input
+                    type="date"
+                    value={newVoucherExpiry}
+                    onChange={(e) => setNewVoucherExpiry(e.target.value)}
+                    className="px-2 py-1.5 border border-gray-300 rounded text-sm"
+                  />
+                </label>
                 <Button type="button" variant="primary" size="sm" onClick={createVoucherAndSend} disabled={savingVoucher}>
                   {savingVoucher ? 'Creating...' : 'Create voucher & send to attendees'}
                 </Button>

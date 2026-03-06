@@ -83,6 +83,11 @@ export const studentAPI = {
   getPrerequisitesStatus: async () => {
     return apiRequest('/api/students/prerequisites-status');
   },
+
+  // All vouchers sent to this learner (tutor/admin/Brintelli); expired listed first
+  getMyVouchers: async () => {
+    return apiRequest('/api/students/vouchers');
+  },
 };
 
 export default studentAPI;

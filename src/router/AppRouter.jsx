@@ -99,6 +99,7 @@ import TutorMentees from "../pages/tutor/Mentees";
 import TutorMenteeSessions from "../pages/tutor/MenteeSessions";
 import TutorMenteeCallHistory from "../pages/tutor/MenteeCallHistory";
 import TutorLiveSessionRoom from "../pages/tutor/LiveSessionRoom";
+import TutorWorkshops from "../pages/tutor/TutorWorkshops";
 
 // LSM pages
 import LsmDashboard from "../pages/lsm/Dashboard";
@@ -512,6 +513,9 @@ const AppRouter = () => {
 
             {/* Upskilling */}
             <Route path="upskilling" element={<TutorUpskilling />} />
+
+            {/* Workshops: feedback poll, send notes */}
+            <Route path="workshops" element={<TutorWorkshops />} />
 
             {/* Profile */}
             <Route path="profile" element={<TutorProfile />} />

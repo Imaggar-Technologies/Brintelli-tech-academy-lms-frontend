@@ -291,8 +291,8 @@ const StudentWorkshopDetail = () => {
           </div>
         )}
 
-        {/* Feedback */}
-        {isRegistered && !feedbackSubmitted && (
+        {/* Feedback (only when tutor has published the feedback poll) */}
+        {isRegistered && !feedbackSubmitted && workshop?.feedbackPollPublished && (
           <div className="rounded-2xl border border-brintelli-border bg-brintelli-card p-5">
             <h3 className="text-lg font-semibold flex items-center gap-2 mb-3">
               <MessageSquare className="h-5 w-5" />

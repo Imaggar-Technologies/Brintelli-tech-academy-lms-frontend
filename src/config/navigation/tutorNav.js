@@ -11,6 +11,7 @@ import {
   LineChart,
   GraduationCap,
   Sparkles,
+  Presentation,
 } from "lucide-react";
 
 const tutorNav = [
@@ -78,6 +79,13 @@ const tutorNav = [
       { label: "Booked Sessions", icon: CalendarClock, path: "/tutor/mentees/sessions", pageId: "tutor-mentee-sessions" },
       { label: "Call History", icon: MessageCircleQuestion, path: "/tutor/mentees/call-history", pageId: "tutor-mentee-calls" },
     ],
+  },
+  {
+    id: "workshops",
+    label: "My Workshops",
+    icon: Presentation,
+    path: "/tutor/workshops",
+    pageId: "tutor-workshops",
   },
   {
     id: "upskilling",

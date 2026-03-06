@@ -90,6 +90,11 @@ export const workshopAPI = {
   getMyFeedback: (id) => apiRequest(`/api/workshops/${id}/feedback/me`),
   getFeedback: (id) => apiRequest(`/api/workshops/${id}/feedback`),
   submitFeedback: (id, data) => apiRequest(`/api/workshops/${id}/feedback`, { method: 'POST', body: JSON.stringify(data) }),
+  publishFeedbackPoll: (id, published) => apiRequest(`/api/workshops/${id}/feedback/publish`, { method: 'PATCH', body: JSON.stringify({ published }) }),
+
+  // Tutor notes/announcements (notes, links, send email e.g. "please review")
+  getWorkshopNotes: (id) => apiRequest(`/api/workshops/${id}/notes`),
+  postWorkshopNote: (id, data) => apiRequest(`/api/workshops/${id}/notes`, { method: 'POST', body: JSON.stringify(data) }),
 
   // Quiz
   getQuiz: (id) => apiRequest(`/api/workshops/${id}/quiz`),

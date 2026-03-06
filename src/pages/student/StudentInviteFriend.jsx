@@ -1,23 +1,28 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import { UserPlus, Copy, Ticket } from 'lucide-react';
+import { UserPlus, Copy, Ticket, Gift, Sparkles } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
 import referralAPI from '../../api/referral';
 import couponAPI from '../../api/coupon';
+import studentAPI from '../../api/student';
 
 const StudentInviteFriend = () => {
   const [loading, setLoading] = useState(true);
   const [code, setCode] = useState('');
   const [referralLink, setReferralLink] = useState('');
   const [referrals, setReferrals] = useState([]);
+  const [totalReferralPoints, setTotalReferralPoints] = useState(0);
   const [couponCode, setCouponCode] = useState('');
   const [couponAmount, setCouponAmount] = useState('');
   const [couponResult, setCouponResult] = useState(null);
   const [validatingCoupon, setValidatingCoupon] = useState(false);
+  const [vouchers, setVouchers] = useState([]);
+  const [vouchersLoading, setVouchersLoading] = useState(false);
 
   useEffect(() => {
     fetchReferral();
+    fetchVouchers();
   }, []);
 
   const fetchReferral = async () => {
@@ -28,12 +33,27 @@ const StudentInviteFriend = () => {
         setCode(res.code || '');
         setReferralLink(res.referralLink || '');
         setReferrals(Array.isArray(res.referrals) ? res.referrals : []);
+        setTotalReferralPoints(res.totalReferralPoints ?? 0);
       }
     } catch (err) {
       console.error('Referral fetch error', err);
       toast.error(err?.message || 'Failed to load referral info');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchVouchers = async () => {
+    try {
+      setVouchersLoading(true);
+      const res = await studentAPI.getMyVouchers();
+      if (res?.success && Array.isArray(res.data?.vouchers)) {
+        setVouchers(res.data.vouchers);
+      }
+    } catch (err) {
+      console.error('Vouchers fetch error', err);
+    } finally {
+      setVouchersLoading(false);
     }
   };
 
@@ -224,6 +244,61 @@ const StudentInviteFriend = () => {
               Have a coupon? Validate it above. When you pay for a program or workshop, enter the same code at checkout to get the discount.
             </p>
           </div>
+        </div>
+      </div>
+
+      {/* My Vouchers (sent by tutor/admin/Brintelli); expired listed first */}
+      <div className="mt-6 rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft">
+        <div className="border-b border-brintelli-border p-4 flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+            <Gift className="h-5 w-5" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-text">My vouchers</h3>
+            <p className="text-sm text-textSoft">Vouchers sent to you by tutors, admins, or Brintelli. Expired vouchers are listed first.</p>
+          </div>
+        </div>
+        <div className="p-4">
+          {vouchersLoading ? (
+            <div className="animate-pulse h-20 bg-brintelli-baseAlt rounded-lg" />
+          ) : vouchers.length === 0 ? (
+            <p className="text-sm text-textMuted">No vouchers sent to you yet.</p>
+          ) : (
+            <ul className="space-y-3">
+              {vouchers.map((v) => (
+                <li
+                  key={v.id}
+                  className={`rounded-lg border p-3 flex flex-wrap items-center justify-between gap-2 ${
+                    v.isExpired ? 'border-amber-200 bg-amber-50/50' : 'border-brintelli-border bg-brintelli-baseAlt/30'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <code className="font-mono font-semibold text-text bg-white px-2 py-1 rounded border border-brintelli-border">
+                      {v.code}
+                    </code>
+                    {v.workshopTitle && (
+                      <span className="text-sm text-textMuted">{v.workshopTitle}</span>
+                    )}
+                    {v.description && (
+                      <span className="text-sm text-textSoft">{v.description}</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {v.expiresAt && (
+                      <span className={`text-xs ${v.isExpired ? 'text-amber-700 font-medium' : 'text-textMuted'}`}>
+                        {v.isExpired ? 'Expired' : 'Expires'}: {formatExpiry(v.expiresAt)}
+                      </span>
+                    )}
+                    {v.isExpired && (
+                      <span className="rounded-full bg-amber-200 text-amber-800 px-2 py-0.5 text-xs font-medium">
+                        Expired
+                      </span>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
     </>

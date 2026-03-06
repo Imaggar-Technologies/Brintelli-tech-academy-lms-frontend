@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import Button from '../../components/Button';
 import studentAPI from '../../api/student';
+import referralAPI from '../../api/referral';
 import { useSelector } from 'react-redux';
 
 const StudentDashboard = () => {
@@ -31,11 +32,22 @@ const StudentDashboard = () => {
   const [sessionIndex, setSessionIndex] = useState(0);
   const [enrollment, setEnrollment] = useState(null);
   const [showChallengesBanner, setShowChallengesBanner] = useState(true);
+  const [referralPoints, setReferralPoints] = useState(0);
 
   useEffect(() => {
     fetchDashboardData();
     fetchEnrollment();
+    fetchReferralPoints();
   }, []);
+
+  const fetchReferralPoints = async () => {
+    try {
+      const res = await referralAPI.getMyReferral();
+      if (res?.success && (res.totalReferralPoints ?? 0) > 0) {
+        setReferralPoints(res.totalReferralPoints);
+      }
+    } catch (_) {}
+  };
 
   const fetchEnrollment = async () => {
     try {
@@ -205,6 +217,16 @@ const StudentDashboard = () => {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Referral points (when user has points from invites) */}
+      {referralPoints > 0 && (
+        <div className="rounded-2xl border border-brand-200/60 bg-brand-50/50 p-4 flex items-center justify-between">
+          <span className="text-text font-medium">You have <strong>{referralPoints}</strong> points from inviting friends who joined.</span>
+          <Button variant="secondary" size="sm" onClick={() => navigate('/student/invite-friend')}>
+            Invite more
+          </Button>
         </div>
       )}
 

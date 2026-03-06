@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { Presentation, Plus, Search, RefreshCw, Calendar, Users, Clock, Edit2, Trash2, X, Settings, Mail, FileText, UserCircle, Trophy, Gift, MessageSquare } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
@@ -37,6 +38,7 @@ const defaultFormData = () => ({
 });
 
 const Workshops = () => {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [workshops, setWorkshops] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -522,7 +524,13 @@ const Workshops = () => {
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="flex items-center gap-1.5">
-                          <Button variant="ghost" size="sm" onClick={() => openManage(workshop)} className="px-2 py-1 text-[10px]" title="Manage resources, tutor, participants, email">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => navigate(`/program-manager/workshops/${workshop.id || workshop._id}/manage`)}
+                            className="px-2 py-1 text-[10px]"
+                            title="Manage resources, tutor, participants, email"
+                          >
                             <Settings className="h-3 w-3" />
                           </Button>
                           <Button variant="ghost" size="sm" onClick={() => {

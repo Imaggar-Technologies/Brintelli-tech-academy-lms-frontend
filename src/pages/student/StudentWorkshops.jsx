@@ -39,6 +39,7 @@ const StudentWorkshops = () => {
   };
 
   const isRegistered = (workshop) => {
+    if (workshop.isRegisteredForCurrentUser === true) return true;
     const participants = workshop.participants || [];
     return participants.some((p) => (p?.toString?.() || p) === userId);
   };
@@ -192,13 +193,26 @@ const StudentWorkshops = () => {
                   </div>
                   <div className="flex-shrink-0 flex items-center gap-2">
                     {registered ? (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={(e) => { e.stopPropagation(); handleUnregister(workshop.id || workshop._id); }}
-                      >
-                        Unregister
-                      </Button>
+                      <>
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/student/workshops/${workshop.id || workshop._id}`);
+                          }}
+                        >
+                          View Workshop
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => { e.stopPropagation(); handleUnregister(workshop.id || workshop._id); }}
+                          className="text-textMuted hover:text-red-600"
+                        >
+                          Unregister
+                        </Button>
+                      </>
                     ) : full ? (
                       <span className="text-sm text-textMuted">Full</span>
                     ) : (
@@ -210,7 +224,7 @@ const StudentWorkshops = () => {
                         Register
                       </Button>
                     )}
-                    <ChevronRight className="h-5 w-5 text-textMuted" aria-hidden />
+                    {!registered && <ChevronRight className="h-5 w-5 text-textMuted" aria-hidden />}
                   </div>
                 </div>
               </div>

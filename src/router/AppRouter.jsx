@@ -200,6 +200,7 @@ import BatchHealth from "../pages/program-manager/BatchHealth";
 import BatchSchedule from "../pages/program-manager/BatchSchedule";
 import ProgramManagerProfile from "../pages/program-manager/Profile";
 import Workshops from "../pages/program-manager/Workshops";
+import WorkshopManage from "../pages/program-manager/WorkshopManage";
 import Feedbacks from "../pages/program-manager/Feedbacks";
 import WorkloadBalancer from "../pages/program-manager/WorkloadBalancer";
 import FinanceDashboard from "../pages/finance/Dashboard";
@@ -630,6 +631,7 @@ const AppRouter = () => {
             <Route path="sessions/:sessionId/live" element={<TutorLiveSessionRoom />} />
             <Route path="profile" element={<ProgramManagerProfile />} />
             <Route path="workshops" element={<Workshops />} />
+            <Route path="workshops/:workshopId/manage" element={<WorkshopManage />} />
             <Route path="feedbacks" element={<Feedbacks />} />
             <Route path="workload-balancer" element={<WorkloadBalancer />} />
           </Route>

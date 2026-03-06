@@ -18,6 +18,8 @@ import {
   ExternalLink,
   Send,
   RefreshCw,
+  X,
+  StickyNote,
 } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
@@ -44,6 +46,7 @@ const StudentWorkshopDetail = () => {
   const [submittingQuiz, setSubmittingQuiz] = useState(false);
   const [assignmentSubmitting, setAssignmentSubmitting] = useState(null);
   const [submissionContent, setSubmissionContent] = useState({});
+  const [bannerClosed, setBannerClosed] = useState(false);
 
   const isRegistered = workshop?.participants?.some((p) => (p?.toString?.() || p) === userId);
 
@@ -156,6 +159,21 @@ const StudentWorkshopDetail = () => {
 
   const hasMeetingLink = workshop.meetingLink && (workshop.deliveryMode === 'LIVE' || workshop.meetingLink);
   const resources = Array.isArray(workshop.resources) ? workshop.resources : [];
+  const quizPublished = quiz?.published === true;
+  const hasNotes = Array.isArray(workshop.tutorAnnouncements) && workshop.tutorAnnouncements.length > 0;
+
+  const scrollToSection = (id) => {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const navItems = [];
+  if (resources.length > 0) navItems.push({ id: 'section-resources', label: 'Resources', icon: FileText });
+  if (quizPublished && quiz) navItems.push({ id: 'section-quiz', label: 'Quiz', icon: Trophy });
+  if (quizPublished && leaderboard.length > 0) navItems.push({ id: 'section-leaderboard', label: 'Leaderboard', icon: Trophy });
+  if (assignments.length > 0 && isRegistered) navItems.push({ id: 'section-assignments', label: 'Assignments', icon: FileText });
+  if (hasNotes) navItems.push({ id: 'section-notes', label: 'Notes', icon: StickyNote });
+  if (workshop?.feedbackPollPublished && isRegistered) navItems.push({ id: 'section-feedback', label: 'Feedback', icon: MessageSquare });
 
   return (
     <>
@@ -171,9 +189,31 @@ const StudentWorkshopDetail = () => {
       />
 
       <div className="space-y-6">
-        {/* Meta + Registered badge */}
-        <div className="rounded-2xl border border-brintelli-border bg-brintelli-card p-5">
-          <div className="flex flex-wrap items-center gap-2 mb-3">
+        {/* Banner: meta + registered badge – can be closed */}
+        <div
+          id="workshop-banner"
+          className={`rounded-2xl border border-brintelli-border bg-brintelli-card overflow-hidden transition-all ${bannerClosed ? 'py-2 px-4' : 'p-5'}`}
+        >
+          <div className="flex items-start justify-between gap-2">
+            <div className={`flex-1 min-w-0 ${bannerClosed ? 'flex items-center gap-3' : ''}`}>
+              {bannerClosed ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-semibold text-text">{workshop.title || 'Workshop'}</span>
+                  {workshop.subject && (
+                    <span className="px-2 py-0.5 rounded text-xs font-medium bg-brand-500/10 text-brand-600">{workshop.subject}</span>
+                  )}
+                  {isRegistered && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-green-500/10 text-green-600">
+                      <CheckCircle className="h-3 w-3" /> Registered
+                    </span>
+                  )}
+                  <Button variant="ghost" size="sm" onClick={() => setBannerClosed(false)} className="text-brand-600">
+                    Show banner
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <div className="flex flex-wrap items-center gap-2 mb-3">
             {workshop.subject && (
               <span className="px-2 py-0.5 rounded text-xs font-medium bg-brand-500/10 text-brand-600">{workshop.subject}</span>
             )}
@@ -211,7 +251,38 @@ const StudentWorkshopDetail = () => {
               </span>
             )}
           </div>
+                </>
+              )}
+            </div>
+            {!bannerClosed && (
+              <button
+                type="button"
+                onClick={() => setBannerClosed(true)}
+                className="shrink-0 p-1.5 rounded-lg text-textMuted hover:bg-brintelli-baseAlt hover:text-text transition-colors"
+                aria-label="Close banner"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            )}
+          </div>
         </div>
+
+        {/* Secondary top bar – only show sections that are published/available */}
+        {navItems.length > 0 && (
+          <div className="sticky top-0 z-10 flex flex-wrap items-center gap-1 rounded-xl border border-brintelli-border bg-brintelli-card/95 backdrop-blur px-3 py-2 shadow-sm">
+            {navItems.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => scrollToSection(item.id)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-text hover:bg-brand-500/10 hover:text-brand-600 transition-colors"
+              >
+                <item.icon className="h-4 w-4" />
+                {item.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Join online link */}
         {hasMeetingLink && isRegistered && (
@@ -234,7 +305,7 @@ const StudentWorkshopDetail = () => {
 
         {/* Resources (PPT, PDF, etc.) */}
         {resources.length > 0 && (
-          <div className="rounded-2xl border border-brintelli-border bg-brintelli-card p-5">
+          <div id="section-resources" className="rounded-2xl border border-brintelli-border bg-brintelli-card p-5 scroll-mt-4">
             <h3 className="text-lg font-semibold flex items-center gap-2 mb-3">
               <FileText className="h-5 w-5" />
               Resources
@@ -259,7 +330,7 @@ const StudentWorkshopDetail = () => {
 
         {/* Assignments */}
         {assignments.length > 0 && isRegistered && (
-          <div className="rounded-2xl border border-brintelli-border bg-brintelli-card p-5">
+          <div id="section-assignments" className="rounded-2xl border border-brintelli-border bg-brintelli-card p-5 scroll-mt-4">
             <h3 className="text-lg font-semibold flex items-center gap-2 mb-3">
               <FileText className="h-5 w-5" />
               Assignments
@@ -291,54 +362,57 @@ const StudentWorkshopDetail = () => {
           </div>
         )}
 
-        {/* Feedback (only when tutor has published the feedback poll) */}
-        {isRegistered && !feedbackSubmitted && workshop?.feedbackPollPublished && (
-          <div className="rounded-2xl border border-brintelli-border bg-brintelli-card p-5">
-            <h3 className="text-lg font-semibold flex items-center gap-2 mb-3">
-              <MessageSquare className="h-5 w-5" />
-              Submit feedback
-            </h3>
-            <form onSubmit={handleSubmitFeedback} className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium mb-1">Rating (1–5)</label>
-                <select
-                  value={feedbackForm.rating}
-                  onChange={(e) => setFeedbackForm((f) => ({ ...f, rating: Number(e.target.value) }))}
-                  className="w-full max-w-[120px] px-3 py-2 border border-gray-300 rounded-lg"
-                >
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <option key={n} value={n}>{n}</option>
-                  ))}
-                </select>
+        {/* Feedback – only when published */}
+        {isRegistered && workshop?.feedbackPollPublished && (
+          <div id="section-feedback" className="rounded-2xl border border-brintelli-border bg-brintelli-card p-5 scroll-mt-4">
+            {feedbackSubmitted ? (
+              <div className="rounded-2xl border border-green-200 bg-green-50 p-5">
+                <p className="text-green-700 flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5" />
+                  Thank you! Your feedback has been submitted.
+                </p>
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Comment (optional)</label>
-                <textarea
-                  value={feedbackForm.comment}
-                  onChange={(e) => setFeedbackForm((f) => ({ ...f, comment: e.target.value }))}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                  placeholder="Your feedback..."
-                />
-              </div>
-              <Button type="submit" disabled={submittingFeedback}>
-                {submittingFeedback ? 'Submitting...' : 'Submit feedback'}
-              </Button>
-            </form>
-          </div>
-        )}
-        {feedbackSubmitted && (
-          <div className="rounded-2xl border border-green-200 bg-green-50 p-5">
-            <p className="text-green-700 flex items-center gap-2">
-              <CheckCircle className="h-5 w-5" />
-              Thank you! Your feedback has been submitted.
-            </p>
+            ) : (
+              <>
+                <h3 className="text-lg font-semibold flex items-center gap-2 mb-3">
+                  <MessageSquare className="h-5 w-5" />
+                  Submit feedback
+                </h3>
+                <form onSubmit={handleSubmitFeedback} className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Rating (1–5)</label>
+                    <select
+                      value={feedbackForm.rating}
+                      onChange={(e) => setFeedbackForm((f) => ({ ...f, rating: Number(e.target.value) }))}
+                      className="w-full max-w-[120px] px-3 py-2 border border-gray-300 rounded-lg"
+                    >
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <option key={n} value={n}>{n}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Comment (optional)</label>
+                    <textarea
+                      value={feedbackForm.comment}
+                      onChange={(e) => setFeedbackForm((f) => ({ ...f, comment: e.target.value }))}
+                      rows={3}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      placeholder="Your feedback..."
+                    />
+                  </div>
+                  <Button type="submit" disabled={submittingFeedback}>
+                    {submittingFeedback ? 'Submitting...' : 'Submit feedback'}
+                  </Button>
+                </form>
+              </>
+            )}
           </div>
         )}
 
-        {/* Quiz */}
-        {quiz && isRegistered && (
-          <div className="rounded-2xl border border-brintelli-border bg-brintelli-card p-5">
+        {/* Quiz – only when published */}
+        {quiz && quizPublished && isRegistered && (
+          <div id="section-quiz" className="rounded-2xl border border-brintelli-border bg-brintelli-card p-5 scroll-mt-4">
             <h3 className="text-lg font-semibold flex items-center gap-2 mb-3">
               <Trophy className="h-5 w-5" />
               {quiz.title}
@@ -379,7 +453,7 @@ const StudentWorkshopDetail = () => {
 
         {/* Leaderboard */}
         {leaderboard.length > 0 && (
-          <div className="rounded-2xl border border-brintelli-border bg-brintelli-card p-5">
+          <div id="section-leaderboard" className="rounded-2xl border border-brintelli-border bg-brintelli-card p-5 scroll-mt-4">
             <h3 className="text-lg font-semibold flex items-center gap-2 mb-3">
               <Trophy className="h-5 w-5" />
               Leaderboard
@@ -393,6 +467,23 @@ const StudentWorkshopDetail = () => {
               ))}
             </ul>
             <p className="text-xs text-textMuted mt-2">Top performers may receive rewards – great job!</p>
+          </div>
+        )}
+
+        {/* Notes (tutor announcements) – only when published/available */}
+        {hasNotes && (
+          <div id="section-notes" className="rounded-2xl border border-brintelli-border bg-brintelli-card p-5 scroll-mt-4">
+            <h3 className="text-lg font-semibold flex items-center gap-2 mb-3">
+              <StickyNote className="h-5 w-5" />
+              Notes
+            </h3>
+            <ul className="space-y-2">
+              {(workshop.tutorAnnouncements || []).map((note, i) => (
+                <li key={i} className="py-2 border-b border-gray-100 last:border-0 text-sm text-text">
+                  {typeof note === 'string' ? note : (note?.text || note?.content || JSON.stringify(note))}
+                </li>
+              ))}
+            </ul>
           </div>
         )}
 

@@ -18,7 +18,9 @@ import {
   Eye,
   Edit,
   Trash2,
-  RefreshCw
+  RefreshCw,
+  Link2,
+  Copy
 } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
@@ -34,6 +36,12 @@ const ITManagement = () => {
   const [auditLogs, setAuditLogs] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({});
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [createForm, setCreateForm] = useState({ email: '', password: '', fullName: '', phone: '', role: 'student' });
+  const [createSubmitting, setCreateSubmitting] = useState(false);
+  const [createError, setCreateError] = useState(null);
+  const [createdRepresentativeLink, setCreatedRepresentativeLink] = useState(null);
+  const ROLES = ['student', 'tutor', 'mentor', 'lsm', 'sales_agent', 'sales_lead', 'sales_admin', 'it_support', 'it_admin', 'admin', 'representative'];
 
   // Fetch users
   const fetchUsers = async () => {
@@ -122,6 +130,48 @@ const ITManagement = () => {
     );
   };
 
+  const handleCreateUser = async (e) => {
+    e.preventDefault();
+    setCreateError(null);
+    setCreateSubmitting(true);
+    setCreatedRepresentativeLink(null);
+    try {
+      const res = await itUserAPI.createUser(createForm);
+      if (res?.success && res?.data) {
+        if ((createForm.role || '').toLowerCase() === 'representative' && (res.data.referralLink || res.data.referralCode)) {
+          setCreatedRepresentativeLink({
+            link: res.data.referralLink || null,
+            code: res.data.referralCode || null,
+            userName: res.data.user?.fullName || res.data.user?.email,
+          });
+        } else {
+          setCreateModalOpen(false);
+          setCreateForm({ email: '', password: '', fullName: '', phone: '', role: 'student' });
+          fetchUsers();
+        }
+      } else {
+        setCreateError(res?.error || 'Failed to create user');
+      }
+    } catch (err) {
+      setCreateError(err?.message || 'Failed to create user');
+    } finally {
+      setCreateSubmitting(false);
+    }
+  };
+
+  const copyToClipboard = (text) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {});
+  };
+
+  const closeCreateModal = () => {
+    setCreateModalOpen(false);
+    setCreateForm({ email: '', password: '', fullName: '', phone: '', role: 'student' });
+    setCreateError(null);
+    setCreatedRepresentativeLink(null);
+    fetchUsers();
+  };
+
   return (
     <>
       <PageHeader
@@ -170,7 +220,7 @@ const ITManagement = () => {
         </div>
         <div className="flex items-center gap-2">
           {activeTab === 'users' && (
-            <Button onClick={() => {/* Open create user modal */}} className="gap-2">
+            <Button onClick={() => setCreateModalOpen(true)} className="gap-2">
               <UserPlus className="h-4 w-4" />
               Create User
             </Button>
@@ -204,6 +254,7 @@ const ITManagement = () => {
                       <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-textMuted">User</th>
                       <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-textMuted">Role</th>
                       <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-textMuted">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-textMuted">Referral</th>
                       <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-textMuted">Actions</th>
                     </tr>
                   </thead>
@@ -235,6 +286,20 @@ const ITManagement = () => {
                             }`}>
                               {user.isActive ? 'Active' : 'Inactive'}
                             </span>
+                          </td>
+                          <td className="whitespace-nowrap px-6 py-4 text-sm">
+                            {user.role === 'representative' ? (
+                              <div className="flex flex-col gap-0.5">
+                                {user.referralCode && (
+                                  <span className="text-xs font-mono text-textMuted" title={user.referralCode}>{user.referralCode}</span>
+                                )}
+                                {typeof user.totalReferralPoints === 'number' && (
+                                  <span className="text-xs text-brand-600 font-medium">{user.totalReferralPoints} pts</span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-textMuted">—</span>
+                            )}
                           </td>
                           <td className="whitespace-nowrap px-6 py-4 text-sm">
                             <div className="flex items-center gap-2">
@@ -363,6 +428,78 @@ const ITManagement = () => {
             </div>
           )}
         </>
+      )}
+
+      {/* Create User Modal */}
+      {createModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => !createSubmitting && closeCreateModal()}>
+          <div className="bg-brintelli-card rounded-2xl shadow-xl max-w-md w-full p-6 border border-brintelli-border" onClick={(e) => e.stopPropagation()}>
+            {createdRepresentativeLink ? (
+              <>
+                <h3 className="text-lg font-semibold text-text mb-2">Representative created</h3>
+                <p className="text-sm text-textMuted mb-4">Share this link with students. When they register using it, this representative will be credited with points.</p>
+                {createdRepresentativeLink.link && (
+                  <div className="mb-3">
+                    <label className="block text-xs font-medium text-textMuted mb-1">Share link</label>
+                    <div className="flex gap-2">
+                      <input readOnly value={createdRepresentativeLink.link} className="flex-1 rounded-lg border border-brintelli-border bg-brintelli-base px-3 py-2 text-sm" />
+                      <button type="button" onClick={() => copyToClipboard(createdRepresentativeLink.link)} className="shrink-0 rounded-lg border border-brintelli-border px-3 py-2 hover:bg-brintelli-baseAlt" title="Copy">
+                        <Copy className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {createdRepresentativeLink.code && (
+                  <div className="mb-4">
+                    <label className="block text-xs font-medium text-textMuted mb-1">Referral code</label>
+                    <div className="flex gap-2">
+                      <input readOnly value={createdRepresentativeLink.code} className="flex-1 rounded-lg border border-brintelli-border bg-brintelli-base px-3 py-2 text-sm font-mono" />
+                      <button type="button" onClick={() => copyToClipboard(createdRepresentativeLink.code)} className="shrink-0 rounded-lg border border-brintelli-border px-3 py-2 hover:bg-brintelli-baseAlt" title="Copy">
+                        <Copy className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+                <Button onClick={closeCreateModal}>Done</Button>
+              </>
+            ) : (
+              <>
+                <h3 className="text-lg font-semibold text-text mb-4">Create User</h3>
+                <form onSubmit={handleCreateUser} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-text mb-1">Email *</label>
+                    <input type="email" required value={createForm.email} onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))} className="w-full rounded-lg border border-brintelli-border bg-brintelli-base px-3 py-2 text-sm" placeholder="user@example.com" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text mb-1">Password *</label>
+                    <input type="password" required minLength={8} value={createForm.password} onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))} className="w-full rounded-lg border border-brintelli-border bg-brintelli-base px-3 py-2 text-sm" placeholder="Min 8 characters" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text mb-1">Full name</label>
+                    <input type="text" value={createForm.fullName} onChange={(e) => setCreateForm((f) => ({ ...f, fullName: e.target.value }))} className="w-full rounded-lg border border-brintelli-border bg-brintelli-base px-3 py-2 text-sm" placeholder="John Doe" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text mb-1">Phone</label>
+                    <input type="text" value={createForm.phone} onChange={(e) => setCreateForm((f) => ({ ...f, phone: e.target.value }))} className="w-full rounded-lg border border-brintelli-border bg-brintelli-base px-3 py-2 text-sm" placeholder="+1 234 567 8900" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text mb-1">Role *</label>
+                    <select required value={createForm.role} onChange={(e) => setCreateForm((f) => ({ ...f, role: e.target.value }))} className="w-full rounded-lg border border-brintelli-border bg-brintelli-base px-3 py-2 text-sm">
+                      {ROLES.map((r) => (
+                        <option key={r} value={r}>{r === 'representative' ? 'Representative (refers students, earns points)' : r}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {createError && <p className="text-sm text-red-600">{createError}</p>}
+                  <div className="flex gap-2 justify-end pt-2">
+                    <Button type="button" variant="secondary" onClick={closeCreateModal} disabled={createSubmitting}>Cancel</Button>
+                    <Button type="submit" disabled={createSubmitting}>{createSubmitting ? 'Creating...' : 'Create User'}</Button>
+                  </div>
+                </form>
+              </>
+            )}
+          </div>
+        </div>
       )}
     </>
   );

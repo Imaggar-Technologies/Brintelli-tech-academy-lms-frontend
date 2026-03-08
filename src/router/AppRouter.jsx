@@ -343,6 +343,7 @@ const AppRouter = () => {
         }>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<AdminModulePage pageId="dashboard" />} />
+          <Route path="website-cms" element={<Navigate to="website-cms/seo" replace />} />
           {adminNav.flatMap((item) => {
             if (item.children) {
               return item.children.map((child) => {

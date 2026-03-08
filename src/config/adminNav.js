@@ -34,8 +34,6 @@ import {
   Globe,
 } from "lucide-react";
 
-const CMS_ADMIN_URL = import.meta.env.VITE_CMS_ADMIN_URL || "";
-
 export const adminNav = [
   {
     id: "dashboard",
@@ -44,18 +42,24 @@ export const adminNav = [
     path: "/admin-portal/dashboard",
     pageId: "dashboard",
   },
-  ...(CMS_ADMIN_URL
-    ? [
-        {
-          id: "website-cms",
-          label: "Website / CMS",
-          icon: Globe,
-          path: CMS_ADMIN_URL,
-          external: true,
-          pageId: "website-cms",
-        },
-      ]
-    : []),
+  {
+    id: "website-cms",
+    label: "Website / CMS",
+    icon: Globe,
+    path: "/admin-portal/website-cms",
+    pageId: "website-cms",
+    children: [
+      { label: "SEO", icon: FileText, path: "/admin-portal/website-cms/seo", pageId: "website-cms-seo" },
+      { label: "Programs", icon: Layers3, path: "/admin-portal/website-cms/programs", pageId: "website-cms-programs" },
+      { label: "Events", icon: CalendarClock, path: "/admin-portal/website-cms/events", pageId: "website-cms-events" },
+      { label: "Testimonials", icon: Users2, path: "/admin-portal/website-cms/testimonials", pageId: "website-cms-testimonials" },
+      { label: "Blogs", icon: FileText, path: "/admin-portal/website-cms/blogs", pageId: "website-cms-blogs" },
+      { label: "Banners", icon: Layers3, path: "/admin-portal/website-cms/banners", pageId: "website-cms-banners" },
+      { label: "Gallery", icon: Layers3, path: "/admin-portal/website-cms/gallery", pageId: "website-cms-gallery" },
+      { label: "Popups", icon: Bell, path: "/admin-portal/website-cms/popups", pageId: "website-cms-popups" },
+      { label: "Media", icon: FileText, path: "/admin-portal/website-cms/media", pageId: "website-cms-media" },
+    ],
+  },
   {
     id: "lms",
     label: "LMS Management",
@@ -261,6 +265,15 @@ export const adminModuleConfig = {
     description: "Manage the public Brintelli website: SEO, programs, events, testimonials, blogs, banners, gallery, and popups.",
     sections: [],
   },
+  "website-cms-seo": { title: "SEO", description: "Per-route meta tags.", sections: [] },
+  "website-cms-programs": { title: "Programs", description: "Website programs listing.", sections: [] },
+  "website-cms-events": { title: "Events", description: "Events listing.", sections: [] },
+  "website-cms-testimonials": { title: "Testimonials", description: "Testimonials.", sections: [] },
+  "website-cms-blogs": { title: "Blogs", description: "Blog posts.", sections: [] },
+  "website-cms-banners": { title: "Banners", description: "Banners.", sections: [] },
+  "website-cms-gallery": { title: "Gallery", description: "Gallery.", sections: [] },
+  "website-cms-popups": { title: "Popups", description: "Popups.", sections: [] },
+  "website-cms-media": { title: "Media", description: "Media library.", sections: [] },
   "lms-programs": {
     title: "Programs Management",
     description: "Curate flagship programs end-to-end – content, delivery teams, pricing, and lifecycle.",

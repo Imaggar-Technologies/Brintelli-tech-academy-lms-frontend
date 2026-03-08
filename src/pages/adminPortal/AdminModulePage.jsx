@@ -7,6 +7,15 @@ import ActivityLogs from "./ActivityLogs";
 import UserActivityPage from "./UserActivityPage";
 import Notifications from "./Notifications";
 import AdminWorkshops from "./AdminWorkshops";
+import CmsSeoPage from "./websiteCms/CmsSeoPage";
+import CmsProgramsList from "./websiteCms/CmsProgramsList";
+import CmsEventsList from "./websiteCms/CmsEventsList";
+import CmsTestimonialsList from "./websiteCms/CmsTestimonialsList";
+import CmsBlogsList from "./websiteCms/CmsBlogsList";
+import CmsBannersList from "./websiteCms/CmsBannersList";
+import CmsGalleryEdit from "./websiteCms/CmsGalleryEdit";
+import CmsPopupsList from "./websiteCms/CmsPopupsList";
+import CmsMediaList from "./websiteCms/CmsMediaList";
 
 const AdminModulePage = ({ pageId }) => {
   // Route to the appropriate page based on pageId
@@ -45,6 +54,16 @@ const AdminModulePage = ({ pageId }) => {
   if (pageId === "admin-workshops") {
     return <AdminWorkshops />;
   }
+
+  if (pageId === "website-cms-seo") return <CmsSeoPage />;
+  if (pageId === "website-cms-programs") return <CmsProgramsList />;
+  if (pageId === "website-cms-events") return <CmsEventsList />;
+  if (pageId === "website-cms-testimonials") return <CmsTestimonialsList />;
+  if (pageId === "website-cms-blogs") return <CmsBlogsList />;
+  if (pageId === "website-cms-banners") return <CmsBannersList />;
+  if (pageId === "website-cms-gallery") return <CmsGalleryEdit />;
+  if (pageId === "website-cms-popups") return <CmsPopupsList />;
+  if (pageId === "website-cms-media") return <CmsMediaList />;
 
   // For other pages, you can add more routing logic here
   return (

@@ -32,6 +32,7 @@ export const adminRoles = {
     label: "Program Manager",
     permissions: combine(
       ["dashboard", "website-cms"],
+      prefix("website-cms-"),
       prefix("lms-"),
       prefix("pm-"),
       prefix("practice-"),
@@ -64,6 +65,7 @@ export const adminRoles = {
     label: "Sales & CRM",
     permissions: combine(
       ["dashboard", "website-cms"],
+      prefix("website-cms-"),
       prefix("sales-"),
       ["finance-analytics", "notifications"]
     ),

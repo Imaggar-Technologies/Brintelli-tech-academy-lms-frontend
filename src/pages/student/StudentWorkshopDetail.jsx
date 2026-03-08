@@ -180,7 +180,6 @@ const StudentWorkshopDetail = () => {
     );
   }
 
-  const hasMeetingLink = workshop.meetingLink && (workshop.deliveryMode === 'LIVE' || workshop.meetingLink);
   const resources = Array.isArray(workshop.resources) ? workshop.resources : [];
   const quizPublished = quiz?.published === true;
   const hasNotes = Array.isArray(workshop.tutorAnnouncements) && workshop.tutorAnnouncements.length > 0;

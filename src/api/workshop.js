@@ -107,6 +107,7 @@ export const workshopAPI = {
   updateResources: (id, data) => apiRequest(`/api/workshops/${id}/resources`, { method: 'PATCH', body: JSON.stringify(data) }),
 
   // Certificates
+  getMyCertificate: (id) => apiRequest(`/api/workshops/${id}/certificates/me`),
   generateCertificates: (id, participantIds = null) =>
     apiRequest(`/api/workshops/${id}/certificates/generate`, {
       method: 'POST',

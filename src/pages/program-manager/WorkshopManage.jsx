@@ -17,6 +17,9 @@ import {
   Clock,
   Link2,
   RefreshCw,
+  Award,
+  Send,
+  Download,
 } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
@@ -50,6 +53,11 @@ const WorkshopManage = () => {
   const [newVoucherExpiry, setNewVoucherExpiry] = useState('');
   const [savingVoucher, setSavingVoucher] = useState(false);
 
+  const [certificates, setCertificates] = useState([]);
+  const [certsLoading, setCertsLoading] = useState(false);
+  const [certsGenerating, setCertsGenerating] = useState(false);
+  const [certsSending, setCertsSending] = useState(false);
+
   useEffect(() => {
     if (workshopId) {
       loadWorkshop();
@@ -80,22 +88,79 @@ const WorkshopManage = () => {
   const loadManageData = async () => {
     if (!workshopId) return;
     try {
-      const [pRes, aRes, fRes, qRes, vRes] = await Promise.all([
+      const [pRes, aRes, fRes, qRes, vRes, cRes] = await Promise.all([
         workshopAPI.getParticipants(workshopId),
         workshopAPI.getAssignments(workshopId),
         workshopAPI.getFeedback(workshopId),
         workshopAPI.getQuiz(workshopId),
         workshopAPI.getVouchers(workshopId),
+        workshopAPI.getCertificates(workshopId),
       ]);
       if (pRes?.success && pRes.data?.participants) setParticipants(pRes.data.participants);
       if (aRes?.success && aRes.data?.assignments) setAssignments(aRes.data.assignments);
       if (fRes?.success && fRes.data?.feedback) setFeedback(fRes.data.feedback);
       if (qRes?.success && qRes.data?.quiz) setQuiz(qRes.data.quiz);
       if (vRes?.success && vRes.data?.vouchers) setVouchers(vRes.data.vouchers);
+      if (cRes?.success && cRes.data?.certificates) setCertificates(cRes.data.certificates);
     } catch (e) {
       console.error('Error loading manage data:', e);
       toast.error('Failed to load some data');
     }
+  };
+
+  const loadCertificates = async () => {
+    if (!workshopId) return;
+    setCertsLoading(true);
+    try {
+      const res = await workshopAPI.getCertificates(workshopId);
+      if (res?.success && res.data?.certificates) setCertificates(res.data.certificates);
+    } catch (e) {
+      toast.error('Failed to load certificates');
+    } finally {
+      setCertsLoading(false);
+    }
+  };
+
+  const handleGenerateCertificates = async () => {
+    setCertsGenerating(true);
+    try {
+      const res = await workshopAPI.generateCertificates(workshopId);
+      if (res?.success) {
+        const count = (res.data?.certificates || []).length;
+        toast.success(count ? `Generated ${count} certificate(s)` : 'Certificates already exist for all participants');
+        loadCertificates();
+      } else toast.error(res?.message || 'Failed to generate');
+    } catch (e) {
+      toast.error(e?.message || 'Failed to generate certificates');
+    } finally {
+      setCertsGenerating(false);
+    }
+  };
+
+  const handleSendCertificates = async () => {
+    setCertsSending(true);
+    try {
+      const res = await workshopAPI.sendCertificatesToParticipants(workshopId);
+      if (res?.success) {
+        toast.success(res.message || 'Certificates sent to participants');
+        loadCertificates();
+      } else toast.error(res?.message || 'Failed to send');
+    } catch (e) {
+      toast.error(e?.message || 'Failed to send certificates');
+    } finally {
+      setCertsSending(false);
+    }
+  };
+
+  const handleDownloadCertificate = (certId) => {
+    workshopAPI.downloadCertificate(workshopId, certId).then((blob) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `certificate-${certId}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }).catch(() => toast.error('Download failed'));
   };
 
   const fetchTutors = async () => {
@@ -478,11 +543,66 @@ const WorkshopManage = () => {
           </div>
           <p className="text-sm text-textMuted">
             {quiz ? (
-              <>Quiz &quot;{quiz.title}&quot; is set. Attendees see it on the workshop page. Leaderboard available there too.</>
+              <>Quiz &quot;{quiz.title}&quot; is set. Attendees see it on the workshop page. Leaderboard lists all participants; quiz points are added to learners&apos; total points.</>
             ) : (
               'No quiz yet. Create one via the workshop quiz API (POST /api/workshops/:id/quiz).'
             )}
           </p>
+        </section>
+
+        {/* Certificates – generate, send, list */}
+        <section className="rounded-2xl border border-brintelli-border/60 bg-white p-6 shadow-sm lg:col-span-2">
+          <div className="mb-4 flex items-center gap-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-100 text-brand-600">
+              <Award className="h-4 w-4" />
+            </div>
+            <h2 className="text-lg font-semibold text-text">Certificate maker</h2>
+          </div>
+          <p className="text-sm text-textMuted mb-4">
+            Generate completion certificates for participants, then send them by email. Participants can download from their workshop page.
+          </p>
+          <div className="flex flex-wrap gap-2 mb-4">
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleGenerateCertificates}
+              disabled={certsGenerating || participants.length === 0}
+              className="gap-2"
+            >
+              {certsGenerating ? 'Generating...' : 'Generate certificates'}
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleSendCertificates}
+              disabled={certsSending || certificates.length === 0}
+              className="gap-2"
+            >
+              <Send className="h-4 w-4" />
+              {certsSending ? 'Sending...' : 'Send to participants'}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={loadCertificates} disabled={certsLoading} className="gap-2">
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </Button>
+          </div>
+          <div className="rounded-xl border border-brintelli-border/60 max-h-48 overflow-y-auto">
+            {certificates.length === 0 ? (
+              <p className="p-4 text-sm text-textMuted">No certificates yet. Generate for all enrolled participants first.</p>
+            ) : (
+              <ul className="divide-y divide-brintelli-border/60">
+                {certificates.map((c) => (
+                  <li key={c.id} className="flex items-center justify-between px-4 py-3 text-sm">
+                    <span className="font-medium text-text">{c.userName}</span>
+                    <span className="text-textMuted font-mono text-xs">{c.certificateNumber}</span>
+                    <Button variant="ghost" size="sm" onClick={() => handleDownloadCertificate(c.id)} className="gap-1">
+                      <Download className="h-3.5 w-3.5" /> Download
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </section>
 
         {/* Vouchers */}

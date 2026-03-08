@@ -14,6 +14,8 @@ import {
   ExternalLink,
   RefreshCw,
   Video,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
@@ -34,6 +36,13 @@ const TutorWorkshopDetail = () => {
   const [quizPublishing, setQuizPublishing] = useState(false);
   const [answerDraft, setAnswerDraft] = useState({});
   const [answeringId, setAnsweringId] = useState(null);
+  const [resourceList, setResourceList] = useState([]);
+  const [newResourceLabel, setNewResourceLabel] = useState('');
+  const [newResourceUrl, setNewResourceUrl] = useState('');
+  const [resourcesSaving, setResourcesSaving] = useState(false);
+  const [resourcesNotify, setResourcesNotify] = useState(false);
+  const [noteContent, setNoteContent] = useState('');
+  const [noteSending, setNoteSending] = useState(false);
 
   const hasMeetingLink = workshop?.meetingLink && (workshop?.deliveryMode === 'LIVE' || workshop?.meetingLink);
   const resources = Array.isArray(workshop?.resources) ? workshop.resources : [];

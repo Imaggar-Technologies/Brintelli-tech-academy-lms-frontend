@@ -17,6 +17,8 @@ import {
   FileCheck,
   Award,
   Medal,
+  Lock,
+  Share2,
 } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
@@ -45,8 +47,10 @@ const StudentWorkshopDetail = () => {
   const [submissionContent, setSubmissionContent] = useState({});
   const [activeOption, setActiveOption] = useState('dashboard');
   const [myCertificate, setMyCertificate] = useState(null);
+  const [quizResult, setQuizResult] = useState(null);
 
   const isRegistered = workshop?.participants?.some((p) => (p?.toString?.() || p) === userId);
+  const hasMeetingLink = workshop?.meetingLink && (workshop?.deliveryMode === 'LIVE' || workshop?.meetingLink);
 
   const optionsNavItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -81,6 +85,15 @@ const StudentWorkshopDetail = () => {
       if (myFbRes.success && myFbRes.data?.feedback) setFeedbackSubmitted(true);
       if (myCertRes.success && myCertRes.data?.certificate) setMyCertificate(myCertRes.data.certificate);
       else setMyCertificate(null);
+      if (qRes.success && qRes.data?.quiz) {
+        try {
+          const rr = await workshopAPI.getQuizResult(workshopId);
+          if (rr?.success && rr.data?.withAnswers) setQuizResult(rr.data);
+          else setQuizResult(null);
+        } catch {
+          setQuizResult(null);
+        }
+      } else setQuizResult(null);
     } catch (e) {
       console.error(e);
       toast.error('Failed to load workshop');
@@ -176,11 +189,24 @@ const StudentWorkshopDetail = () => {
 
   return (
     <>
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <Button variant="ghost" size="sm" onClick={() => navigate('/student/workshops')} className="text-brand-600">
-          <ChevronLeft className="h-4 w-4 mr-2" />
-          Back to Workshops
-        </Button>
+      <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={() => navigate('/student/workshops')} className="text-brand-600">
+            <ChevronLeft className="h-4 w-4 mr-2" />
+            Back to Workshops
+          </Button>
+          {hasMeetingLink && isRegistered && (
+            <a
+              href={workshop.meetingLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600"
+            >
+              <Link2 className="h-4 w-4" />
+              Join session
+            </a>
+          )}
+        </div>
       </div>
 
       {/* Tab bar – each tab is a page */}
@@ -355,7 +381,26 @@ const StudentWorkshopDetail = () => {
                     </Button>
                   </form>
                 ) : (
-                  <p className="text-textMuted">You have submitted the quiz. Your score is added to your total points. Check the Leaderboard tab.</p>
+                  <>
+                    <p className="text-textMuted mb-3">You have submitted the quiz. Your score is added to your total points.</p>
+                    {quizResult?.quiz?.questions?.length > 0 && (
+                      <div className="rounded-xl border border-brintelli-border bg-brintelli-baseAlt/30 p-4 space-y-4">
+                        <h4 className="font-semibold text-text">Questions & answers</h4>
+                        {quizResult.quiz.questions.map((qq, idx) => (
+                          <div key={`qq-${idx}`} className="border-b border-brintelli-border pb-3 last:border-0">
+                            <p className="font-medium text-sm text-text mb-1">{idx + 1}. {qq.question}</p>
+                            <p className="text-xs text-textMuted">
+                              Your answer: <span className={qq.correct ? 'text-green-600 font-medium' : 'text-amber-600'}>{qq.yourAnswer ?? '—'}</span>
+                              {!qq.correct && <span className="ml-2">Correct: <span className="text-green-600 font-medium">{qq.correctAnswer ?? '—'}</span></span>}
+                            </p>
+                          </div>
+                        ))}
+                        {quizResult.attempt && (
+                          <p className="text-sm text-brand-600 font-medium">Score: {quizResult.attempt.score} / {quizResult.attempt.totalQuestions}</p>
+                        )}
+                      </div>
+                    )}
+                  </>
                 )}
               </>
             ) : (
@@ -401,65 +446,186 @@ const StudentWorkshopDetail = () => {
           </div>
         )}
 
-        {/* Page: Leaderboard – all participants, quiz points count toward total */}
+        {/* Page: Leaderboard – profile pics, top 3 podium */}
         {activeOption === 'leaderboard' && (
           <div className="p-6">
             <h3 className="text-lg font-semibold flex items-center gap-2 mb-2">
               <Trophy className="h-5 w-5 text-brand-500" /> Leaderboard
             </h3>
-            <p className="text-sm text-textMuted mb-4">Everyone who joined this workshop. Quiz scores are added to your total learner points.</p>
+            <p className="text-sm text-textMuted mb-4">Everyone who joined. Quiz scores add to your total points.</p>
             {leaderboard.length > 0 ? (
-              <ul className="space-y-2">
-                {leaderboard.map((entry) => (
-                  <li
-                    key={entry.userId}
-                    className={`flex items-center justify-between py-3 px-4 rounded-xl border ${
-                      entry.userId === userId ? 'border-brand-300 bg-brand-50' : 'border-brintelli-border bg-brintelli-baseAlt/30'
-                    }`}
-                  >
-                    <span className="font-medium">
-                      #{entry.rank} {entry.userName}
-                      {entry.userId === userId && <span className="ml-2 text-xs text-brand-600">(You)</span>}
-                    </span>
-                    <span className="text-brand-600 font-semibold">{entry.score} pts</span>
-                  </li>
-                ))}
-              </ul>
+              <>
+                {/* Top 3 podium */}
+                {leaderboard.length >= 3 && (
+                  <div className="flex items-end justify-center gap-4 mb-6 py-4 px-4 rounded-2xl bg-gradient-to-b from-amber-50/80 to-transparent border border-amber-100">
+                    <div className="flex flex-col items-center flex-1 order-2">
+                      <div className={`relative w-14 h-14 rounded-full border-2 overflow-hidden flex items-center justify-center text-lg font-bold ${leaderboard[1].userId === userId ? 'border-brand-400 ring-2 ring-brand-200' : 'border-amber-200'}`}>
+                        {leaderboard[1].profileImageUrl ? (
+                          <img src={leaderboard[1].profileImageUrl} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-amber-600">2</span>
+                        )}
+                        <span className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-gray-300 flex items-center justify-center text-xs font-bold text-white">2</span>
+                      </div>
+                      <span className="mt-2 text-sm font-semibold text-text truncate max-w-[80px] text-center">{leaderboard[1].userName}</span>
+                      <span className="text-xs text-brand-600 font-medium">{leaderboard[1].score} pts</span>
+                    </div>
+                    <div className="flex flex-col items-center flex-1 order-1">
+                      <div className={`relative w-20 h-20 rounded-full border-2 overflow-hidden flex items-center justify-center text-xl font-bold ${leaderboard[0].userId === userId ? 'border-brand-500 ring-2 ring-brand-300' : 'border-amber-400'}`}>
+                        {leaderboard[0].profileImageUrl ? (
+                          <img src={leaderboard[0].profileImageUrl} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-amber-600">1</span>
+                        )}
+                        <span className="absolute -top-1 -right-1 w-7 h-7 rounded-full bg-amber-500 flex items-center justify-center text-xs font-bold text-white">1</span>
+                      </div>
+                      <span className="mt-2 text-sm font-semibold text-text truncate max-w-[90px] text-center">{leaderboard[0].userName}</span>
+                      <span className="text-sm text-brand-600 font-semibold">{leaderboard[0].score} pts</span>
+                    </div>
+                    <div className="flex flex-col items-center flex-1 order-3">
+                      <div className={`relative w-12 h-12 rounded-full border-2 overflow-hidden flex items-center justify-center text-base font-bold ${leaderboard[2].userId === userId ? 'border-brand-400 ring-2 ring-brand-200' : 'border-amber-200'}`}>
+                        {leaderboard[2].profileImageUrl ? (
+                          <img src={leaderboard[2].profileImageUrl} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-amber-600">3</span>
+                        )}
+                        <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-amber-700 flex items-center justify-center text-[10px] font-bold text-white">3</span>
+                      </div>
+                      <span className="mt-2 text-sm font-semibold text-text truncate max-w-[80px] text-center">{leaderboard[2].userName}</span>
+                      <span className="text-xs text-brand-600 font-medium">{leaderboard[2].score} pts</span>
+                    </div>
+                  </div>
+                )}
+                {/* Rest of list with avatars (skip top 3 when podium is shown) */}
+                <ul className="space-y-2">
+                  {leaderboard
+                    .filter((_, idx) => leaderboard.length < 3 || idx >= 3)
+                    .map((entry) => (
+                      <li
+                        key={entry.userId}
+                        className={`flex items-center gap-3 py-2.5 px-4 rounded-xl border ${entry.userId === userId ? 'border-brand-300 bg-brand-50' : 'border-brintelli-border bg-brintelli-baseAlt/30'}`}
+                      >
+                        <div className="w-9 h-9 rounded-full border border-brintelli-border overflow-hidden bg-brintelli-baseAlt flex-shrink-0 flex items-center justify-center text-sm font-semibold text-textMuted">
+                          {entry.profileImageUrl ? <img src={entry.profileImageUrl} alt="" className="w-full h-full object-cover" /> : `#${entry.rank}`}
+                        </div>
+                        <span className="font-medium flex-1 min-w-0 truncate">
+                          {entry.userName}
+                          {entry.userId === userId && <span className="ml-2 text-xs text-brand-600">(You)</span>}
+                        </span>
+                        <span className="text-brand-600 font-semibold">{entry.score} pts</span>
+                      </li>
+                    ))}
+                </ul>
+              </>
             ) : (
               <p className="text-sm text-textMuted">No participants yet. Leaderboard will list everyone who joins; quiz scores add to total points.</p>
             )}
           </div>
         )}
 
-        {/* Page: Certifications */}
+        {/* Page: Certifications – locked when no cert; PDF + image download; share with Brintelli tag */}
         {activeOption === 'certifications' && (
           <div className="p-6">
             <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
               <Award className="h-5 w-5" /> Certifications
             </h3>
             {myCertificate ? (
-              <div className="rounded-xl border border-green-200 bg-green-50/50 p-4 space-y-3">
+              <div className="rounded-xl border border-green-200 bg-green-50/50 p-4 space-y-4">
                 <p className="text-sm text-green-800">Your certificate of completion is ready.</p>
                 <p className="text-xs text-green-700 font-mono">Certificate number: {myCertificate.certificateNumber}</p>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    workshopAPI.downloadCertificate(workshopId, myCertificate.id).then((blob) => {
-                      const url = URL.createObjectURL(blob);
-                      const a = document.createElement('a');
-                      a.href = url;
-                      a.download = `certificate-${myCertificate.certificateNumber}.pdf`;
-                      a.click();
-                      URL.revokeObjectURL(url);
-                    }).catch(() => toast.error('Download failed'));
-                  }}
-                  className="gap-2"
-                >
-                  <ExternalLink className="h-4 w-4" /> Download certificate (PDF)
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      workshopAPI.downloadCertificate(workshopId, myCertificate.id).then((blob) => {
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `certificate-${myCertificate.certificateNumber}.pdf`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      }).catch(() => toast.error('Download failed'));
+                    }}
+                    className="gap-2"
+                  >
+                    <ExternalLink className="h-4 w-4" /> Download PDF
+                  </Button>
+                  {typeof workshopAPI.downloadCertificateImage === 'function' && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        workshopAPI.downloadCertificateImage(workshopId, myCertificate.id).then((blob) => {
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `certificate-${myCertificate.certificateNumber}.png`;
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        }).catch(() => toast.error('Image download failed'));
+                      }}
+                      className="gap-2"
+                    >
+                      Download image
+                    </Button>
+                  )}
+                </div>
+                <div className="pt-2 border-t border-green-200">
+                  <p className="text-xs text-green-800 font-medium mb-2 flex items-center gap-1"><Share2 className="h-3.5 w-3.5" /> Share (tag @Brintelli Tech Academy)</p>
+                  <div className="flex flex-wrap gap-2">
+                    <a
+                      href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.origin + '/workshops/' + workshopId)}&summary=${encodeURIComponent('I completed this workshop at Brintelli Tech Academy! @BrintelliTechAcademy')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0A66C2] text-white text-sm hover:opacity-90"
+                    >
+                      LinkedIn
+                    </a>
+                    <a
+                      href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.origin + '/workshops/' + workshopId)}&quote=${encodeURIComponent('I completed this workshop at Brintelli Tech Academy! @BrintelliTechAcademy')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1877F2] text-white text-sm hover:opacity-90"
+                    >
+                      Facebook
+                    </a>
+                    <a
+                      href={`https://wa.me/?text=${encodeURIComponent('I completed this workshop at Brintelli Tech Academy! @BrintelliTechAcademy ' + window.location.origin + '/workshops/' + workshopId)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#25D366] text-white text-sm hover:opacity-90"
+                    >
+                      WhatsApp
+                    </a>
+                    <a
+                      href={`https://twitter.com/intent/tweet?text=${encodeURIComponent('I completed this workshop at Brintelli Tech Academy! @BrintelliTechAcademy')}&url=${encodeURIComponent(window.location.origin + '/workshops/' + workshopId)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1DA1F2] text-white text-sm hover:opacity-90"
+                    >
+                      X (Twitter)
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const text = `I completed this workshop at Brintelli Tech Academy! @BrintelliTechAcademy ${window.location.origin}/workshops/${workshopId}`;
+                        navigator.clipboard?.writeText(text).then(() => toast.success('Link and text copied')).catch(() => toast.error('Copy failed'));
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-green-300 bg-white text-green-800 text-sm hover:bg-green-50"
+                    >
+                      Copy link & text
+                    </button>
+                  </div>
+                </div>
               </div>
             ) : (
-              <p className="text-sm text-textMuted">Workshop completion certificates will appear here once generated and sent by your program manager.</p>
+              <div className="rounded-xl border border-brintelli-border bg-brintelli-baseAlt/40 p-6 flex flex-col items-center justify-center text-center">
+                <div className="w-14 h-14 rounded-full bg-textMuted/20 flex items-center justify-center mb-3">
+                  <Lock className="h-7 w-7 text-textMuted" />
+                </div>
+                <p className="font-medium text-textMuted">Certificate locked</p>
+                <p className="text-sm text-textMuted mt-1">Complete the workshop and meet requirements to unlock. Certificates are issued by your program manager.</p>
+              </div>
             )}
           </div>
         )}

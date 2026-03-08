@@ -31,14 +31,14 @@ export const adminRoles = {
   programManager: {
     label: "Program Manager",
     permissions: combine(
-      ["dashboard"],
+      ["dashboard", "website-cms"],
       prefix("lms-"),
       prefix("pm-"),
       prefix("practice-"),
       prefix("mentor-"),
       ["notifications", "analytics"]
     ),
-    navSections: ["dashboard", "lms", "program-manager", "mentor-lsp", "practice", "certifications", "notifications", "analytics"]
+    navSections: ["dashboard", "lms", "program-manager", "mentor-lsp", "practice", "certifications", "notifications", "analytics", "website-cms"]
   },
   mentorOps: {
     label: "Mentor Operations",
@@ -63,11 +63,11 @@ export const adminRoles = {
   salesManager: {
     label: "Sales & CRM",
     permissions: combine(
-      ["dashboard"],
+      ["dashboard", "website-cms"],
       prefix("sales-"),
       ["finance-analytics", "notifications"]
     ),
-    navSections: ["dashboard", "sales", "finance", "notifications"]
+    navSections: ["dashboard", "sales", "finance", "notifications", "website-cms"]
   },
   financeController: {
     label: "Finance Controller",

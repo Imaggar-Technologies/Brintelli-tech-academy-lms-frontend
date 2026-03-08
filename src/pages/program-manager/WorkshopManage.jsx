@@ -20,6 +20,7 @@ import {
   Award,
   Send,
   Download,
+  Video,
 } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
@@ -57,6 +58,11 @@ const WorkshopManage = () => {
   const [certsLoading, setCertsLoading] = useState(false);
   const [certsGenerating, setCertsGenerating] = useState(false);
   const [certsSending, setCertsSending] = useState(false);
+  const [doubts, setDoubts] = useState([]);
+  const [answerDraft, setAnswerDraft] = useState({});
+  const [answeringId, setAnsweringId] = useState(null);
+  const [quizSaving, setQuizSaving] = useState(false);
+  const [quizPublishing, setQuizPublishing] = useState(false);
 
   useEffect(() => {
     if (workshopId) {
@@ -88,13 +94,14 @@ const WorkshopManage = () => {
   const loadManageData = async () => {
     if (!workshopId) return;
     try {
-      const [pRes, aRes, fRes, qRes, vRes, cRes] = await Promise.all([
+      const [pRes, aRes, fRes, qRes, vRes, cRes, dRes] = await Promise.all([
         workshopAPI.getParticipants(workshopId),
         workshopAPI.getAssignments(workshopId),
         workshopAPI.getFeedback(workshopId),
         workshopAPI.getQuiz(workshopId),
         workshopAPI.getVouchers(workshopId),
         workshopAPI.getCertificates(workshopId),
+        workshopAPI.getDoubts(workshopId),
       ]);
       if (pRes?.success && pRes.data?.participants) setParticipants(pRes.data.participants);
       if (aRes?.success && aRes.data?.assignments) setAssignments(aRes.data.assignments);
@@ -102,6 +109,7 @@ const WorkshopManage = () => {
       if (qRes?.success && qRes.data?.quiz) setQuiz(qRes.data.quiz);
       if (vRes?.success && vRes.data?.vouchers) setVouchers(vRes.data.vouchers);
       if (cRes?.success && cRes.data?.certificates) setCertificates(cRes.data.certificates);
+      if (dRes?.success && dRes.data?.doubts) setDoubts(dRes.data.doubts);
     } catch (e) {
       console.error('Error loading manage data:', e);
       toast.error('Failed to load some data');
@@ -282,6 +290,64 @@ const WorkshopManage = () => {
   }
 
   const title = workshop.title || 'Untitled Workshop';
+  const hasMeetingLink = workshop.meetingLink && (workshop.deliveryMode === 'LIVE' || workshop.meetingLink);
+
+  const handleSaveQuiz = async () => {
+    setQuizSaving(true);
+    try {
+      const res = await workshopAPI.createOrUpdateQuiz(workshopId, {
+        title: quiz?.title || 'Workshop Quiz',
+        questions: quiz?.questions || [],
+      });
+      if (res?.success && res.data?.quiz) {
+        setQuiz(res.data.quiz);
+        toast.success('Quiz saved');
+      } else toast.error(res?.message || 'Failed to save');
+    } catch (e) {
+      toast.error(e?.message || 'Failed to save quiz');
+    } finally {
+      setQuizSaving(false);
+    }
+  };
+
+  const handlePublishQuiz = async (published) => {
+    setQuizPublishing(true);
+    try {
+      const res = await workshopAPI.publishQuiz(workshopId, published);
+      if (res?.success && res.data?.quiz) {
+        setQuiz(res.data.quiz);
+        toast.success(res.message || (published ? 'Quiz published' : 'Quiz unpublished'));
+      } else toast.error(res?.message || 'Failed to update');
+    } catch (e) {
+      toast.error(e?.message || 'Failed to update');
+    } finally {
+      setQuizPublishing(false);
+    }
+  };
+
+  const handleAnswerDoubt = async (doubtId) => {
+    const answer = answerDraft[doubtId]?.trim();
+    if (!answer) {
+      toast.error('Enter an answer');
+      return;
+    }
+    setAnsweringId(doubtId);
+    try {
+      const res = await workshopAPI.answerDoubt(workshopId, doubtId, { answer });
+      if (res?.success) {
+        setDoubts((prev) => prev.map((d) => {
+          const id = d.id || d._id;
+          return id === doubtId ? { ...d, answer, answeredAt: new Date().toISOString() } : d;
+        }));
+        setAnswerDraft((p) => ({ ...p, [doubtId]: '' }));
+        toast.success('Answer posted');
+      } else toast.error(res?.message || 'Failed to post answer');
+    } catch (e) {
+      toast.error(e?.message || 'Failed to post answer');
+    } finally {
+      setAnsweringId(null);
+    }
+  };
 
   return (
     <div className="space-y-6 pb-12">
@@ -290,10 +356,17 @@ const WorkshopManage = () => {
         title={title}
         description={workshop.description || `${workshop.subject || 'Workshop'} · ${workshop.date || ''} ${workshop.time || ''}`}
         actions={
-          <Button variant="secondary" className="gap-2" onClick={() => navigate('/program-manager/workshops')}>
-            <ArrowLeft className="h-4 w-4" />
-            Back to workshops
-          </Button>
+          <div className="flex items-center gap-2">
+            {hasMeetingLink && (
+              <Button variant="primary" size="sm" className="gap-2" onClick={() => window.open(workshop.meetingLink, '_blank')}>
+                <Video className="h-4 w-4" /> Join
+              </Button>
+            )}
+            <Button variant="secondary" className="gap-2" onClick={() => navigate('/program-manager/workshops')}>
+              <ArrowLeft className="h-4 w-4" />
+              Back to workshops
+            </Button>
+          </div>
         }
       />
 
@@ -533,7 +606,7 @@ const WorkshopManage = () => {
           </div>
         </section>
 
-        {/* Quiz */}
+        {/* Quiz – create/publish */}
         <section className="rounded-2xl border border-brintelli-border/60 bg-white p-6 shadow-sm">
           <div className="mb-4 flex items-center gap-2">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-100 text-rose-600">
@@ -541,13 +614,71 @@ const WorkshopManage = () => {
             </div>
             <h2 className="text-lg font-semibold text-text">Quiz</h2>
           </div>
-          <p className="text-sm text-textMuted">
+          <p className="text-sm text-textMuted mb-4">
             {quiz ? (
-              <>Quiz &quot;{quiz.title}&quot; is set. Attendees see it on the workshop page. Leaderboard lists all participants; quiz points are added to learners&apos; total points.</>
+              <>Quiz &quot;{quiz.title}&quot;. Attendees see it when published. Leaderboard lists participants; quiz points add to learners&apos; total.</>
             ) : (
-              'No quiz yet. Create one via the workshop quiz API (POST /api/workshops/:id/quiz).'
+              'Create a quiz and publish it for participants.'
             )}
           </p>
+          {quiz && (
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-sm text-text">Status:</span>
+              <Button variant="ghost" size="sm" disabled={quizPublishing} onClick={() => handlePublishQuiz(!quiz.published)}>
+                {quiz.published ? 'Published' : 'Unpublished'} – click to toggle
+              </Button>
+            </div>
+          )}
+          <div className="flex gap-2">
+            <Button size="sm" disabled={quizSaving} onClick={handleSaveQuiz}>
+              {quizSaving ? 'Saving…' : quiz ? 'Update quiz' : 'Create quiz'}
+            </Button>
+          </div>
+        </section>
+
+        {/* Doubts – list and answer */}
+        <section className="rounded-2xl border border-brintelli-border/60 bg-white p-6 shadow-sm lg:col-span-2">
+          <div className="mb-4 flex items-center gap-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-100 text-sky-600">
+              <MessageSquare className="h-4 w-4" />
+            </div>
+            <h2 className="text-lg font-semibold text-text">Doubts</h2>
+          </div>
+          <p className="text-sm text-textMuted mb-4">Student doubts. Answer them below.</p>
+          {doubts.length === 0 ? (
+            <p className="text-sm text-textMuted">No doubts yet.</p>
+          ) : (
+            <ul className="space-y-4">
+              {doubts.map((d) => {
+                const id = d.id || d._id;
+                const answered = !!d.answer;
+                return (
+                  <li key={id} className="rounded-xl border border-brintelli-border/60 bg-brintelli-baseAlt/30 p-4">
+                    <p className="font-medium text-text mb-1">{d.userName || 'Student'}</p>
+                    <p className="text-sm text-text mb-2">{d.question}</p>
+                    {answered ? (
+                      <p className="text-sm text-green-700 bg-green-50 rounded-lg px-3 py-2">{d.answer}</p>
+                    ) : (
+                      <div className="flex gap-2 flex-wrap">
+                        <textarea
+                          placeholder="Your answer..."
+                          value={answerDraft[id] || ''}
+                          onChange={(e) => setAnswerDraft((p) => ({ ...p, [id]: e.target.value }))}
+                          className="flex-1 min-w-[200px] min-h-[80px] rounded-lg border border-brintelli-border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
+                        />
+                        <Button size="sm" disabled={answeringId === id} onClick={() => handleAnswerDoubt(id)}>
+                          {answeringId === id ? 'Posting…' : 'Post answer'}
+                        </Button>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          <Button variant="ghost" size="sm" onClick={loadManageData} className="mt-4 gap-2">
+            <RefreshCw className="h-4 w-4" /> Refresh doubts
+          </Button>
         </section>
 
         {/* Certificates – generate, send, list */}

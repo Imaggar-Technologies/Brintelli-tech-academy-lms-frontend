@@ -1,4 +1,4 @@
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { Mail } from "lucide-react";
@@ -8,9 +8,12 @@ import AuthImageCarousel from "../../components/AuthImageCarousel";
 import { setCredentials } from "../../store/slices/authSlice";
 import { getRoleDashboard } from "../../utils/roleRoutes";
 
+const ALLOWED_REDIRECT_ORIGINS = (import.meta.env.VITE_ALLOWED_REDIRECT_ORIGINS || import.meta.env.VITE_CMS_ADMIN_ORIGIN || '').split(',').map((o) => o.trim()).filter(Boolean);
+
 const SignIn = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -60,6 +63,23 @@ const handleSubmit = async (event) => {
     );
 
     console.log("✅ TOKEN SAVED TO REDUX");
+
+    // If redirect_uri provided and allowed (e.g. CMS admin), redirect there with token in hash
+    const redirectUri = searchParams.get('redirect_uri');
+    if (redirectUri) {
+      try {
+        const url = new URL(decodeURIComponent(redirectUri));
+        const origin = url.origin;
+        const allowed = ALLOWED_REDIRECT_ORIGINS.length > 0 && ALLOWED_REDIRECT_ORIGINS.some((o) => origin === o || url.href.startsWith(o));
+        if (allowed) {
+          const separator = url.hash ? '&' : '#';
+          window.location.href = url.href + separator + 'token=' + encodeURIComponent(loginData.token);
+          return;
+        }
+      } catch {
+        // invalid URL, fall through to normal navigation
+      }
+    }
 
     // ROLE BASED NAVIGATION
     const dashboardRoute = getRoleDashboard(loginData.user.role);

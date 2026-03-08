@@ -31,7 +31,10 @@ import {
   FileSpreadsheet,
   UsersRound,
   Wrench,
+  Globe,
 } from "lucide-react";
+
+const CMS_ADMIN_URL = import.meta.env.VITE_CMS_ADMIN_URL || "";
 
 export const adminNav = [
   {
@@ -41,6 +44,18 @@ export const adminNav = [
     path: "/admin-portal/dashboard",
     pageId: "dashboard",
   },
+  ...(CMS_ADMIN_URL
+    ? [
+        {
+          id: "website-cms",
+          label: "Website / CMS",
+          icon: Globe,
+          path: CMS_ADMIN_URL,
+          external: true,
+          pageId: "website-cms",
+        },
+      ]
+    : []),
   {
     id: "lms",
     label: "LMS Management",
@@ -240,6 +255,11 @@ export const adminModuleConfig = {
         ],
       },
     ],
+  },
+  "website-cms": {
+    title: "Website / CMS",
+    description: "Manage the public Brintelli website: SEO, programs, events, testimonials, blogs, banners, gallery, and popups.",
+    sections: [],
   },
   "lms-programs": {
     title: "Programs Management",

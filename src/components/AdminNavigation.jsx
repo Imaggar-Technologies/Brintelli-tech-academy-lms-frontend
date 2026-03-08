@@ -166,22 +166,39 @@ const AdminNavigation = ({ collapsed, mobileOpen, onCloseMobile, onToggleCollaps
                   );
                 }
 
+                const isExternal = item.external && item.path && item.path.startsWith("http");
                 return (
                   <li key={item.label}>
-                    <NavLink
-                      to={item.path}
-                      className={({ isActive }) =>
-                        [
-                          "flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm font-medium transition duration-160 ease-out text-white/80",
-                          isActive ? "bg-white/20 text-white shadow-glass" : "hover:bg-white/15 hover:text-white",
+                    {isExternal ? (
+                      <a
+                        href={item.path}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={[
+                          "flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm font-medium transition duration-160 ease-out text-white/80 hover:bg-white/15 hover:text-white",
                           collapsed ? "justify-center px-3" : "pl-5",
-                        ].join(" ")
-                      }
-                      onClick={onCloseMobile}
-                    >
-                      {item.icon && <item.icon className="h-5 w-5 text-white/70" />}
-                      {!collapsed && <span className="text-sm font-medium text-white/85">{item.label}</span>}
-                    </NavLink>
+                        ].join(" ")}
+                        onClick={onCloseMobile}
+                      >
+                        {item.icon && <item.icon className="h-5 w-5 text-white/70" />}
+                        {!collapsed && <span className="text-sm font-medium text-white/85">{item.label}</span>}
+                      </a>
+                    ) : (
+                      <NavLink
+                        to={item.path}
+                        className={({ isActive }) =>
+                          [
+                            "flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm font-medium transition duration-160 ease-out text-white/80",
+                            isActive ? "bg-white/20 text-white shadow-glass" : "hover:bg-white/15 hover:text-white",
+                            collapsed ? "justify-center px-3" : "pl-5",
+                          ].join(" ")
+                        }
+                        onClick={onCloseMobile}
+                      >
+                        {item.icon && <item.icon className="h-5 w-5 text-white/70" />}
+                        {!collapsed && <span className="text-sm font-medium text-white/85">{item.label}</span>}
+                      </NavLink>
+                    )}
                   </li>
                 );
               })}

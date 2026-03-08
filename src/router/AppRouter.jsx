@@ -100,6 +100,7 @@ import TutorMenteeSessions from "../pages/tutor/MenteeSessions";
 import TutorMenteeCallHistory from "../pages/tutor/MenteeCallHistory";
 import TutorLiveSessionRoom from "../pages/tutor/LiveSessionRoom";
 import TutorWorkshops from "../pages/tutor/TutorWorkshops";
+import TutorWorkshopDetail from "../pages/tutor/TutorWorkshopDetail";
 
 // LSM pages
 import LsmDashboard from "../pages/lsm/Dashboard";
@@ -519,6 +520,7 @@ const AppRouter = () => {
 
             {/* Workshops: feedback poll, send notes */}
             <Route path="workshops" element={<TutorWorkshops />} />
+            <Route path="workshops/:workshopId" element={<TutorWorkshopDetail />} />
 
             {/* Profile */}
             <Route path="profile" element={<TutorProfile />} />

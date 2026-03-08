@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { toast } from "react-hot-toast";
 import {
@@ -25,6 +26,7 @@ import workshopAPI from "../../api/workshop";
 import { selectCurrentUser } from "../../store/slices/authSlice";
 
 const TutorWorkshops = () => {
+  const navigate = useNavigate();
   const user = useSelector(selectCurrentUser);
   const tutorId = user?.id || user?._id?.toString();
 
@@ -470,6 +472,14 @@ const TutorWorkshops = () => {
                           >
                             <Send className="h-4 w-4" />
                             Send notes
+                          </Button>
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            className="gap-1 text-sm"
+                            onClick={() => navigate(`/tutor/workshops/${id}`)}
+                          >
+                            Open
                           </Button>
                           <Button
                             variant="ghost"

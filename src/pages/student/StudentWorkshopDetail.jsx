@@ -20,6 +20,9 @@ import {
   RefreshCw,
   X,
   StickyNote,
+  LayoutDashboard,
+  FileCheck,
+  Award,
 } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
@@ -47,8 +50,17 @@ const StudentWorkshopDetail = () => {
   const [assignmentSubmitting, setAssignmentSubmitting] = useState(null);
   const [submissionContent, setSubmissionContent] = useState({});
   const [bannerClosed, setBannerClosed] = useState(false);
+  const [activeOption, setActiveOption] = useState('dashboard');
 
   const isRegistered = workshop?.participants?.some((p) => (p?.toString?.() || p) === userId);
+
+  const optionsNavItems = [
+    { id: 'dashboard', label: 'Dashboard', sectionId: 'workshop-banner', icon: LayoutDashboard },
+    { id: 'resources-notes', label: 'Resources & Notes', sectionId: 'section-resources', icon: FileText },
+    { id: 'quiz', label: 'Quiz', sectionId: 'section-quiz', icon: Trophy },
+    { id: 'assessment-assignments', label: 'Assessment & Assignments', sectionId: 'section-assignments', icon: FileCheck },
+    { id: 'certifications', label: 'Certifications', sectionId: 'section-certifications', icon: Award },
+  ];
 
   useEffect(() => {
     if (workshopId) loadAll();
@@ -162,18 +174,11 @@ const StudentWorkshopDetail = () => {
   const quizPublished = quiz?.published === true;
   const hasNotes = Array.isArray(workshop.tutorAnnouncements) && workshop.tutorAnnouncements.length > 0;
 
-  const scrollToSection = (id) => {
-    const el = document.getElementById(id);
+  const handleOptionClick = (item) => {
+    setActiveOption(item.id);
+    const el = document.getElementById(item.sectionId);
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
-
-  const navItems = [];
-  if (resources.length > 0) navItems.push({ id: 'section-resources', label: 'Resources', icon: FileText });
-  if (quizPublished && quiz) navItems.push({ id: 'section-quiz', label: 'Quiz', icon: Trophy });
-  if (quizPublished && leaderboard.length > 0) navItems.push({ id: 'section-leaderboard', label: 'Leaderboard', icon: Trophy });
-  if (assignments.length > 0 && isRegistered) navItems.push({ id: 'section-assignments', label: 'Assignments', icon: FileText });
-  if (hasNotes) navItems.push({ id: 'section-notes', label: 'Notes', icon: StickyNote });
-  if (workshop?.feedbackPollPublished && isRegistered) navItems.push({ id: 'section-feedback', label: 'Feedback', icon: MessageSquare });
 
   return (
     <>
@@ -267,22 +272,29 @@ const StudentWorkshopDetail = () => {
           </div>
         </div>
 
-        {/* Secondary top bar – only show sections that are published/available */}
-        {navItems.length > 0 && (
-          <div className="sticky top-0 z-10 flex flex-wrap items-center gap-1 rounded-xl border border-brintelli-border bg-brintelli-card/95 backdrop-blur px-3 py-2 shadow-sm">
-            {navItems.map((item) => (
+        {/* Options header + secondary nav (Dashboard, Resources & Notes, Quiz, Assessment & Assignments, Certifications) */}
+        <div className="rounded-xl border border-brintelli-border bg-brintelli-card overflow-hidden shadow-sm">
+          <div className="px-4 py-2 border-b border-brintelli-border bg-brintelli-baseAlt/50">
+            <h2 className="text-sm font-semibold text-text uppercase tracking-wide">Options</h2>
+          </div>
+          <div className="flex flex-wrap items-center gap-1 p-3">
+            {optionsNavItems.map((item) => (
               <button
                 key={item.id}
                 type="button"
-                onClick={() => scrollToSection(item.id)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-text hover:bg-brand-500/10 hover:text-brand-600 transition-colors"
+                onClick={() => handleOptionClick(item)}
+                className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  activeOption === item.id
+                    ? 'bg-brand-500 text-white hover:bg-brand-600'
+                    : 'text-text hover:bg-brand-500/10 hover:text-brand-600'
+                }`}
               >
                 <item.icon className="h-4 w-4" />
                 {item.label}
               </button>
             ))}
           </div>
-        )}
+        </div>
 
         {/* Join online link */}
         {hasMeetingLink && isRegistered && (
@@ -486,6 +498,15 @@ const StudentWorkshopDetail = () => {
             </ul>
           </div>
         )}
+
+        {/* Certifications */}
+        <div id="section-certifications" className="rounded-2xl border border-brintelli-border bg-brintelli-card p-5 scroll-mt-4">
+          <h3 className="text-lg font-semibold flex items-center gap-2 mb-3">
+            <Award className="h-5 w-5" />
+            Certifications
+          </h3>
+          <p className="text-sm text-textMuted">Workshop completion certificates and badges will appear here when available.</p>
+        </div>
 
         {/* My voucher */}
         {myVoucher && (

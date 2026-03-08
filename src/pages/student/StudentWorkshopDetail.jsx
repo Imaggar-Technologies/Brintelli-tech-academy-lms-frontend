@@ -18,7 +18,6 @@ import {
   ExternalLink,
   Send,
   RefreshCw,
-  X,
   StickyNote,
   LayoutDashboard,
   FileCheck,
@@ -49,13 +48,12 @@ const StudentWorkshopDetail = () => {
   const [submittingQuiz, setSubmittingQuiz] = useState(false);
   const [assignmentSubmitting, setAssignmentSubmitting] = useState(null);
   const [submissionContent, setSubmissionContent] = useState({});
-  const [bannerClosed, setBannerClosed] = useState(false);
   const [activeOption, setActiveOption] = useState('dashboard');
 
   const isRegistered = workshop?.participants?.some((p) => (p?.toString?.() || p) === userId);
 
   const optionsNavItems = [
-    { id: 'dashboard', label: 'Dashboard', sectionId: 'workshop-banner', icon: LayoutDashboard },
+    { id: 'dashboard', label: 'Dashboard', sectionId: 'workshop-dashboard', icon: LayoutDashboard },
     { id: 'resources-notes', label: 'Resources & Notes', sectionId: 'section-resources', icon: FileText },
     { id: 'quiz', label: 'Quiz', sectionId: 'section-quiz', icon: Trophy },
     { id: 'assessment-assignments', label: 'Assessment & Assignments', sectionId: 'section-assignments', icon: FileCheck },
@@ -182,98 +180,15 @@ const StudentWorkshopDetail = () => {
 
   return (
     <>
-      <PageHeader
-        title={workshop.title || 'Workshop'}
-        description={workshop.description || ''}
-        actions={
-          <Button variant="ghost" size="sm" onClick={() => navigate('/student/workshops')}>
-            <ChevronLeft className="h-4 w-4 mr-2" />
-            Back to Workshops
-          </Button>
-        }
-      />
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <Button variant="ghost" size="sm" onClick={() => navigate('/student/workshops')} className="text-brand-600">
+          <ChevronLeft className="h-4 w-4 mr-2" />
+          Back to Workshops
+        </Button>
+      </div>
 
-      <div className="space-y-6">
-        {/* Banner: meta + registered badge – can be closed */}
-        <div
-          id="workshop-banner"
-          className={`rounded-2xl border border-brintelli-border bg-brintelli-card overflow-hidden transition-all ${bannerClosed ? 'py-2 px-4' : 'p-5'}`}
-        >
-          <div className="flex items-start justify-between gap-2">
-            <div className={`flex-1 min-w-0 ${bannerClosed ? 'flex items-center gap-3' : ''}`}>
-              {bannerClosed ? (
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-semibold text-text">{workshop.title || 'Workshop'}</span>
-                  {workshop.subject && (
-                    <span className="px-2 py-0.5 rounded text-xs font-medium bg-brand-500/10 text-brand-600">{workshop.subject}</span>
-                  )}
-                  {isRegistered && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-green-500/10 text-green-600">
-                      <CheckCircle className="h-3 w-3" /> Registered
-                    </span>
-                  )}
-                  <Button variant="ghost" size="sm" onClick={() => setBannerClosed(false)} className="text-brand-600">
-                    Show banner
-                  </Button>
-                </div>
-              ) : (
-                <>
-                  <div className="flex flex-wrap items-center gap-2 mb-3">
-            {workshop.subject && (
-              <span className="px-2 py-0.5 rounded text-xs font-medium bg-brand-500/10 text-brand-600">{workshop.subject}</span>
-            )}
-            {isRegistered && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-green-500/10 text-green-600">
-                <CheckCircle className="h-3 w-3" /> Registered
-              </span>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-4 text-sm text-textMuted">
-            <span className="inline-flex items-center gap-1">
-              <Calendar className="h-4 w-4" />
-              {workshop.date || '—'}
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <Clock className="h-4 w-4" />
-              {workshop.time || '—'}
-              {workshop.duration && ` (${workshop.duration} min)`}
-            </span>
-            {workshop.tutorName && (
-              <span className="inline-flex items-center gap-1">
-                <User className="h-4 w-4" />
-                {workshop.tutorName}
-              </span>
-            )}
-            <span className="inline-flex items-center gap-1">
-              <Users className="h-4 w-4" />
-              {workshop.participantsCount ?? workshop.participants?.length ?? 0}
-              {workshop.maxParticipants ? ` / ${workshop.maxParticipants}` : ''}
-            </span>
-            {workshop.venue && (
-              <span className="inline-flex items-center gap-1">
-                <MapPin className="h-4 w-4" />
-                {workshop.venue}
-              </span>
-            )}
-          </div>
-                </>
-              )}
-            </div>
-            {!bannerClosed && (
-              <button
-                type="button"
-                onClick={() => setBannerClosed(true)}
-                className="shrink-0 p-1.5 rounded-lg text-textMuted hover:bg-brintelli-baseAlt hover:text-text transition-colors"
-                aria-label="Close banner"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Top bar headers – theme style (no descriptions) */}
-        <div className="flex flex-wrap items-center gap-1 rounded-xl bg-gradient-to-r from-brintelli-primary/90 to-brintelli-primaryDark shadow-sm px-3 py-2">
+      {/* Navigatable top bar */}
+      <div className="flex flex-wrap items-center gap-1 rounded-xl bg-gradient-to-r from-brintelli-primary/90 to-brintelli-primaryDark shadow-sm px-3 py-2 mb-6">
           {optionsNavItems.map((item) => (
             <button
               key={item.id}
@@ -289,8 +204,9 @@ const StudentWorkshopDetail = () => {
               {item.label}
             </button>
           ))}
-        </div>
+      </div>
 
+      <div id="workshop-dashboard" className="space-y-6 scroll-mt-4">
         {/* Join online link */}
         {hasMeetingLink && isRegistered && (
           <div className="rounded-2xl border border-brintelli-border bg-brintelli-card p-5">
@@ -310,38 +226,58 @@ const StudentWorkshopDetail = () => {
           </div>
         )}
 
-        {/* Resources (PPT, PDF, etc.) */}
-        {resources.length > 0 && (
-          <div id="section-resources" className="rounded-2xl border border-brintelli-border bg-brintelli-card p-5 scroll-mt-4">
-            <h3 className="text-lg font-semibold flex items-center gap-2 mb-3">
-              <FileText className="h-5 w-5" />
-              Resources
-            </h3>
-            <ul className="space-y-2">
-              {resources.map((r, i) => (
-                <li key={i}>
-                  <a
-                    href={r.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 text-brand-600 hover:underline"
-                  >
-                    {r.label || 'Resource'}
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+        {/* Resources & Notes – always present so nav is navigatable */}
+        <div id="section-resources" className="rounded-2xl border border-brintelli-border bg-brintelli-card p-5 scroll-mt-4">
+          <h3 className="text-lg font-semibold flex items-center gap-2 mb-3">
+            <FileText className="h-5 w-5" />
+            Resources & Notes
+          </h3>
+          {resources.length > 0 && (
+            <div className="mb-4">
+              <h4 className="text-sm font-medium text-textSoft mb-2">Resources</h4>
+              <ul className="space-y-2">
+                {resources.map((r, i) => (
+                  <li key={`res-${i}`}>
+                    <a
+                      href={r.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 text-brand-600 hover:underline"
+                    >
+                      {r.label || 'Resource'}
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {hasNotes && (
+            <div>
+              <h4 className="text-sm font-medium text-textSoft mb-2 flex items-center gap-1.5">
+                <StickyNote className="h-4 w-4" /> Notes
+              </h4>
+              <ul className="space-y-2">
+                {(workshop.tutorAnnouncements || []).map((note, i) => (
+                  <li key={`note-${i}`} className="py-2 border-b border-gray-100 last:border-0 text-sm text-text">
+                    {typeof note === 'string' ? note : (note?.text || note?.content || JSON.stringify(note))}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {resources.length === 0 && !hasNotes && (
+            <p className="text-sm text-textMuted">No resources or notes yet.</p>
+          )}
+        </div>
 
-        {/* Assignments */}
-        {assignments.length > 0 && isRegistered && (
-          <div id="section-assignments" className="rounded-2xl border border-brintelli-border bg-brintelli-card p-5 scroll-mt-4">
-            <h3 className="text-lg font-semibold flex items-center gap-2 mb-3">
-              <FileText className="h-5 w-5" />
-              Assignments
-            </h3>
+        {/* Assignments – always present so nav is navigatable */}
+        <div id="section-assignments" className="rounded-2xl border border-brintelli-border bg-brintelli-card p-5 scroll-mt-4">
+          <h3 className="text-lg font-semibold flex items-center gap-2 mb-3">
+            <FileText className="h-5 w-5" />
+            Assessment & Assignments
+          </h3>
+          {assignments.length > 0 && isRegistered ? (
             <div className="space-y-4">
               {assignments.map((a) => (
                 <div key={a.id || a._id} className="border border-brintelli-border rounded-lg p-4">
@@ -366,8 +302,10 @@ const StudentWorkshopDetail = () => {
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          ) : (
+            <p className="text-sm text-textMuted">No assignments at the moment.</p>
+          )}
+        </div>
 
         {/* Feedback – only when published */}
         {isRegistered && workshop?.feedbackPollPublished && (
@@ -417,46 +355,51 @@ const StudentWorkshopDetail = () => {
           </div>
         )}
 
-        {/* Quiz – only when published */}
-        {quiz && quizPublished && isRegistered && (
-          <div id="section-quiz" className="rounded-2xl border border-brintelli-border bg-brintelli-card p-5 scroll-mt-4">
-            <h3 className="text-lg font-semibold flex items-center gap-2 mb-3">
-              <Trophy className="h-5 w-5" />
-              {quiz.title}
-            </h3>
-            {!quizSubmitted ? (
-              <form onSubmit={handleSubmitQuiz} className="space-y-4">
-                {quiz.questions?.map((q, i) => (
-                  <div key={i} className="border-b border-gray-100 pb-3">
-                    <p className="font-medium text-sm mb-2">{i + 1}. {q.question || q.text}</p>
-                    <div className="space-y-1">
-                      {[0, 1, 2, 3].map((j) => (
-                        <label key={j} className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            name={`q${i}`}
-                            checked={(quizAnswers[i] ?? '') === (q.options?.[j] ?? '')}
-                            onChange={() => {
-                              const next = [...quizAnswers];
-                              next[i] = q.options?.[j] ?? '';
-                              setQuizAnswers(next);
-                            }}
-                          />
-                          <span className="text-sm">{q.options?.[j] ?? `Option ${j + 1}`}</span>
-                        </label>
-                      ))}
+        {/* Quiz – always present so nav is navigatable */}
+        <div id="section-quiz" className="rounded-2xl border border-brintelli-border bg-brintelli-card p-5 scroll-mt-4">
+          <h3 className="text-lg font-semibold flex items-center gap-2 mb-3">
+            <Trophy className="h-5 w-5" />
+            Quiz
+          </h3>
+          {quiz && quizPublished && isRegistered ? (
+            <>
+              <h4 className="text-sm font-medium text-textSoft mb-3">{quiz.title}</h4>
+              {!quizSubmitted ? (
+                <form onSubmit={handleSubmitQuiz} className="space-y-4">
+                  {quiz.questions?.map((q, i) => (
+                    <div key={`q-${i}`} className="border-b border-gray-100 pb-3">
+                      <p className="font-medium text-sm mb-2">{i + 1}. {q.question || q.text}</p>
+                      <div className="space-y-1">
+                        {[0, 1, 2, 3].map((j) => (
+                          <label key={j} className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name={`q${i}`}
+                              checked={(quizAnswers[i] ?? '') === (q.options?.[j] ?? '')}
+                              onChange={() => {
+                                const next = [...quizAnswers];
+                                next[i] = q.options?.[j] ?? '';
+                                setQuizAnswers(next);
+                              }}
+                            />
+                            <span className="text-sm">{q.options?.[j] ?? `Option ${j + 1}`}</span>
+                          </label>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
-                <Button type="submit" disabled={submittingQuiz || !quiz.questions?.length}>
-                  {submittingQuiz ? 'Submitting...' : 'Submit quiz'}
-                </Button>
-              </form>
-            ) : (
-              <p className="text-textMuted">You have submitted the quiz. See leaderboard below.</p>
-            )}
-          </div>
-        )}
+                  ))}
+                  <Button type="submit" disabled={submittingQuiz || !quiz.questions?.length}>
+                    {submittingQuiz ? 'Submitting...' : 'Submit quiz'}
+                  </Button>
+                </form>
+              ) : (
+                <p className="text-textMuted">You have submitted the quiz. See leaderboard below.</p>
+              )}
+            </>
+          ) : (
+            <p className="text-sm text-textMuted">No quiz available yet.</p>
+          )}
+        </div>
 
         {/* Leaderboard */}
         {leaderboard.length > 0 && (
@@ -474,23 +417,6 @@ const StudentWorkshopDetail = () => {
               ))}
             </ul>
             <p className="text-xs text-textMuted mt-2">Top performers may receive rewards – great job!</p>
-          </div>
-        )}
-
-        {/* Notes (tutor announcements) – only when published/available */}
-        {hasNotes && (
-          <div id="section-notes" className="rounded-2xl border border-brintelli-border bg-brintelli-card p-5 scroll-mt-4">
-            <h3 className="text-lg font-semibold flex items-center gap-2 mb-3">
-              <StickyNote className="h-5 w-5" />
-              Notes
-            </h3>
-            <ul className="space-y-2">
-              {(workshop.tutorAnnouncements || []).map((note, i) => (
-                <li key={i} className="py-2 border-b border-gray-100 last:border-0 text-sm text-text">
-                  {typeof note === 'string' ? note : (note?.text || note?.content || JSON.stringify(note))}
-                </li>
-              ))}
-            </ul>
           </div>
         )}
 

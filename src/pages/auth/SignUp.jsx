@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Mail, User, Phone, Lock, UserPlus } from "lucide-react";
 import Button from "../../components/Button";
 import PasswordInput from "../../components/PasswordInput";
+import PhoneInput from "../../components/PhoneInput";
 import AuthImageCarousel from "../../components/AuthImageCarousel";
 import toast from "react-hot-toast";
 
@@ -189,23 +190,17 @@ const SignUp = () => {
                     <label htmlFor="phone" className="text-sm font-semibold text-text">
                       Phone Number <span className="text-red-500">*</span>
                     </label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-textMuted" />
-                      <input
-                        id="phone"
-                        name="phone"
-                        type="tel"
-                        required
-                        value={formData.phone}
-                        onChange={handleChange}
-                        placeholder="+1 234 567 8900"
-                        className={`w-full rounded-xl border px-4 py-3 pl-11 text-sm text-textSoft outline-none transition duration-200 focus:ring-2 focus:ring-brand-500/20 hover:border-brand-400 ${
-                          errors.phone
-                            ? "border-red-500 focus:border-red-500"
-                            : "border-brintelli-border focus:border-brand-500"
-                        }`}
-                      />
-                    </div>
+                    <PhoneInput
+                      id="phone"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={(v) => {
+                        setFormData((prev) => ({ ...prev, phone: v }));
+                        if (errors.phone) setErrors((e) => ({ ...e, phone: "" }));
+                      }}
+                      placeholder="e.g. 98765 43210"
+                      className={errors.phone ? "border-red-500 focus-within:border-red-500" : ""}
+                    />
                     {errors.phone && (
                       <p className="text-xs text-red-500 mt-1">{errors.phone}</p>
                     )}

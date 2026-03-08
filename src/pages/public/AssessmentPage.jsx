@@ -3,6 +3,7 @@ import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { ClipboardList, Mail, Lock, UserPlus, CheckCircle, XCircle } from "lucide-react";
 import Button from "../../components/Button";
 import Modal from "../../components/Modal";
+import PhoneInput from "../../components/PhoneInput";
 import { apiRequest } from "../../api/apiClient";
 import toast from "react-hot-toast";
 
@@ -297,14 +298,11 @@ const AssessmentPage = () => {
             <label className="block text-sm font-medium text-text mb-1">
               Phone Number <span className="text-red-500">*</span>
             </label>
-            <input
-              type="tel"
+            <PhoneInput
               value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              className={`w-full px-3 py-2 border rounded-lg bg-brintelli-card text-text text-sm ${
-                errors.phone ? 'border-red-500' : 'border-brintelli-border'
-              }`}
-              placeholder="Enter your phone number"
+              onChange={(v) => setFormData({ ...formData, phone: v })}
+              placeholder="e.g. 98765 43210"
+              className={errors.phone ? 'border-red-500' : ''}
             />
             {errors.phone && (
               <p className="text-xs text-red-500 mt-1">{errors.phone}</p>

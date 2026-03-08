@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
+import PhoneInput from '../../components/PhoneInput';
 import { ticketAPI } from '../../api/tickets';
 import { itUserAPI } from '../../api/itUsers';
 import { auditAPI } from '../../api/audit';
@@ -480,7 +481,7 @@ const ITManagement = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-text mb-1">Phone</label>
-                    <input type="text" value={createForm.phone} onChange={(e) => setCreateForm((f) => ({ ...f, phone: e.target.value }))} className="w-full rounded-lg border border-brintelli-border bg-brintelli-base px-3 py-2 text-sm" placeholder="+1 234 567 8900" />
+                    <PhoneInput value={createForm.phone} onChange={(v) => setCreateForm((f) => ({ ...f, phone: v }))} placeholder="e.g. 98765 43210" className="w-full" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-text mb-1">Role *</label>

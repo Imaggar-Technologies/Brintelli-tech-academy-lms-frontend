@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import PageHeader from "../../components/PageHeader";
 import Button from "../../components/Button";
 import StatsCard from "../../components/StatsCard";
+import PhoneInput from "../../components/PhoneInput";
 import apiRequest from "../../api/apiClient";
 import { salesAPI } from "../../api/sales";
 import { selectCurrentUser, updateUser as updateUserInStore } from "../../store/slices/authSlice";
@@ -227,13 +228,14 @@ const SalesProfile = () => {
               <div>
                 <p className="text-sm text-textMuted">Phone</p>
                 {editMode ? (
-                  <input
-                    name="phone"
-                    value={form.phone}
-                    onChange={onChange}
-                    className="mt-1 w-full rounded-xl border border-brintelli-border bg-brintelli-baseAlt px-3 py-2 text-sm text-text outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
-                    placeholder="+91 98765 43210"
-                  />
+                  <div className="mt-1">
+                    <PhoneInput
+                      value={form.phone}
+                      onChange={(v) => setForm((prev) => ({ ...prev, phone: v }))}
+                      placeholder="e.g. 98765 43210"
+                      className="w-full"
+                    />
+                  </div>
                 ) : (
                   <p className="font-semibold text-text">{profile?.phone || "—"}</p>
                 )}

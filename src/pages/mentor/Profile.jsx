@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { toast } from 'react-hot-toast';
 import { Settings, User, Mail, Phone, BookOpen, Users, Save, AlertCircle, Calendar, CheckCircle, Clock } from 'lucide-react';
+import PhoneInput from '../../components/PhoneInput';
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
 import mentorAPI from '../../api/mentor';
@@ -269,12 +270,11 @@ const Profile = () => {
                 <label className="block text-sm font-medium text-text mb-2">
                   Phone
                 </label>
-                <input
-                  type="tel"
+                <PhoneInput
                   value={profileData.phone}
-                  onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
-                  className="w-full px-4 py-2 border border-brintelli-border rounded-lg bg-white text-text focus:outline-none focus:ring-2 focus:ring-brand-500"
-                  placeholder="+1 234 567 8900"
+                  onChange={(v) => setProfileData({ ...profileData, phone: v })}
+                  placeholder="e.g. 98765 43210"
+                  className="w-full"
                 />
               </div>
             </div>

@@ -166,14 +166,14 @@ const TutorAssign = () => {
     {
       key: 'tutor',
       title: 'Tutor',
-      render: (row) => (
+      render: (_value, row) => (
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-100/50 text-brand-600 ring-1 ring-brand-200/50">
             <GraduationCap className="h-5 w-5" />
           </div>
           <div>
-            <p className="font-semibold text-text">{row.tutorName}</p>
-            <p className="text-xs text-textMuted">{row.tutorEmail}</p>
+            <p className="font-semibold text-text">{row?.tutorName ?? '—'}</p>
+            <p className="text-xs text-textMuted">{row?.tutorEmail ?? '—'}</p>
           </div>
         </div>
       ),
@@ -181,53 +181,54 @@ const TutorAssign = () => {
     {
       key: 'batches',
       title: 'Batches',
-      render: (row) => (
+      render: (_value, row) => (
         <div className="flex items-center gap-1.5 text-sm text-textSoft">
           <Users className="h-4 w-4" />
-          <span className="font-medium">{row.batches}</span>
+          <span className="font-medium">{row?.batches ?? 0}</span>
         </div>
       ),
     },
     {
       key: 'modules',
       title: 'Modules',
-      render: (row) => (
+      render: (_value, row) => (
         <div className="flex items-center gap-1.5 text-sm text-textSoft">
           <BookOpen className="h-4 w-4" />
-          <span className="font-medium">{row.modules}</span>
+          <span className="font-medium">{row?.modules ?? 0}</span>
         </div>
       ),
     },
     {
       key: 'sessions',
       title: 'Sessions',
-      render: (row) => (
+      render: (_value, row) => (
         <div className="text-sm">
-          <div className="font-medium text-text">{row.activeSessions} active</div>
-          <div className="text-xs text-textMuted">{row.upcomingSessions} upcoming</div>
+          <div className="font-medium text-text">{row?.activeSessions ?? 0} active</div>
+          <div className="text-xs text-textMuted">{row?.upcomingSessions ?? 0} upcoming</div>
         </div>
       ),
     },
     {
       key: 'weeklyHours',
       title: 'Weekly Hours',
-      render: (row) => (
-        <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${getWorkloadColor(row.weeklyHours)}`}>
-          {row.weeklyHours}h/week
+      render: (_value, row) => (
+        <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${getWorkloadColor(row?.weeklyHours ?? 0)}`}>
+          {row?.weeklyHours ?? 0}h/week
         </span>
       ),
     },
     {
       key: 'actions',
       title: 'Actions',
-      render: (row) => (
+      render: (_value, row) => (
         <Button
           variant="ghost"
           size="sm"
           className="gap-1.5 text-xs"
-          onClick={() => {
-            const tutor = tutors.find(t => (t.id || t._id) === row.tutorId);
-            setSelectedTutor(tutor);
+          onClick={(e) => {
+            e?.stopPropagation?.();
+            const tutor = tutors.find(t => (t.id || t._id) === row?.tutorId);
+            setSelectedTutor(tutor ?? null);
           }}
         >
           <Users className="h-3.5 w-3.5" />

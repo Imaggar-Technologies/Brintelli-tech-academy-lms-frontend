@@ -4,6 +4,7 @@ import { Award, Briefcase, FileText, MapPin, Target, Mail, Phone, Star, Edit2, S
 import PageHeader from "../../components/PageHeader";
 import Button from "../../components/Button";
 import StatsCard from "../../components/StatsCard";
+import PhoneInput from "../../components/PhoneInput";
 import { selectCurrentUser, updateUser as updateUserInStore } from '../../store/slices/authSlice';
 import { toast } from 'react-hot-toast';
 import apiRequest from '../../api/apiClient';
@@ -171,11 +172,11 @@ const StudentProfile = () => {
                   <>
                     <div>
                       <label className="block text-xs font-semibold text-text mb-1">Phone</label>
-                      <input
-                        type="tel"
+                      <PhoneInput
                         value={editData.phone}
-                        onChange={(e) => setEditData({ ...editData, phone: e.target.value })}
-                        className="w-full px-3 py-2 border border-brintelli-border rounded-lg bg-brintelli-baseAlt text-sm text-text focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                        onChange={(v) => setEditData({ ...editData, phone: v })}
+                        placeholder="e.g. 98765 43210"
+                        className="w-full"
                       />
                     </div>
                     <div>

@@ -22,6 +22,7 @@ import {
 import PageHeader from "../../components/PageHeader";
 import Button from "../../components/Button";
 import Modal from "../../components/Modal";
+import QuizBuilder from "../../components/workshop/QuizBuilder";
 import workshopAPI from "../../api/workshop";
 import { selectCurrentUser } from "../../store/slices/authSlice";
 
@@ -630,8 +631,12 @@ const TutorWorkshops = () => {
               ) : (
                 <>
                   <p className="text-sm text-textMuted">
-                    {quizData.quiz ? "Edit quiz and publish when ready. Students can attempt only when published." : "Create a quiz and publish it for participants."}
+                    Add quiz questions (multiple choice), polls (no correct answer), or reviews (rating or free text). Use images on questions or options if needed.
                   </p>
+                  <QuizBuilder
+                    quiz={quizData.quiz || { title: "Workshop Quiz", questions: [] }}
+                    onChange={(next) => setQuizData((q) => ({ ...q, quiz: next }))}
+                  />
                   {quizData.quiz && (
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-text">Status:</span>

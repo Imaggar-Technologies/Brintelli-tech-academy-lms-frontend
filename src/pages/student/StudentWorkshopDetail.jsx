@@ -127,7 +127,9 @@ const StudentWorkshopDetail = () => {
     try {
       const res = await workshopAPI.submitQuizAttempt(workshopId, { answers: quizAnswers });
       if (res.success) {
-        toast.success(`Quiz submitted! Score: ${res.data?.attempt?.score ?? 0}/${res.data?.attempt?.totalQuestions ?? 0}`);
+        const hasQuiz = (quiz.questions || []).some((q) => (q.type || 'quiz') === 'quiz');
+        if (hasQuiz) toast.success(`Quiz submitted! Score: ${res.data?.attempt?.score ?? 0}/${res.data?.attempt?.totalQuestions ?? 0}`);
+        else toast.success('Response submitted. Thank you!');
         setQuizSubmitted(true);
         loadAll();
       } else toast.error(res.message || 'Failed to submit');
@@ -342,7 +344,7 @@ const StudentWorkshopDetail = () => {
           </div>
         )}
 
-        {/* Page: Quiz */}
+        {/* Page: Quiz / Polls / Reviews */}
         {activeOption === 'quiz' && (
           <div className="p-6">
             <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
@@ -352,36 +354,70 @@ const StudentWorkshopDetail = () => {
               <>
                 <h4 className="text-sm font-medium text-textSoft mb-3">{quiz.title}</h4>
                 {!quizSubmitted ? (
-                  <form onSubmit={handleSubmitQuiz} className="space-y-4">
-                    {quiz.questions?.map((q, i) => (
-                      <div key={`q-${i}`} className="border-b border-gray-100 pb-3">
-                        <p className="font-medium text-sm mb-2">{i + 1}. {q.question || q.text}</p>
-                        <div className="space-y-1">
-                          {[0, 1, 2, 3].map((j) => (
-                            <label key={j} className="flex items-center gap-2 cursor-pointer">
-                              <input
-                                type="radio"
-                                name={`q${i}`}
-                                checked={(quizAnswers[i] ?? '') === (q.options?.[j] ?? '')}
-                                onChange={() => {
-                                  const next = [...quizAnswers];
-                                  next[i] = q.options?.[j] ?? '';
-                                  setQuizAnswers(next);
-                                }}
-                              />
-                              <span className="text-sm">{q.options?.[j] ?? `Option ${j + 1}`}</span>
-                            </label>
-                          ))}
+                  <form onSubmit={handleSubmitQuiz} className="space-y-6">
+                    {quiz.questions?.map((q, i) => {
+                      const type = q.type || 'quiz';
+                      const opts = q.options || [];
+                      const isReviewFreetext = type === 'review' && (q.reviewType === 'freetext' || opts.length <= 1);
+                      return (
+                        <div key={`q-${i}`} className="border-b border-gray-100 pb-4">
+                          <p className="font-medium text-sm mb-1">{i + 1}. {q.question || q.text}</p>
+                          {q.questionImage && (
+                            <img src={q.questionImage} alt="" className="my-2 max-h-48 rounded-lg object-contain" onError={(e) => e.target.style.display = 'none'} />
+                          )}
+                          {isReviewFreetext ? (
+                            <textarea
+                              className="w-full rounded-lg border border-brintelli-border px-3 py-2 text-sm min-h-[80px]"
+                              placeholder="Your feedback..."
+                              value={typeof quizAnswers[i] === 'string' ? quizAnswers[i] : ''}
+                              onChange={(e) => {
+                                const next = [...quizAnswers];
+                                next[i] = e.target.value;
+                                setQuizAnswers(next);
+                              }}
+                            />
+                          ) : (
+                            <div className="space-y-2 mt-2">
+                              {opts.map((opt, j) => {
+                                const text = typeof opt === 'object' && opt != null ? (opt.text || '') : String(opt);
+                                const img = typeof opt === 'object' && opt != null ? (opt.image || '') : '';
+                                const value = j;
+                                return (
+                                  <label key={j} className="flex items-start gap-3 cursor-pointer rounded-lg border border-brintelli-border/60 p-2 hover:bg-brintelli-baseAlt/30">
+                                    <input
+                                      type="radio"
+                                      name={`q${i}`}
+                                      checked={quizAnswers[i] === value}
+                                      onChange={() => {
+                                        const next = [...quizAnswers];
+                                        next[i] = value;
+                                        setQuizAnswers(next);
+                                      }}
+                                      className="mt-1"
+                                    />
+                                    <span className="flex-1 flex items-center gap-2 flex-wrap">
+                                      {img && <img src={img} alt="" className="max-h-16 rounded object-contain" onError={(e) => e.target.style.display = 'none'} />}
+                                      <span className="text-sm">{text || `Option ${j + 1}`}</span>
+                                    </span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                     <Button type="submit" disabled={submittingQuiz || !quiz.questions?.length}>
-                      {submittingQuiz ? 'Submitting...' : 'Submit quiz'}
+                      {submittingQuiz ? 'Submitting...' : 'Submit'}
                     </Button>
                   </form>
                 ) : (
                   <>
-                    <p className="text-textMuted mb-3">You have submitted the quiz. Your score is added to your total points.</p>
+                    <p className="text-textMuted mb-3">
+                      {(quiz.questions || []).some((q) => (q.type || 'quiz') === 'quiz')
+                        ? 'You have submitted. Your score is added to your total points.'
+                        : 'Thank you for your response.'}
+                    </p>
                     {quizResult?.quiz?.questions?.length > 0 && (
                       <div className="rounded-xl border border-brintelli-border bg-brintelli-baseAlt/30 p-4 space-y-4">
                         <h4 className="font-semibold text-text">Questions & answers</h4>
@@ -389,12 +425,12 @@ const StudentWorkshopDetail = () => {
                           <div key={`qq-${idx}`} className="border-b border-brintelli-border pb-3 last:border-0">
                             <p className="font-medium text-sm text-text mb-1">{idx + 1}. {qq.question}</p>
                             <p className="text-xs text-textMuted">
-                              Your answer: <span className={qq.correct ? 'text-green-600 font-medium' : 'text-amber-600'}>{qq.yourAnswer ?? '—'}</span>
-                              {!qq.correct && <span className="ml-2">Correct: <span className="text-green-600 font-medium">{qq.correctAnswer ?? '—'}</span></span>}
+                              Your answer: <span className={qq.correct === true ? 'text-green-600 font-medium' : qq.correct === false ? 'text-amber-600' : 'text-text'}>{qq.yourAnswer ?? '—'}</span>
+                              {qq.correct === false && qq.correctAnswer != null && <span className="ml-2">Correct: <span className="text-green-600 font-medium">{qq.correctAnswer}</span></span>}
                             </p>
                           </div>
                         ))}
-                        {quizResult.attempt && (
+                        {quizResult.attempt && (quizResult.attempt.totalQuestions > 0) && (
                           <p className="text-sm text-brand-600 font-medium">Score: {quizResult.attempt.score} / {quizResult.attempt.totalQuestions}</p>
                         )}
                       </div>

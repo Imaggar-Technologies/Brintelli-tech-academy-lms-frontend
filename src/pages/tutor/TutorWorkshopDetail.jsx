@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
+import QuizBuilder from '../../components/workshop/QuizBuilder';
 import workshopAPI from '../../api/workshop';
 
 const TutorWorkshopDetail = () => {
@@ -228,13 +229,17 @@ const TutorWorkshopDetail = () => {
         {activeOption === 'quiz' && (
           <div className="p-6">
             <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
-              <Trophy className="h-5 w-5" /> Quiz
+              <Trophy className="h-5 w-5" /> Quiz, Polls &amp; Reviews
             </h3>
             <p className="text-sm text-textMuted mb-4">
-              {quiz ? 'Edit and publish the quiz. Students can attempt only when published.' : 'Create a quiz and publish it for participants.'}
+              Create quiz questions (multiple choice with one correct answer), polls (multiple choice, no correct answer), or reviews (rating 1–5 or free text). You can add images to questions and options. Publish when ready so students can attempt.
             </p>
+            <QuizBuilder
+              quiz={quiz || { title: 'Workshop Quiz', questions: [] }}
+              onChange={(next) => setQuiz(next)}
+            />
             {quiz && (
-              <div className="flex items-center gap-2 mb-4">
+              <div className="mt-4 flex items-center gap-2">
                 <span className="text-sm text-text">Status:</span>
                 <Button
                   variant="ghost"
@@ -246,7 +251,7 @@ const TutorWorkshopDetail = () => {
                 </Button>
               </div>
             )}
-            <div className="flex gap-2">
+            <div className="mt-4 flex gap-2">
               <Button size="sm" disabled={quizSaving} onClick={handleSaveQuiz}>
                 {quizSaving ? 'Saving…' : quiz ? 'Update quiz' : 'Create quiz'}
               </Button>

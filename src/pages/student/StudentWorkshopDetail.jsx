@@ -272,28 +272,23 @@ const StudentWorkshopDetail = () => {
           </div>
         </div>
 
-        {/* Options header + secondary nav (Dashboard, Resources & Notes, Quiz, Assessment & Assignments, Certifications) */}
-        <div className="rounded-xl border border-brintelli-border bg-brintelli-card overflow-hidden shadow-sm">
-          <div className="px-4 py-2 border-b border-brintelli-border bg-brintelli-baseAlt/50">
-            <h2 className="text-sm font-semibold text-text uppercase tracking-wide">Options</h2>
-          </div>
-          <div className="flex flex-wrap items-center gap-1 p-3">
-            {optionsNavItems.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => handleOptionClick(item)}
-                className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  activeOption === item.id
-                    ? 'bg-brand-500 text-white hover:bg-brand-600'
-                    : 'text-text hover:bg-brand-500/10 hover:text-brand-600'
-                }`}
-              >
-                <item.icon className="h-4 w-4" />
-                {item.label}
-              </button>
-            ))}
-          </div>
+        {/* Top bar headers – theme style (no descriptions) */}
+        <div className="flex flex-wrap items-center gap-1 rounded-xl bg-gradient-to-r from-brintelli-primary/90 to-brintelli-primaryDark shadow-sm px-3 py-2">
+          {optionsNavItems.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => handleOptionClick(item)}
+              className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                activeOption === item.id
+                  ? 'bg-white/20 text-white'
+                  : 'text-white/90 hover:bg-white/10 hover:text-white'
+              }`}
+            >
+              <item.icon className="h-4 w-4" />
+              {item.label}
+            </button>
+          ))}
         </div>
 
         {/* Join online link */}

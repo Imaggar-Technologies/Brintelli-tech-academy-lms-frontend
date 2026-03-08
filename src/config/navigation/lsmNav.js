@@ -66,6 +66,7 @@ const lsmNav = [
       { label: "Mentee Profiles", icon: UserCog, path: "/lsm/profiles", pageId: "lsm-profiles", permissions: ["lsm:read"] },
       { label: "Risk Students", icon: Target, path: "/lsm/risk-students", pageId: "lsm-risk", permissions: ["lsm:read"] },
       { label: "Escalations", icon: ShieldCheck, path: "/lsm/escalations", pageId: "lsm-escalations", permissions: ["lsm:read"] },
+      { label: "Learner activity", icon: FileText, path: "/lsm/learner-activity", pageId: "lsm-learner-activity", permissions: ["lsm:read"] },
     ],
     permissions: ["lsm:read"],
   },

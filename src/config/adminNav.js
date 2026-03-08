@@ -188,6 +188,7 @@ export const adminNav = [
       { label: "Role Management", icon: UserCog, path: "/admin-portal/users/roles", pageId: "users-roles" },
       { label: "Access Controls (RBAC)", icon: ShieldCheck, path: "/admin-portal/users/access-controls", pageId: "users-access-controls" },
       { label: "Activity Logs", icon: ClipboardCheck, path: "/admin-portal/users/activity-logs", pageId: "users-activity" },
+      { label: "Learner activity", icon: Users2, path: "/admin-portal/users/learner-activity", pageId: "users-learner-activity" },
     ],
   },
   { id: "notifications", label: "Notifications & Broadcasts", icon: Bell, path: "/admin-portal/notifications", pageId: "notifications" },

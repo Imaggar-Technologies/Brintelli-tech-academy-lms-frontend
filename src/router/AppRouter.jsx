@@ -127,6 +127,7 @@ import WeeklyReports from "../pages/lsm/WeeklyReports";
 import Readiness from "../pages/lsm/Readiness";
 import InterviewPrep from "../pages/lsm/InterviewPrep";
 import LsmWorkshops from "../pages/lsm/LsmWorkshops";
+import UserActivityPage from "../pages/adminPortal/UserActivityPage";
 
 // Admin pages
 import AdminDashboard from "../pages/admin/Dashboard";
@@ -538,6 +539,7 @@ const AppRouter = () => {
             <Route path="placement-tracker" element={<LsmPlacementTracker />} />
             <Route path="risk-students" element={<RiskStudents />} />
             <Route path="profiles" element={<Profiles />} />
+            <Route path="learner-activity" element={<UserActivityPage />} />
             <Route path="escalations" element={<Escalations />} />
             <Route path="sessions" element={<Sessions />} />
             <Route path="sessions/:sessionId/live" element={<TutorLiveSessionRoom />} />

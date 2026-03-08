@@ -25,5 +25,18 @@ export const auditAPI = {
   },
 };
 
+// User activity (views, logins) for admin/LSM
+export const userActivityAPI = {
+  getByUser: async (userId, params = {}) => {
+    const q = new URLSearchParams();
+    if (params.limit) q.append('limit', params.limit);
+    if (params.action) q.append('action', params.action);
+    if (params.startDate) q.append('startDate', params.startDate);
+    if (params.endDate) q.append('endDate', params.endDate);
+    const query = q.toString();
+    return apiRequest(`/api/users/${userId}/activity${query ? `?${query}` : ''}`);
+  },
+};
+
 export default auditAPI;
 

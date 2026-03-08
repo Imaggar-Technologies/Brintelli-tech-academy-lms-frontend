@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Bell, Menu, Search, Sparkles } from "lucide-react";
+import { Bell, Menu, Search, Sparkles, Flame } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { selectCurrentUser } from "../../store/slices/authSlice";
@@ -125,8 +125,13 @@ const Topbar = ({ onToggleMobileSidebar, role, roleLabelOverride, roleOptions, c
   const [panelOpen, setPanelOpen] = useState(false);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
   const [referralPoints, setReferralPoints] = useState(0);
+  const [streak, setStreak] = useState(0);
 
   const unreadCount = useMemo(() => notifications.filter((item) => !item.read).length, [notifications]);
+  const isLearner = useMemo(() => {
+    const r = (user?.role || '').toLowerCase();
+    return r === 'student' || r === 'learner';
+  }, [user?.role]);
   
   // Use actual user role from Redux if available, otherwise use role prop
   const actualRole = useMemo(() => {
@@ -181,8 +186,8 @@ const Topbar = ({ onToggleMobileSidebar, role, roleLabelOverride, roleOptions, c
   // Referral points for learner/student (show in topbar)
   useEffect(() => {
     const roleKey = (user?.role || '').toLowerCase();
-    const isLearner = roleKey === 'student' || roleKey === 'learner';
-    if (!isLearner || !user?.id) return;
+    const learner = roleKey === 'student' || roleKey === 'learner';
+    if (!learner || !user?.id) return;
     const fetchPoints = async () => {
       try {
         const res = await referralAPI.getMyReferral();
@@ -193,6 +198,19 @@ const Topbar = ({ onToggleMobileSidebar, role, roleLabelOverride, roleOptions, c
     };
     fetchPoints();
   }, [user?.id, user?.role]);
+
+  // Streak from profile (login-based) for learner
+  useEffect(() => {
+    if (!isLearner || !user?.id) return;
+    const fetchMe = async () => {
+      try {
+        const apiRequest = (await import('../../api/apiClient')).default;
+        const res = await apiRequest('/api/users/me');
+        if (res?.data?.user?.streak != null) setStreak(Number(res.data.user.streak));
+      } catch (_) {}
+    };
+    fetchMe();
+  }, [isLearner, user?.id]);
 
   useEffect(() => {
     setPanelOpen(false);
@@ -261,6 +279,15 @@ const Topbar = ({ onToggleMobileSidebar, role, roleLabelOverride, roleOptions, c
           </div>
 
           <div className="flex items-center justify-end gap-2.5 sm:gap-3">
+            {isLearner && streak > 0 && (
+              <span
+                className="inline-flex items-center gap-1.5 rounded-xl border border-sky-200/60 bg-sky-50/90 px-3 py-2 text-sm font-semibold text-sky-700"
+                title="Login streak (consecutive days)"
+              >
+                <Flame className="h-4 w-4 text-sky-500" />
+                {streak} day{streak !== 1 ? 's' : ''}
+              </span>
+            )}
             {referralPoints > 0 && (
               <a
                 href="/student/invite-friend"

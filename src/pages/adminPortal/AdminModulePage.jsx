@@ -4,6 +4,7 @@ import AllUsers from "./AllUsers";
 import RolesManagement from "./RolesManagement";
 import AccessControls from "./AccessControls";
 import ActivityLogs from "./ActivityLogs";
+import UserActivityPage from "./UserActivityPage";
 import Notifications from "./Notifications";
 import AdminWorkshops from "./AdminWorkshops";
 
@@ -31,6 +32,10 @@ const AdminModulePage = ({ pageId }) => {
 
   if (pageId === "users-activity") {
     return <ActivityLogs />;
+  }
+
+  if (pageId === "users-learner-activity") {
+    return <UserActivityPage />;
   }
 
   if (pageId === "notifications") {

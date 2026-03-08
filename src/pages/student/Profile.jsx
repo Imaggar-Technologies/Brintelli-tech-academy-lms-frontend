@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Award, Briefcase, FileText, MapPin, Target, Mail, Phone, Star, Edit2, Settings } from "lucide-react";
+import { Award, Briefcase, FileText, MapPin, Target, Mail, Phone, Star, Edit2, Settings, Flame, Calendar } from "lucide-react";
 import PageHeader from "../../components/PageHeader";
 import Button from "../../components/Button";
 import StatsCard from "../../components/StatsCard";
@@ -90,6 +90,8 @@ const StudentProfile = () => {
   const displayEmail = user?.email || '';
   const displayPhone = user?.phone || '';
   const displayAddress = user?.address || '';
+  const joinedAt = user?.createdAt ? new Date(user.createdAt) : null;
+  const streak = user?.streak != null ? Number(user.streak) : 0;
 
   return (
     <>
@@ -141,6 +143,21 @@ const StudentProfile = () => {
         <div className="flex flex-col gap-6">
           <div className="rounded-2xl border border-brintelli-border bg-brintelli-card p-6 shadow-soft">
             <h3 className="text-lg font-semibold text-text">Professional Snapshot</h3>
+            <div className="mt-4 flex flex-wrap gap-4 mb-5">
+              {joinedAt && (
+                <div className="inline-flex items-center gap-2 rounded-xl border border-brintelli-border bg-brintelli-baseAlt/50 px-3 py-2 text-sm">
+                  <Calendar className="h-4 w-4 text-brand-500" />
+                  <span className="text-textSoft">Joined </span>
+                  <span className="font-semibold text-text">{joinedAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                </div>
+              )}
+              {streak > 0 && (
+                <div className="inline-flex items-center gap-2 rounded-xl border border-sky-200/60 bg-sky-50/80 px-3 py-2 text-sm">
+                  <Flame className="h-4 w-4 text-sky-500" />
+                  <span className="text-sky-700 font-semibold">{streak} day login streak</span>
+                </div>
+              )}
+            </div>
             <div className="mt-4 grid gap-5 md:grid-cols-2">
               <div className="space-y-3 text-sm text-textSoft">
                 {isEditing ? (

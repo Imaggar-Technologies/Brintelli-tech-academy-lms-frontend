@@ -25,8 +25,8 @@ export const adminRoles = {
   },
   it_support: {
     label: "IT Support",
-    permissions: ["dashboard", "settings", "notifications", "analytics"],
-    navSections: ["dashboard", "settings", "notifications", "analytics"]
+    permissions: combine(["dashboard", "settings", "notifications", "analytics", "website-cms"], prefix("website-cms-")),
+    navSections: ["dashboard", "settings", "notifications", "analytics", "website-cms"]
   },
   programManager: {
     label: "Program Manager",
@@ -44,22 +44,24 @@ export const adminRoles = {
   mentorOps: {
     label: "Mentor Operations",
     permissions: combine(
-      ["dashboard"],
+      ["dashboard", "website-cms"],
+      prefix("website-cms-"),
       prefix("mentor-"),
       prefix("pm-lesson-quality"),
       ["notifications"]
     ),
-    navSections: ["dashboard", "mentor-lsp", "program-manager", "notifications"]
+    navSections: ["dashboard", "mentor-lsp", "program-manager", "notifications", "website-cms"]
   },
   placementLead: {
     label: "Placement Lead",
     permissions: combine(
-      ["dashboard"],
+      ["dashboard", "website-cms"],
+      prefix("website-cms-"),
       prefix("placement-"),
       prefix("hr-"),
       ["notifications", "analytics"]
     ),
-    navSections: ["dashboard", "placement", "hr", "sales", "notifications", "analytics"]
+    navSections: ["dashboard", "placement", "hr", "sales", "notifications", "analytics", "website-cms"]
   },
   salesManager: {
     label: "Sales & CRM",
@@ -73,43 +75,44 @@ export const adminRoles = {
   },
   financeController: {
     label: "Finance Controller",
-    permissions: combine(["dashboard"], prefix("finance-"), ["analytics"]),
-    navSections: ["dashboard", "finance", "analytics"]
+    permissions: combine(["dashboard", "website-cms"], prefix("website-cms-"), prefix("finance-"), ["analytics"]),
+    navSections: ["dashboard", "finance", "analytics", "website-cms"]
   },
   hrPartner: {
     label: "HR & Partnerships",
     permissions: combine(
-      ["dashboard"],
+      ["dashboard", "website-cms"],
+      prefix("website-cms-"),
       prefix("hr-"),
       prefix("placement-"),
       ["notifications", "analytics"]
     ),
-    navSections: ["dashboard", "hr", "placement", "notifications", "analytics"]
+    navSections: ["dashboard", "hr", "placement", "notifications", "analytics", "website-cms"]
   },
   practiceLead: {
     label: "Practice Lead",
-    permissions: combine(["dashboard"], prefix("practice-"), ["analytics"]),
-    navSections: ["dashboard", "practice", "analytics"]
+    permissions: combine(["dashboard", "website-cms"], prefix("website-cms-"), prefix("practice-"), ["analytics"]),
+    navSections: ["dashboard", "practice", "analytics", "website-cms"]
   },
   certificationLead: {
     label: "Certification Lead",
-    permissions: combine(["dashboard"], prefix("certification-"), ["analytics"]),
-    navSections: ["dashboard", "certifications", "analytics"]
+    permissions: combine(["dashboard", "website-cms"], prefix("website-cms-"), prefix("certification-"), ["analytics"]),
+    navSections: ["dashboard", "certifications", "analytics", "website-cms"]
   },
   analyticsViewer: {
     label: "Analytics Viewer",
-    permissions: ["dashboard", "analytics"],
-    navSections: ["dashboard", "analytics"]
+    permissions: combine(["dashboard", "analytics", "website-cms"], prefix("website-cms-")),
+    navSections: ["dashboard", "analytics", "website-cms"]
   },
   notificationManager: {
     label: "Communications",
-    permissions: ["dashboard", "notifications"],
-    navSections: ["dashboard", "notifications"]
+    permissions: combine(["dashboard", "notifications", "website-cms"], prefix("website-cms-")),
+    navSections: ["dashboard", "notifications", "website-cms"]
   },
   settingsAdmin: {
     label: "Settings Admin",
-    permissions: ["dashboard", "settings", "analytics"],
-    navSections: ["dashboard", "settings", "analytics"]
+    permissions: combine(["dashboard", "settings", "analytics", "website-cms"], prefix("website-cms-")),
+    navSections: ["dashboard", "settings", "analytics", "website-cms"]
   },
 };
 

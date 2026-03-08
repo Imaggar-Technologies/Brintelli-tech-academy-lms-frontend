@@ -44,7 +44,7 @@ export const adminNav = [
   },
   {
     id: "website-cms",
-    label: "Website / CMS",
+    label: "Website CMS",
     icon: Globe,
     path: "/admin-portal/website-cms",
     pageId: "website-cms",

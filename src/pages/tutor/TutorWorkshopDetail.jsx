@@ -23,10 +23,12 @@ import {
   XCircle,
   Clock,
   Download,
+  Upload,
 } from 'lucide-react';
 import Button from '../../components/Button';
 import QuizBuilder from '../../components/workshop/QuizBuilder';
 import workshopAPI from '../../api/workshop';
+import uploadAPI from '../../api/upload';
 
 const TutorWorkshopDetail = () => {
   const { workshopId } = useParams();
@@ -49,6 +51,8 @@ const TutorWorkshopDetail = () => {
   const [resourcesNotify, setResourcesNotify] = useState(false);
   const [noteContent, setNoteContent] = useState('');
   const [noteSending, setNoteSending] = useState(false);
+  const [resourcesNotesSubTab, setResourcesNotesSubTab] = useState('resources'); // 'resources' | 'notes'
+  const [resourceUploading, setResourceUploading] = useState(false);
   const [attendanceStarting, setAttendanceStarting] = useState(false);
   const [attendanceStopping, setAttendanceStopping] = useState(false);
   const [attendees, setAttendees] = useState([]);
@@ -175,6 +179,24 @@ const TutorWorkshopDetail = () => {
       toast.error(e.message || 'Failed to post answer');
     } finally {
       setAnsweringId(null);
+    }
+  };
+
+  const handleResourceFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    setResourceUploading(true);
+    try {
+      const res = await uploadAPI.uploadFile(file, 'workshop-resources');
+      if (res?.success && res?.data?.url) {
+        setResourceList((prev) => [...prev, { label: file.name, url: res.data.url }]);
+        toast.success('File added to list. Save resources to store.');
+      } else throw new Error(res?.error || 'Upload failed');
+    } catch (err) {
+      toast.error(err?.message || 'Upload failed');
+    } finally {
+      setResourceUploading(false);
     }
   };
 
@@ -344,176 +366,202 @@ const TutorWorkshopDetail = () => {
       )}
 
         {activeOption === 'resources-notes' && (
-          <div className="p-6 space-y-6">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
+          <div className="p-6 flex flex-col min-h-[420px]">
+            <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
               <FileText className="h-5 w-5" /> Resources & Notes
             </h3>
 
-            {/* Create & manage resources */}
-            <div className="rounded-lg border border-brintelli-border p-4 space-y-4">
-              <h4 className="text-sm font-medium text-text">Resources</h4>
-              <p className="text-sm text-textMuted">Add links (docs, slides, videos). Save to store; check "Notify participants" to push and email students.</p>
-              <div className="flex flex-wrap gap-2 items-end">
-                <div className="flex-1 min-w-[140px]">
-                  <label className="block text-xs font-medium text-textMuted mb-1">Label</label>
-                  <input
-                    type="text"
-                    value={newResourceLabel}
-                    onChange={(e) => setNewResourceLabel(e.target.value)}
-                    placeholder="e.g. Slide deck"
-                    className="w-full rounded-lg border border-brintelli-border px-3 py-2 text-sm"
-                  />
-                </div>
-                <div className="flex-1 min-w-[200px]">
-                  <label className="block text-xs font-medium text-textMuted mb-1">URL</label>
-                  <input
-                    type="url"
-                    value={newResourceUrl}
-                    onChange={(e) => setNewResourceUrl(e.target.value)}
-                    placeholder="https://..."
-                    className="w-full rounded-lg border border-brintelli-border px-3 py-2 text-sm"
-                  />
-                </div>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => {
-                    const label = newResourceLabel.trim();
-                    const url = newResourceUrl.trim();
-                    if (!url && !label) return;
-                    setResourceList((prev) => [...prev, { label: label || url, url: url || label }]);
-                    setNewResourceLabel('');
-                    setNewResourceUrl('');
-                  }}
-                >
-                  <Plus className="h-4 w-4 mr-1" /> Add resource
-                </Button>
-              </div>
+            {/* Content area: list of resources and notes */}
+            <div className="flex-1 space-y-4 mb-4">
               {resourceList.length > 0 && (
-                <ul className="space-y-2">
-                  {resourceList.map((r, i) => (
-                    <li key={`res-${i}`} className="flex items-center justify-between gap-2 py-1 border-b border-brintelli-border/50">
-                      <a href={r.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-brand-600 hover:underline truncate">
-                        {r.label || 'Resource'} <ExternalLink className="h-3 w-3 shrink-0" />
-                      </a>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-red-600 hover:text-red-700"
-                        onClick={() => setResourceList((prev) => prev.filter((_, idx) => idx !== i))}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
+                <div>
+                  <h4 className="text-xs font-medium text-textMuted mb-2">Resources</h4>
+                  <ul className="space-y-1">
+                    {resourceList.map((r, i) => (
+                      <li key={`res-${i}`} className="flex items-center justify-between gap-2 py-1.5 border-b border-brintelli-border/40">
+                        <a href={r.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-brand-600 hover:underline truncate text-sm">
+                          {r.label || 'Resource'} <ExternalLink className="h-3 w-3 shrink-0" />
+                        </a>
+                        <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700 shrink-0" onClick={() => setResourceList((prev) => prev.filter((_, idx) => idx !== i))}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
-              <div className="flex flex-wrap items-center gap-3">
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={resourcesNotify}
-                    onChange={(e) => setResourcesNotify(e.target.checked)}
-                    className="rounded border-brintelli-border"
-                  />
-                  Notify participants (email when saving)
-                </label>
-                <Button
-                  size="sm"
-                  disabled={resourcesSaving}
-                  onClick={async () => {
-                    setResourcesSaving(true);
-                    try {
-                      const res = await workshopAPI.updateResources(workshopId, {
-                        resources: resourceList,
-                        notifyParticipants: resourcesNotify,
-                      });
-                      if (res?.success) {
-                        setWorkshop((w) => (w ? { ...w, resources: res.data?.resources ?? resourceList } : null));
-                        toast.success(res.message || 'Resources saved');
-                        if (resourcesNotify) setResourcesNotify(false);
-                      } else throw new Error(res?.error);
-                    } catch (e) {
-                      toast.error(e.message || 'Failed to save resources');
-                    } finally {
-                      setResourcesSaving(false);
-                    }
-                  }}
-                >
-                  {resourcesSaving ? 'Saving…' : 'Save resources'}
-                </Button>
-              </div>
+              {hasNotes && (
+                <div>
+                  <h4 className="text-xs font-medium text-textMuted mb-2">Notes</h4>
+                  <ul className="space-y-1 text-sm text-text">
+                    {(workshop?.tutorAnnouncements || []).map((note, i) => (
+                      <li key={`note-${i}`} className="py-2 border-b border-brintelli-border/40 last:border-0">
+                        {typeof note === 'string' ? note : (note?.content ?? note?.text ?? '')}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {resourceList.length === 0 && !hasNotes && (
+                <p className="text-sm text-textMuted">No resources or notes yet. Use the bar below to add files, links, or notes.</p>
+              )}
             </div>
 
-            {/* Notes (announcements) */}
-            <div className="rounded-lg border border-brintelli-border p-4 space-y-4">
-              <h4 className="text-sm font-medium text-text flex items-center gap-1.5">
-                <StickyNote className="h-4 w-4" /> Notes
-              </h4>
-              {hasNotes && (
-                <ul className="space-y-2 text-sm text-text">
-                  {(workshop?.tutorAnnouncements || []).map((note, i) => (
-                    <li key={`note-${i}`} className="py-2 border-b border-brintelli-border/50 last:border-0">
-                      {typeof note === 'string' ? note : (note?.content ?? note?.text ?? '')}
-                    </li>
-                  ))}
-                </ul>
+            {/* Bottom option bar (Resources | Notes) */}
+            <div className="rounded-xl bg-gradient-to-r from-brintelli-primary/90 to-brintelli-primaryDark shadow-sm px-3 py-3 mt-auto">
+              <div className="flex flex-wrap items-center gap-2 mb-3">
+                <button
+                  type="button"
+                  onClick={() => setResourcesNotesSubTab('resources')}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${resourcesNotesSubTab === 'resources' ? 'bg-white/20 text-white' : 'text-white/90 hover:bg-white/10'}`}
+                >
+                  <FileText className="h-4 w-4" /> Resources
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setResourcesNotesSubTab('notes')}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${resourcesNotesSubTab === 'notes' ? 'bg-white/20 text-white' : 'text-white/90 hover:bg-white/10'}`}
+                >
+                  <StickyNote className="h-4 w-4" /> Notes
+                </button>
+              </div>
+
+              {resourcesNotesSubTab === 'resources' && (
+                <div className="space-y-2">
+                  <p className="text-white/90 text-xs">Upload a file or add a link. Save to store; optionally notify participants.</p>
+                  <div className="flex flex-wrap items-end gap-2">
+                    <input
+                      type="file"
+                      id="workshop-resource-file"
+                      className="hidden"
+                      onChange={handleResourceFileChange}
+                    />
+                    <label
+                      htmlFor="workshop-resource-file"
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-white/20 text-white border-0 hover:bg-white/30 cursor-pointer ${resourceUploading ? 'opacity-70 pointer-events-none' : ''}`}
+                    >
+                      <Upload className="h-4 w-4" /> {resourceUploading ? 'Uploading…' : 'Upload file'}
+                    </label>
+                    <input
+                      type="text"
+                      value={newResourceLabel}
+                      onChange={(e) => setNewResourceLabel(e.target.value)}
+                      placeholder="Label"
+                      className="rounded-lg border border-white/30 bg-white/10 px-2 py-1.5 text-sm text-white placeholder:text-white/60 w-28"
+                    />
+                    <input
+                      type="url"
+                      value={newResourceUrl}
+                      onChange={(e) => setNewResourceUrl(e.target.value)}
+                      placeholder="https://... (or use Upload)"
+                      className="rounded-lg border border-white/30 bg-white/10 px-2 py-1.5 text-sm text-white placeholder:text-white/60 flex-1 min-w-[160px]"
+                    />
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="bg-white/20 text-white border-0 hover:bg-white/30"
+                      onClick={() => {
+                        const label = newResourceLabel.trim();
+                        const url = newResourceUrl.trim();
+                        if (!url && !label) return;
+                        setResourceList((prev) => [...prev, { label: label || url, url: url || label }]);
+                        setNewResourceLabel('');
+                        setNewResourceUrl('');
+                      }}
+                    >
+                      <Plus className="h-4 w-4 mr-1" /> Add
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <label className="flex items-center gap-2 text-sm text-white/90 cursor-pointer">
+                      <input type="checkbox" checked={resourcesNotify} onChange={(e) => setResourcesNotify(e.target.checked)} className="rounded border-white/50" />
+                      Notify participants when saving
+                    </label>
+                    <Button
+                      size="sm"
+                      disabled={resourcesSaving}
+                      onClick={async () => {
+                        setResourcesSaving(true);
+                        try {
+                          const res = await workshopAPI.updateResources(workshopId, { resources: resourceList, notifyParticipants: resourcesNotify });
+                          if (res?.success) {
+                            setWorkshop((w) => (w ? { ...w, resources: res.data?.resources ?? resourceList } : null));
+                            toast.success(res.message || 'Resources saved');
+                            if (resourcesNotify) setResourcesNotify(false);
+                          } else throw new Error(res?.error);
+                        } catch (e) {
+                          toast.error(e.message || 'Failed to save resources');
+                        } finally {
+                          setResourcesSaving(false);
+                        }
+                      }}
+                      className="bg-white text-brand-600 hover:bg-white/90"
+                    >
+                      {resourcesSaving ? 'Saving…' : 'Save resources'}
+                    </Button>
+                  </div>
+                </div>
               )}
-              <div>
-                <label className="block text-xs font-medium text-textMuted mb-1">New note</label>
-                <textarea
-                  value={noteContent}
-                  onChange={(e) => setNoteContent(e.target.value)}
-                  placeholder="Announcement or note for students..."
-                  rows={3}
-                  className="w-full rounded-lg border border-brintelli-border px-3 py-2 text-sm"
-                />
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  disabled={noteSending || !noteContent.trim()}
-                  onClick={async () => {
-                    setNoteSending(true);
-                    try {
-                      const res = await workshopAPI.postWorkshopNote(workshopId, { content: noteContent.trim(), sendEmail: false });
-                      if (res?.success) {
-                        setWorkshop((w) => (w ? { ...w, tutorAnnouncements: res.data?.notes ?? [...(w.tutorAnnouncements || []), { content: noteContent.trim() }] } : null));
-                        setNoteContent('');
-                        toast.success('Note saved');
-                      } else throw new Error(res?.error);
-                    } catch (e) {
-                      toast.error(e.message || 'Failed to save note');
-                    } finally {
-                      setNoteSending(false);
-                    }
-                  }}
-                >
-                  {noteSending ? 'Saving…' : 'Save note'}
-                </Button>
-                <Button
-                  size="sm"
-                  disabled={noteSending || !noteContent.trim()}
-                  onClick={async () => {
-                    setNoteSending(true);
-                    try {
-                      const res = await workshopAPI.postWorkshopNote(workshopId, { content: noteContent.trim(), sendEmail: true });
-                      if (res?.success) {
-                        setWorkshop((w) => (w ? { ...w, tutorAnnouncements: res.data?.notes ?? [...(w.tutorAnnouncements || []), { content: noteContent.trim() }] } : null));
-                        setNoteContent('');
-                        toast.success(res.message || 'Note saved and participants notified');
-                      } else throw new Error(res?.error);
-                    } catch (e) {
-                      toast.error(e.message || 'Failed to save and send');
-                    } finally {
-                      setNoteSending(false);
-                    }
-                  }}
-                >
-                  {noteSending ? 'Sending…' : 'Save & push to participants'}
-                </Button>
-              </div>
+
+              {resourcesNotesSubTab === 'notes' && (
+                <div className="space-y-2">
+                  <p className="text-white/90 text-xs">Add an announcement or note. Save only or save and email participants.</p>
+                  <textarea
+                    value={noteContent}
+                    onChange={(e) => setNoteContent(e.target.value)}
+                    placeholder="Announcement or note for students..."
+                    rows={2}
+                    className="w-full rounded-lg border border-white/30 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-white/60 resize-none"
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={noteSending || !noteContent.trim()}
+                      onClick={async () => {
+                        setNoteSending(true);
+                        try {
+                          const res = await workshopAPI.postWorkshopNote(workshopId, { content: noteContent.trim(), sendEmail: false });
+                          if (res?.success) {
+                            setWorkshop((w) => (w ? { ...w, tutorAnnouncements: res.data?.notes ?? [...(w.tutorAnnouncements || []), { content: noteContent.trim() }] } : null));
+                            setNoteContent('');
+                            toast.success('Note saved');
+                          } else throw new Error(res?.error);
+                        } catch (e) {
+                          toast.error(e.message || 'Failed to save note');
+                        } finally {
+                          setNoteSending(false);
+                        }
+                      }}
+                      className="bg-white/20 text-white border-0 hover:bg-white/30"
+                    >
+                      {noteSending ? 'Saving…' : 'Save note'}
+                    </Button>
+                    <Button
+                      size="sm"
+                      disabled={noteSending || !noteContent.trim()}
+                      onClick={async () => {
+                        setNoteSending(true);
+                        try {
+                          const res = await workshopAPI.postWorkshopNote(workshopId, { content: noteContent.trim(), sendEmail: true });
+                          if (res?.success) {
+                            setWorkshop((w) => (w ? { ...w, tutorAnnouncements: res.data?.notes ?? [...(w.tutorAnnouncements || []), { content: noteContent.trim() }] } : null));
+                            setNoteContent('');
+                            toast.success(res.message || 'Note saved and participants notified');
+                          } else throw new Error(res?.error);
+                        } catch (e) {
+                          toast.error(e.message || 'Failed to save and send');
+                        } finally {
+                          setNoteSending(false);
+                        }
+                      }}
+                      className="bg-white text-brand-600 hover:bg-white/90"
+                    >
+                      {noteSending ? 'Sending…' : 'Save & push to participants'}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -546,6 +594,16 @@ const TutorWorkshopDetail = () => {
               <QuizBuilder
                 quiz={quiz || { title: 'Workshop Quiz', questions: [] }}
                 onChange={(next) => setQuiz(next)}
+                onUploadFile={async (file, folder) => {
+                  try {
+                    const res = await uploadAPI.uploadFile(file, folder || 'workshop-quiz');
+                    if (res?.success) toast.success('Image uploaded');
+                    return res;
+                  } catch (e) {
+                    toast.error(e?.message || 'Upload failed');
+                    throw e;
+                  }
+                }}
               />
             </div>
           </div>
@@ -626,20 +684,99 @@ const TutorWorkshopDetail = () => {
 
         {activeOption === 'leaderboard' && (
           <div className="p-6">
-            <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
-              <Medal className="h-5 w-5" /> Leaderboard
+            <h3 className="text-lg font-semibold flex items-center gap-2 mb-1">
+              <Trophy className="h-5 w-5 text-brand-500" /> Leaderboard
             </h3>
+            <p className="text-sm text-textMuted mb-6">Participants ranked by quiz score. Top 3 highlighted below.</p>
             {leaderboard.length === 0 ? (
-              <p className="text-sm text-textMuted">No attempts yet.</p>
+              <p className="text-sm text-textMuted py-8 rounded-xl border border-brintelli-border bg-brintelli-baseAlt/20 text-center">No attempts yet. Quiz scores will appear here.</p>
             ) : (
-              <ul className="space-y-2">
-                {leaderboard.map((r) => (
-                  <li key={r.userId} className="flex justify-between py-2 border-b border-brintelli-border/40">
-                    <span>#{r.rank} {r.userName}</span>
-                    <span className="font-medium">{r.score} pts</span>
-                  </li>
-                ))}
-              </ul>
+              <>
+                {/* Top 3 cards – gold / silver / bronze in theme */}
+                {leaderboard.length >= 3 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+                    {/* 2nd place */}
+                    <div className="order-2 sm:order-1 rounded-xl border-2 border-gray-300 bg-gradient-to-b from-gray-50 to-white p-4 shadow-sm flex flex-col items-center text-center">
+                      <div className="w-12 h-12 rounded-full border-2 border-gray-300 overflow-hidden flex items-center justify-center bg-brintelli-baseAlt shrink-0 mb-2">
+                        {leaderboard[1].profileImageUrl ? (
+                          <img src={leaderboard[1].profileImageUrl} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-lg font-bold text-gray-500">2</span>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-center gap-1.5 mb-1">
+                        <Medal className="h-5 w-5 text-gray-400" aria-hidden />
+                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">2nd</span>
+                      </div>
+                      <span className="font-semibold text-text truncate w-full">{leaderboard[1].userName}</span>
+                      <span className="text-sm text-brand-600 font-medium mt-0.5">{leaderboard[1].score} pts</span>
+                    </div>
+                    {/* 1st place */}
+                    <div className="order-1 sm:order-2 rounded-xl border-2 border-amber-400 bg-gradient-to-b from-amber-50 to-white p-5 shadow-md flex flex-col items-center text-center -mt-2 sm:mt-0">
+                      <div className="w-16 h-16 rounded-full border-2 border-amber-400 overflow-hidden flex items-center justify-center bg-amber-50 shrink-0 mb-2">
+                        {leaderboard[0].profileImageUrl ? (
+                          <img src={leaderboard[0].profileImageUrl} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-xl font-bold text-amber-600">1</span>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-center gap-1.5 mb-1">
+                        <Trophy className="h-6 w-6 text-amber-500" aria-hidden />
+                        <span className="text-xs font-semibold text-amber-600 uppercase tracking-wide">1st</span>
+                      </div>
+                      <span className="font-semibold text-text truncate w-full">{leaderboard[0].userName}</span>
+                      <span className="text-brand-600 font-semibold mt-0.5">{leaderboard[0].score} pts</span>
+                    </div>
+                    {/* 3rd place */}
+                    <div className="order-3 rounded-xl border-2 border-amber-700/50 bg-gradient-to-b from-amber-100/50 to-white p-4 shadow-sm flex flex-col items-center text-center">
+                      <div className="w-12 h-12 rounded-full border-2 border-amber-700/50 overflow-hidden flex items-center justify-center bg-amber-50/50 shrink-0 mb-2">
+                        {leaderboard[2].profileImageUrl ? (
+                          <img src={leaderboard[2].profileImageUrl} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-lg font-bold text-amber-700">3</span>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-center gap-1.5 mb-1">
+                        <Medal className="h-5 w-5 text-amber-700/70" aria-hidden />
+                        <span className="text-xs font-semibold text-amber-700 uppercase tracking-wide">3rd</span>
+                      </div>
+                      <span className="font-semibold text-text truncate w-full">{leaderboard[2].userName}</span>
+                      <span className="text-sm text-brand-600 font-medium mt-0.5">{leaderboard[2].score} pts</span>
+                    </div>
+                  </div>
+                )}
+                {/* Table: Place | Player name | Points */}
+                <div className="rounded-xl border border-brintelli-border bg-white overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gradient-to-r from-brintelli-primary/10 to-brintelli-primaryDark/10 border-b border-brintelli-border">
+                        <th className="text-left py-3 px-4 font-semibold text-text w-20">Place</th>
+                        <th className="text-left py-3 px-4 font-semibold text-text">Player name</th>
+                        <th className="text-right py-3 px-4 font-semibold text-text">Points</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {leaderboard.map((r, idx) => (
+                        <tr
+                          key={r.userId}
+                          className={`border-b border-brintelli-border/60 last:border-0 ${idx < 3 ? 'bg-brintelli-baseAlt/20' : ''}`}
+                        >
+                          <td className="py-3 px-4 font-medium text-textMuted">#{r.rank}</td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full border border-brintelli-border overflow-hidden bg-brintelli-baseAlt shrink-0 flex items-center justify-center text-xs font-semibold text-textMuted">
+                                {r.profileImageUrl ? <img src={r.profileImageUrl} alt="" className="w-full h-full object-cover" /> : `#${r.rank}`}
+                              </div>
+                              <span className="font-medium text-text truncate">{r.userName}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-right font-semibold text-brand-600">{r.score} pts</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </div>
         )}

@@ -41,8 +41,8 @@ const ITManagement = () => {
   const [createForm, setCreateForm] = useState({ email: '', password: '', fullName: '', phone: '', role: 'student' });
   const [createSubmitting, setCreateSubmitting] = useState(false);
   const [createError, setCreateError] = useState(null);
-  const [createdRepresentativeLink, setCreatedRepresentativeLink] = useState(null);
-  const ROLES = ['student', 'tutor', 'mentor', 'lsm', 'sales_agent', 'sales_lead', 'sales_admin', 'it_support', 'it_admin', 'admin', 'representative'];
+  const [createdReferralLink, setCreatedReferralLink] = useState(null);
+  const ROLES = ['student', 'tutor', 'mentor', 'lsm', 'sales_agent', 'sales_lead', 'sales_admin', 'it_support', 'it_admin', 'admin', 'representative', 'marketing'];
 
   // Fetch users
   const fetchUsers = async () => {
@@ -135,12 +135,12 @@ const ITManagement = () => {
     e.preventDefault();
     setCreateError(null);
     setCreateSubmitting(true);
-    setCreatedRepresentativeLink(null);
+    setCreatedReferralLink(null);
     try {
       const res = await itUserAPI.createUser(createForm);
       if (res?.success && res?.data) {
-        if ((createForm.role || '').toLowerCase() === 'representative' && (res.data.referralLink || res.data.referralCode)) {
-          setCreatedRepresentativeLink({
+        if (['representative', 'marketing'].includes((createForm.role || '').toLowerCase()) && (res.data.referralLink || res.data.referralCode)) {
+          setCreatedReferralLink({
             link: res.data.referralLink || null,
             code: res.data.referralCode || null,
             userName: res.data.user?.fullName || res.data.user?.email,
@@ -169,7 +169,7 @@ const ITManagement = () => {
     setCreateModalOpen(false);
     setCreateForm({ email: '', password: '', fullName: '', phone: '', role: 'student' });
     setCreateError(null);
-    setCreatedRepresentativeLink(null);
+    setCreatedReferralLink(null);
     fetchUsers();
   };
 
@@ -289,7 +289,7 @@ const ITManagement = () => {
                             </span>
                           </td>
                           <td className="whitespace-nowrap px-6 py-4 text-sm">
-                            {user.role === 'representative' ? (
+                            {(user.role === 'representative' || user.role === 'marketing') ? (
                               <div className="flex flex-col gap-0.5">
                                 {user.referralCode && (
                                   <span className="text-xs font-mono text-textMuted" title={user.referralCode}>{user.referralCode}</span>
@@ -435,27 +435,27 @@ const ITManagement = () => {
       {createModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => !createSubmitting && closeCreateModal()}>
           <div className="bg-brintelli-card rounded-2xl shadow-xl max-w-md w-full p-6 border border-brintelli-border" onClick={(e) => e.stopPropagation()}>
-            {createdRepresentativeLink ? (
+            {createdReferralLink ? (
               <>
                 <h3 className="text-lg font-semibold text-text mb-2">Representative created</h3>
-                <p className="text-sm text-textMuted mb-4">Share this link with students. When they register using it, this representative will be credited with points.</p>
-                {createdRepresentativeLink.link && (
+                <p className="text-sm text-textMuted mb-4">Share this link with students. When they register using it, they will be attributed to this user (representative/marketing).</p>
+                {createdReferralLink.link && (
                   <div className="mb-3">
                     <label className="block text-xs font-medium text-textMuted mb-1">Share link</label>
                     <div className="flex gap-2">
-                      <input readOnly value={createdRepresentativeLink.link} className="flex-1 rounded-lg border border-brintelli-border bg-brintelli-base px-3 py-2 text-sm" />
-                      <button type="button" onClick={() => copyToClipboard(createdRepresentativeLink.link)} className="shrink-0 rounded-lg border border-brintelli-border px-3 py-2 hover:bg-brintelli-baseAlt" title="Copy">
+                      <input readOnly value={createdReferralLink.link} className="flex-1 rounded-lg border border-brintelli-border bg-brintelli-base px-3 py-2 text-sm" />
+                      <button type="button" onClick={() => copyToClipboard(createdReferralLink.link)} className="shrink-0 rounded-lg border border-brintelli-border px-3 py-2 hover:bg-brintelli-baseAlt" title="Copy">
                         <Copy className="h-4 w-4" />
                       </button>
                     </div>
                   </div>
                 )}
-                {createdRepresentativeLink.code && (
+                {createdReferralLink.code && (
                   <div className="mb-4">
                     <label className="block text-xs font-medium text-textMuted mb-1">Referral code</label>
                     <div className="flex gap-2">
-                      <input readOnly value={createdRepresentativeLink.code} className="flex-1 rounded-lg border border-brintelli-border bg-brintelli-base px-3 py-2 text-sm font-mono" />
-                      <button type="button" onClick={() => copyToClipboard(createdRepresentativeLink.code)} className="shrink-0 rounded-lg border border-brintelli-border px-3 py-2 hover:bg-brintelli-baseAlt" title="Copy">
+                      <input readOnly value={createdReferralLink.code} className="flex-1 rounded-lg border border-brintelli-border bg-brintelli-base px-3 py-2 text-sm font-mono" />
+                      <button type="button" onClick={() => copyToClipboard(createdReferralLink.code)} className="shrink-0 rounded-lg border border-brintelli-border px-3 py-2 hover:bg-brintelli-baseAlt" title="Copy">
                         <Copy className="h-4 w-4" />
                       </button>
                     </div>
@@ -487,7 +487,9 @@ const ITManagement = () => {
                     <label className="block text-sm font-medium text-text mb-1">Role *</label>
                     <select required value={createForm.role} onChange={(e) => setCreateForm((f) => ({ ...f, role: e.target.value }))} className="w-full rounded-lg border border-brintelli-border bg-brintelli-base px-3 py-2 text-sm">
                       {ROLES.map((r) => (
-                        <option key={r} value={r}>{r === 'representative' ? 'Representative (refers students, earns points)' : r}</option>
+                        <option key={r} value={r}>
+                          {r === 'representative' ? 'Representative (refers students, earns points)' : r === 'marketing' ? 'Marketing (referral link, sees new users & who joined via link)' : r}
+                        </option>
                       ))}
                     </select>
                   </div>

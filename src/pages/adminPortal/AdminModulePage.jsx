@@ -7,6 +7,7 @@ import ActivityLogs from "./ActivityLogs";
 import UserActivityPage from "./UserActivityPage";
 import Notifications from "./Notifications";
 import AdminWorkshops from "./AdminWorkshops";
+import MarketingHub from "./MarketingHub";
 import CmsSeoPage from "./websiteCms/CmsSeoPage";
 import CmsProgramsList from "./websiteCms/CmsProgramsList";
 import CmsEventsList from "./websiteCms/CmsEventsList";
@@ -53,6 +54,10 @@ const AdminModulePage = ({ pageId }) => {
 
   if (pageId === "admin-workshops") {
     return <AdminWorkshops />;
+  }
+
+  if (pageId === "marketing-hub") {
+    return <MarketingHub />;
   }
 
   if (pageId === "website-cms-seo") return <CmsSeoPage />;

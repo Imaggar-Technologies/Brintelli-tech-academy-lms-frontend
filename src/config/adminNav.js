@@ -32,6 +32,8 @@ import {
   UsersRound,
   Wrench,
   Globe,
+  Share2,
+  UserPlus,
 } from "lucide-react";
 
 export const adminNav = [
@@ -189,6 +191,14 @@ export const adminNav = [
       { label: "Gallery", icon: Layers3, path: "/admin-portal/website-cms/gallery", pageId: "website-cms-gallery" },
       { label: "Popups", icon: Bell, path: "/admin-portal/website-cms/popups", pageId: "website-cms-popups" },
       { label: "Media", icon: FileText, path: "/admin-portal/website-cms/media", pageId: "website-cms-media" },
+    ],
+  },
+  {
+    id: "marketing",
+    label: "Marketing",
+    icon: Share2,
+    children: [
+      { label: "Referral & New Users", icon: UserPlus, path: "/admin-portal/marketing/referral-users", pageId: "marketing-hub" },
     ],
   },
   {
@@ -1876,6 +1886,19 @@ export const adminModuleConfig = {
           "Drag-and-drop report builder with dimensions and measures.",
           "Apply filters, groupings, and share with stakeholders.",
           "Connect to data warehouse for advanced queries.",
+        ],
+      },
+    ],
+  },
+  "marketing-hub": {
+    title: "Referral & New Users",
+    description: "View who created your account, all new users, your referral link, and leads who joined via your link.",
+    sections: [
+      {
+        title: "Your referral link",
+        items: [
+          "Share your unique signup link; anyone who registers via it is attributed to you.",
+          "See the list of users/leads who joined using your link.",
         ],
       },
     ],

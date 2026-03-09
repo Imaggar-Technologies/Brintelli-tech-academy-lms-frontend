@@ -114,6 +114,11 @@ export const adminRoles = {
     permissions: combine(["dashboard", "settings", "analytics", "website-cms"], prefix("website-cms-")),
     navSections: ["dashboard", "settings", "analytics", "website-cms"]
   },
+  marketing: {
+    label: "Marketing",
+    permissions: combine(["dashboard"], prefix("marketing-")),
+    navSections: ["dashboard", "marketing"]
+  },
 };
 
 export const adminRoleOptions = Object.entries(adminRoles).map(([value, role]) => ({

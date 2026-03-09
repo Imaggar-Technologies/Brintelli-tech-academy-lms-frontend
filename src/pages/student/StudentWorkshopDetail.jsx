@@ -19,9 +19,11 @@ import {
   Medal,
   Lock,
   Share2,
+  ClipboardCheck,
 } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
+import Modal from '../../components/Modal';
 import workshopAPI from '../../api/workshop';
 import { selectCurrentUser } from '../../store/slices/authSlice';
 
@@ -48,6 +50,7 @@ const StudentWorkshopDetail = () => {
   const [activeOption, setActiveOption] = useState('dashboard');
   const [myCertificate, setMyCertificate] = useState(null);
   const [quizResult, setQuizResult] = useState(null);
+  const [clockingIn, setClockingIn] = useState(false);
 
   const isRegistered = workshop?.participants?.some((p) => (p?.toString?.() || p) === userId);
   const hasMeetingLink = workshop?.meetingLink && (workshop?.deliveryMode === 'LIVE' || workshop?.meetingLink);
@@ -188,8 +191,53 @@ const StudentWorkshopDetail = () => {
 
   const handleOptionClick = (item) => setActiveOption(item.id);
 
+  const showClockInModal = !!(
+    workshop?.attendanceOpen &&
+    isRegistered &&
+    !workshop?.currentUserClockedIn
+  );
+
   return (
     <>
+      {showClockInModal && (
+        <Modal
+          open={showClockInModal}
+          onClose={() => {}}
+          title="Mark your attendance"
+        >
+          <div className="p-4 space-y-4">
+            <p className="text-sm text-text">
+              Attendance is open for this workshop. Clock in to record your attendance. This will be reflected in your certificate.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button
+                size="sm"
+                variant="primary"
+                disabled={clockingIn}
+                onClick={async () => {
+                  setClockingIn(true);
+                  try {
+                    const res = await workshopAPI.clockIn(workshopId);
+                    if (res?.success) {
+                      setWorkshop((w) => (w ? { ...w, currentUserClockedIn: true } : null));
+                      toast.success(res?.message || 'You have clocked in.');
+                    } else throw new Error(res?.error);
+                  } catch (e) {
+                    toast.error(e?.message || 'Failed to clock in');
+                  } finally {
+                    setClockingIn(false);
+                  }
+                }}
+                className="gap-2"
+              >
+                <ClipboardCheck className="h-4 w-4" />
+                {clockingIn ? 'Clocking in…' : 'Clock in'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" onClick={() => navigate('/student/workshops')} className="text-brand-600">

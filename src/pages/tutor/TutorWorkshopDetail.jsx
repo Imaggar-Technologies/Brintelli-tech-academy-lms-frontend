@@ -72,6 +72,17 @@ const TutorWorkshopDetail = () => {
     setResourceList(list.map((r) => ({ label: r.label || '', url: r.url || '' })));
   }, [workshop?.resources]);
 
+  useEffect(() => {
+    if (activeOption !== 'certifications' || !workshopId) return;
+    (async () => {
+      try {
+        const [attRes, certRes] = await Promise.all([workshopAPI.getAttendance(workshopId), workshopAPI.getCertificates(workshopId)]);
+        if (attRes?.success && attRes.data?.attendees) setAttendees(attRes.data.attendees);
+        if (certRes?.success && certRes.data?.certificates) setCertificates(certRes.data.certificates || []);
+      } catch (_) {}
+    })();
+  }, [activeOption, workshopId]);
+
   const loadAll = async () => {
     setLoading(true);
     try {
@@ -538,11 +549,84 @@ const TutorWorkshopDetail = () => {
         )}
 
       {activeOption === 'certifications' && (
-        <div className="p-6">
+        <div className="p-6 space-y-6">
           <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
             <Award className="h-5 w-5" /> Certifications
           </h3>
-          <p className="text-sm text-textMuted">Certificate generation and sending is available in the Program Manager workshop manage page.</p>
+          <div className="rounded-lg border border-brintelli-border p-4 space-y-3">
+            <h4 className="text-sm font-medium text-text">Attendees</h4>
+            <p className="text-sm text-textMuted">Learners who clocked in. Their attendance is reflected below and in certificates.</p>
+            {attendees.length === 0 ? (
+              <p className="text-sm text-textMuted">No attendees yet. Start attendance from the Dashboard and have learners clock in.</p>
+            ) : (
+              <ul className="space-y-1">
+                {attendees.map((a, i) => (
+                  <li key={a.userId || i} className="flex justify-between text-sm py-1 border-b border-brintelli-border/40 last:border-0">
+                    <span>{a.userName || a.userId}</span>
+                    <span className="text-textMuted">{a.clockedAt ? new Date(a.clockedAt).toLocaleString() : ''}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div className="rounded-lg border border-brintelli-border p-4 space-y-3">
+            <h4 className="text-sm font-medium text-text">Certificates</h4>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={certsGenerating}
+                onClick={async () => {
+                  const ids = attendees.length > 0 ? attendees.map((a) => a.userId) : (workshop?.participants || []).map((p) => p.toString?.() || p);
+                  setCertsGenerating(true);
+                  try {
+                    const genRes = await workshopAPI.generateCertificates(workshopId, ids.length ? { participantIds: ids } : {});
+                    if (genRes?.success) {
+                      const certList = await workshopAPI.getCertificates(workshopId);
+                      if (certList?.success && certList.data?.certificates) setCertificates(certList.data.certificates);
+                      toast.success(`Generated ${(genRes.data?.certificates || []).length} certificate(s)`);
+                    } else throw new Error(genRes?.error);
+                  } catch (e) { toast.error(e.message || 'Failed to generate'); }
+                  finally { setCertsGenerating(false); }
+                }}
+              >
+                {certsGenerating ? 'Generating…' : 'Generate for attendees'}
+              </Button>
+              <Button
+                size="sm"
+                variant="primary"
+                disabled={certsGenerating || certsSending}
+                onClick={async () => {
+                  const ids = attendees.length > 0 ? attendees.map((a) => a.userId) : (workshop?.participants || []).map((p) => p.toString?.() || p);
+                  setCertsSending(true);
+                  try {
+                    if (ids.length) await workshopAPI.generateCertificates(workshopId, { participantIds: ids });
+                    const sendRes = await workshopAPI.sendCertificatesToParticipants(workshopId, ids.length ? { participantIds: ids } : {});
+                    if (sendRes?.success) {
+                      const certList = await workshopAPI.getCertificates(workshopId);
+                      if (certList?.success && certList.data?.certificates) setCertificates(certList.data.certificates);
+                      toast.success(sendRes?.message || 'Certificates generated and sent to all');
+                    } else throw new Error(sendRes?.error);
+                  } catch (e) { toast.error(e.message || 'Failed to unlock and send'); }
+                  finally { setCertsSending(false); }
+                }}
+              >
+                {certsSending ? 'Sending…' : 'Unlock and send certificate to all'}
+              </Button>
+            </div>
+            {certificates.length === 0 ? (
+              <p className="text-sm text-textMuted">No certificates yet. Generate for attendees first, then send to all.</p>
+            ) : (
+              <ul className="space-y-1">
+                {certificates.map((c) => (
+                  <li key={c.id || c.userId} className="flex justify-between text-sm py-1 border-b border-brintelli-border/40 last:border-0">
+                    <span>{c.userName || c.userEmail}</span>
+                    <span className="text-textMuted font-mono text-xs">{c.certificateNumber}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       )}
     </>

@@ -5,6 +5,7 @@ import { Plus, BookOpen, Layers3, Calendar, FileText, Edit2, Trash2, ChevronRigh
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
 import Pagination from '../../components/Pagination';
+import ConfirmDialog from '../../components/ConfirmDialog';
 import programAPI from '../../api/program';
 import { apiRequest } from '../../api/apiClient';
 
@@ -27,6 +28,7 @@ const Programs = () => {
   const [formData, setFormData] = useState({});
   const [tutors, setTutors] = useState([]);
   const [deletingId, setDeletingId] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   useEffect(() => {
     fetchPrograms();
@@ -411,21 +413,7 @@ const Programs = () => {
                                 e.stopPropagation();
                                 if (!programId) return;
                                 const programName = program.name || program.code || 'This program';
-                                if (!window.confirm(`Delete "${programName}"? This cannot be undone.`)) return;
-                                setDeletingId(programId);
-                                programAPI.deleteProgram(programId)
-                                  .then((res) => {
-                                    if (res?.success) {
-                                      toast.success('Program deleted');
-                                      fetchPrograms();
-                                    } else {
-                                      toast.error(res?.error || 'Failed to delete program');
-                                    }
-                                  })
-                                  .catch((err) => {
-                                    toast.error(err?.message || 'Failed to delete program');
-                                  })
-                                  .finally(() => setDeletingId(null));
+                                setDeleteConfirm({ id: programId, name: programName });
                               }}
                               className="gap-1 px-2 py-1 text-[10px] text-red-600 hover:text-red-700 hover:bg-red-50"
                             >
@@ -443,6 +431,41 @@ const Programs = () => {
           )}
         </div>
       </div>
+
+      {/* Delete program confirmation */}
+      <ConfirmDialog
+        isOpen={!!deleteConfirm}
+        onClose={() => setDeleteConfirm(null)}
+        title="Delete program"
+        message={
+          deleteConfirm
+            ? `Delete "${deleteConfirm.name}"? This cannot be undone.`
+            : ''
+        }
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+        loading={deletingId === deleteConfirm?.id}
+        onConfirm={() => {
+          if (!deleteConfirm?.id) return;
+          setDeletingId(deleteConfirm.id);
+          programAPI
+            .deleteProgram(deleteConfirm.id)
+            .then((res) => {
+              if (res?.success) {
+                toast.success('Program deleted');
+                setDeleteConfirm(null);
+                fetchPrograms();
+              } else {
+                toast.error(res?.error || 'Failed to delete program');
+              }
+            })
+            .catch((err) => {
+              toast.error(err?.message || 'Failed to delete program');
+            })
+            .finally(() => setDeletingId(null));
+        }}
+      />
 
       {/* Pagination */}
       {!loading && filteredPrograms.length > 0 && (

@@ -44,7 +44,7 @@ const cards = [
     title: "Marketing Team",
     description: "Plan campaigns, monitor channel ROI, and optimize growth.",
     icon: Megaphone,
-    href: "/admin-portal/analytics",
+    href: "/marketing/dashboard",
   },
   {
     role: "revenue",

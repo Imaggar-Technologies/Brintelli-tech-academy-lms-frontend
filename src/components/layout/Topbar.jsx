@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Bell, Menu, Search, Sparkles, Flame } from "lucide-react";
+import { Bell, Menu, Search, Sparkles, Flame, Coins, Award } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { selectCurrentUser } from "../../store/slices/authSlice";
@@ -126,11 +126,18 @@ const Topbar = ({ onToggleMobileSidebar, role, roleLabelOverride, roleOptions, c
   const [loadingNotifications, setLoadingNotifications] = useState(false);
   const [referralPoints, setReferralPoints] = useState(0);
   const [streak, setStreak] = useState(0);
+  const [brintelliPoints, setBrintelliPoints] = useState(null);
+  const [superCoins, setSuperCoins] = useState(null);
 
   const unreadCount = useMemo(() => notifications.filter((item) => !item.read).length, [notifications]);
   const isLearner = useMemo(() => {
     const r = (user?.role || '').toLowerCase();
     return r === 'student' || r === 'learner';
+  }, [user?.role]);
+
+  const isStaffForCoins = useMemo(() => {
+    const r = (user?.role || '').toLowerCase();
+    return ['sales', 'sales_agent', 'sales_lead', 'sales_admin', 'sales_head', 'marketing', 'tutor', 'mentor', 'lsm', 'program-manager', 'programmanager', 'representative'].includes(r);
   }, [user?.role]);
   
   // Use actual user role from Redux if available, otherwise use role prop
@@ -199,18 +206,22 @@ const Topbar = ({ onToggleMobileSidebar, role, roleLabelOverride, roleOptions, c
     fetchPoints();
   }, [user?.id, user?.role]);
 
-  // Streak from profile (login-based) for learner
+  // Streak and points/coins from profile for all users
   useEffect(() => {
-    if (!isLearner || !user?.id) return;
+    if (!user?.id) return;
     const fetchMe = async () => {
       try {
         const apiRequest = (await import('../../api/apiClient')).default;
         const res = await apiRequest('/api/users/me');
-        if (res?.data?.user?.streak != null) setStreak(Number(res.data.user.streak));
+        const u = res?.data?.user;
+        if (!u) return;
+        if (u.streak != null) setStreak(Number(u.streak));
+        if (u.brintelliPoints != null) setBrintelliPoints(Number(u.brintelliPoints));
+        if (u.superCoins != null) setSuperCoins(Number(u.superCoins));
       } catch (_) {}
     };
     fetchMe();
-  }, [isLearner, user?.id]);
+  }, [user?.id]);
 
   useEffect(() => {
     setPanelOpen(false);
@@ -286,6 +297,24 @@ const Topbar = ({ onToggleMobileSidebar, role, roleLabelOverride, roleOptions, c
               >
                 <Flame className="h-4 w-4 text-sky-500" />
                 {streak} day{streak !== 1 ? 's' : ''}
+              </span>
+            )}
+            {isLearner && brintelliPoints !== null && (
+              <span
+                className="inline-flex items-center gap-1.5 rounded-xl border border-amber-200/60 bg-amber-50/90 px-3 py-2 text-sm font-semibold text-amber-800"
+                title="Brintelli points (earned from quizzes, workshops, engagement)"
+              >
+                <Award className="h-4 w-4 text-amber-600" />
+                {brintelliPoints} pts
+              </span>
+            )}
+            {isStaffForCoins && superCoins !== null && (
+              <span
+                className="inline-flex items-center gap-1.5 rounded-xl border border-violet-200/60 bg-violet-50/90 px-3 py-2 text-sm font-semibold text-violet-800"
+                title="Super coins (earned from enrollments, referrals, workshops, conversions)"
+              >
+                <Coins className="h-4 w-4 text-violet-600" />
+                {superCoins} coins
               </span>
             )}
             {referralPoints > 0 && (

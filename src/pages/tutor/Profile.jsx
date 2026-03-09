@@ -5,6 +5,7 @@ import PhoneInput from '../../components/PhoneInput';
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
 import StatsCard from '../../components/StatsCard';
+import ActivityHeatmap from '../../components/ActivityHeatmap';
 import { selectCurrentUser, updateUser as updateUserInStore } from '../../store/slices/authSlice';
 import { toast } from 'react-hot-toast';
 import apiRequest from '../../api/apiClient';
@@ -293,6 +294,12 @@ const Profile = () => {
                 </div>
               )}
             </div>
+          </div>
+
+          <div className="rounded-2xl border border-brintelli-border bg-brintelli-card p-6 shadow-soft">
+            <h3 className="text-lg font-semibold text-text mb-1">Activity</h3>
+            <p className="text-sm text-textMuted mb-4">Your contributions over the last year (logins, workshops, and more).</p>
+            <ActivityHeatmap days={365} />
           </div>
 
           {/* Bio Section */}

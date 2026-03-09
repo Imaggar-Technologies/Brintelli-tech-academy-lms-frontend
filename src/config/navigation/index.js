@@ -177,12 +177,21 @@ export const getRoleNavigation = (role, user = null, pathname = "") => {
   // CRITICAL: For sales roles, ALWAYS use new RBAC system - no legacy fallback
   const isSalesRole = role && (role.startsWith('sales_') || role === 'sales');
   
-  // For program-manager, lsm, tutor, and mentor, use legacy system directly (has comprehensive navigation)
+  // For program-manager, lsm, tutor, mentor, and marketing, use legacy system directly (has comprehensive navigation)
   const isProgramManager = role === 'program-manager' || role === 'programManager';
   const isLSM = role === 'lsm';
   const isTutor = role === 'tutor';
   const isMentor = role === 'mentor';
-  
+  const isMarketing = role === 'marketing';
+
+  if (isMarketing) {
+    const config = roleNavigationConfig.marketing || roleNavigationConfig.learner;
+    return {
+      ...config,
+      navigation: transformNavItems(config.nav || []),
+    };
+  }
+
   if (isProgramManager) {
     const roleMap = {
       "program-manager": "programManager",

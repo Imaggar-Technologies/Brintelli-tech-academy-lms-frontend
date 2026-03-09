@@ -21,6 +21,10 @@ import {
   Send,
   Download,
   Video,
+  LayoutDashboard,
+  Settings,
+  Medal,
+  Mic,
 } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
@@ -64,13 +68,40 @@ const WorkshopManage = () => {
   const [quizSaving, setQuizSaving] = useState(false);
   const [quizPublishing, setQuizPublishing] = useState(false);
 
+  const [activeOption, setActiveOption] = useState('dashboard');
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [lsms, setLsms] = useState([]);
+  const [speakerIds, setSpeakerIds] = useState([]);
+  const [savingSpeakers, setSavingSpeakers] = useState(false);
+
+  const optionsNavItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'settings', label: 'Settings', icon: Settings },
+    { id: 'resources', label: 'Resources', icon: FileText },
+    { id: 'quiz', label: 'Quiz', icon: Trophy },
+    { id: 'participants', label: 'Participants', icon: Users },
+    { id: 'leaderboard', label: 'Leaderboard', icon: Medal },
+    { id: 'certificate', label: 'Certificate', icon: Award },
+    { id: 'doubts', label: 'Doubts', icon: MessageSquare },
+  ];
+
   useEffect(() => {
     if (workshopId) {
       loadWorkshop();
       loadManageData();
       fetchTutors();
+      fetchLsms();
     }
   }, [workshopId]);
+
+  useEffect(() => {
+    if (activeOption === 'leaderboard' && workshopId) {
+      workshopAPI.getLeaderboard(workshopId).then((res) => {
+        if (res?.success && res.data?.leaderboard) setLeaderboard(res.data.leaderboard);
+        else setLeaderboard([]);
+      }).catch(() => setLeaderboard([]));
+    }
+  }, [activeOption, workshopId]);
 
   const loadWorkshop = async () => {
     try {
@@ -79,6 +110,8 @@ const WorkshopManage = () => {
         const w = res.data.workshop;
         setWorkshop(w);
         setResources(Array.isArray(w.resources) ? w.resources.map((r) => ({ label: r.label || '', url: r.url || '' })) : []);
+        const ids = (Array.isArray(w.speakerIds) ? w.speakerIds : []).map((s) => (s && (s._id || s)).toString()).filter(Boolean);
+        setSpeakerIds(ids);
       } else {
         setWorkshop(null);
       }
@@ -177,13 +210,51 @@ const WorkshopManage = () => {
       if (res?.success && res.data?.users) {
         setTutors(res.data.users.map((t) => ({
           ...t,
-          id: t.id || t._id?.toString(),
+          id: (t.id || t._id)?.toString(),
           name: t.fullName || t.name || t.email?.split('@')[0] || 'Unknown',
         })));
       }
     } catch (e) {
       setTutors([]);
     }
+  };
+
+  const fetchLsms = async () => {
+    try {
+      const res = await apiRequest('/api/users/role/lsm');
+      if (res?.success && res.data?.users) {
+        setLsms(res.data.users.map((u) => ({
+          ...u,
+          id: (u.id || u._id)?.toString(),
+          name: u.fullName || u.name || u.email?.split('@')[0] || 'Unknown',
+        })));
+      }
+    } catch (e) {
+      setLsms([]);
+    }
+  };
+
+  const saveSpeakers = async () => {
+    if (!workshopId) return;
+    setSavingSpeakers(true);
+    try {
+      await workshopAPI.updateWorkshop(workshopId, { ...workshop, speakerIds });
+      setWorkshop((w) => (w ? { ...w, speakerIds } : null));
+      toast.success('Speakers saved');
+    } catch (e) {
+      toast.error(e?.message || 'Failed to save speakers');
+    } finally {
+      setSavingSpeakers(false);
+    }
+  };
+
+  const addSpeaker = (userId) => {
+    if (!userId || speakerIds.includes(userId)) return;
+    setSpeakerIds((prev) => [...prev, userId]);
+  };
+
+  const removeSpeaker = (userId) => {
+    setSpeakerIds((prev) => prev.filter((id) => id !== userId));
   };
 
   const addResource = () => {
@@ -386,393 +457,594 @@ const WorkshopManage = () => {
             {participants.length} registered
           </span>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => { loadWorkshop(); loadManageData(); }}>
-            <RefreshCw className="h-4 w-4" />
-            Refresh
-          </Button>
-          <Button variant="primary" size="sm" className="gap-1.5" onClick={saveResources} disabled={savingResources}>
-            <Save className="h-4 w-4" />
-            {savingResources ? 'Saving...' : 'Save resources'}
-          </Button>
-        </div>
+        <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => { loadWorkshop(); loadManageData(); }}>
+          <RefreshCw className="h-4 w-4" />
+          Refresh
+        </Button>
       </div>
 
-      {/* Cards grid */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Resources */}
-        <section className="rounded-2xl border border-brintelli-border/60 bg-white p-6 shadow-sm">
-          <div className="mb-4 flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-100 text-brand-600">
-              <FileText className="h-4 w-4" />
-            </div>
-            <h2 className="text-lg font-semibold text-text">Resources</h2>
-          </div>
-          <ul className="mb-4 space-y-2">
-            {resources.length === 0 ? (
-              <li className="text-sm text-textMuted">No resources yet. Add links for participants.</li>
-            ) : (
-              resources.map((r, i) => (
-                <li key={`${r.url}-${i}`} className="flex items-center justify-between rounded-lg bg-brintelli-baseAlt/50 px-3 py-2 text-sm">
-                  <a href={r.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-brand-600 hover:underline truncate max-w-[70%]">
-                    <Link2 className="h-3.5 w-3.5 shrink-0" />
-                    {r.label || r.url}
-                  </a>
-                  <button type="button" onClick={() => removeResource(i)} className="p-1 text-red-500 hover:bg-red-50 rounded">
-                    <X className="h-4 w-4" />
-                  </button>
-                </li>
-              ))
-            )}
-          </ul>
-          <div className="flex flex-wrap gap-2">
-            <input
-              type="text"
-              value={newResourceLabel}
-              onChange={(e) => setNewResourceLabel(e.target.value)}
-              placeholder="Label"
-              className="w-32 rounded-lg border border-brintelli-border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
-            />
-            <input
-              type="url"
-              value={newResourceUrl}
-              onChange={(e) => setNewResourceUrl(e.target.value)}
-              placeholder="https://..."
-              className="min-w-[180px] flex-1 rounded-lg border border-brintelli-border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
-            />
-            <Button variant="secondary" size="sm" onClick={addResource} className="gap-1">
-              <Plus className="h-4 w-4" /> Add
-            </Button>
-          </div>
-        </section>
-
-        {/* Tutor */}
-        <section className="rounded-2xl border border-brintelli-border/60 bg-white p-6 shadow-sm">
-          <div className="mb-4 flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-100 text-violet-600">
-              <UserCircle className="h-4 w-4" />
-            </div>
-            <h2 className="text-lg font-semibold text-text">Tutor</h2>
-          </div>
-          <select
-            value={workshop.tutorId?.toString() || ''}
-            onChange={(e) => updateTutor(e.target.value)}
-            className="w-full rounded-lg border border-brintelli-border bg-white px-3 py-2.5 text-sm focus:border-brand-500 focus:outline-none"
+      {/* Tab bar (like Tutor workshop view) */}
+      <div className="flex flex-wrap items-center gap-1 rounded-xl bg-gradient-to-r from-brintelli-primary/90 to-brintelli-primaryDark shadow-sm px-3 py-2 mb-6">
+        {optionsNavItems.map((opt) => (
+          <button
+            key={opt.id}
+            type="button"
+            onClick={() => setActiveOption(opt.id)}
+            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              activeOption === opt.id ? 'bg-white/20 text-white' : 'text-white/90 hover:bg-white/10 hover:text-white'
+            }`}
           >
-            <option value="">No tutor assigned</option>
-            {tutors.map((t) => (
-              <option key={t.id || t._id} value={t.id || t._id}>
-                {t.name || t.fullName} ({t.email})
-              </option>
-            ))}
-          </select>
-        </section>
+            <opt.icon className="h-4 w-4" />
+            {opt.label}
+          </button>
+        ))}
+      </div>
 
-        {/* Registered participants + Email */}
-        <section className="rounded-2xl border border-brintelli-border/60 bg-white p-6 shadow-sm lg:col-span-2">
-          <div className="mb-4 flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
-              <Users className="h-4 w-4" />
+      {/* Dashboard */}
+      {activeOption === 'dashboard' && (
+        <div className="space-y-6">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <LayoutDashboard className="h-5 w-5" /> Dashboard
+          </h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            <div className="rounded-xl border border-brintelli-border/60 bg-white p-4 shadow-sm">
+              <div className="flex items-center gap-2 text-textMuted mb-1">
+                <Users className="h-4 w-4" />
+                <span className="text-xs font-medium">Registered</span>
+              </div>
+              <p className="text-2xl font-semibold text-text">{participants.length}</p>
             </div>
-            <h2 className="text-lg font-semibold text-text">Registered participants ({participants.length})</h2>
+            <div className="rounded-xl border border-brintelli-border/60 bg-white p-4 shadow-sm">
+              <div className="flex items-center gap-2 text-textMuted mb-1">
+                <FileText className="h-4 w-4" />
+                <span className="text-xs font-medium">Resources</span>
+              </div>
+              <p className="text-2xl font-semibold text-text">{resources.length}</p>
+            </div>
+            <div className="rounded-xl border border-brintelli-border/60 bg-white p-4 shadow-sm">
+              <div className="flex items-center gap-2 text-textMuted mb-1">
+                <Trophy className="h-4 w-4" />
+                <span className="text-xs font-medium">Quiz</span>
+              </div>
+              <p className="text-2xl font-semibold text-text">{quiz ? (quiz.published ? 'Published' : 'Draft') : '—'}</p>
+            </div>
+            <div className="rounded-xl border border-brintelli-border/60 bg-white p-4 shadow-sm">
+              <div className="flex items-center gap-2 text-textMuted mb-1">
+                <Award className="h-4 w-4" />
+                <span className="text-xs font-medium">Certificates</span>
+              </div>
+              <p className="text-2xl font-semibold text-text">{certificates.length}</p>
+            </div>
           </div>
-          <div className="mb-6 max-h-48 overflow-y-auto rounded-xl border border-brintelli-border/60">
-            {participants.length === 0 ? (
-              <p className="p-4 text-sm text-textMuted">No one enrolled yet.</p>
-            ) : (
+          <div className="grid gap-6 lg:grid-cols-2">
+            <section className="rounded-2xl border border-brintelli-border/60 bg-white p-6 shadow-sm">
+              <h4 className="text-sm font-semibold text-text mb-3 flex items-center gap-2">
+                <MessageSquare className="h-4 w-4" /> Assignments
+              </h4>
+              <ul className="mb-4 space-y-2">
+                {assignments.length === 0 ? (
+                  <li className="text-sm text-textMuted">No assignments yet.</li>
+                ) : (
+                  assignments.slice(0, 5).map((a) => (
+                    <li key={a.id || a._id} className="flex items-center justify-between rounded-lg bg-brintelli-baseAlt/50 px-3 py-2 text-sm">
+                      <span>{a.title || 'Untitled'}</span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          workshopAPI.getSubmissions(workshopId, a.id || a._id).then((r) =>
+                            r?.success && toast.success(`${(r.data?.submissions || []).length} submission(s)`)
+                          )
+                        }
+                        className="text-brand-600 hover:underline text-xs"
+                      >
+                        View submissions
+                      </button>
+                    </li>
+                  ))
+                )}
+              </ul>
+              {assignments.length > 5 && <p className="text-xs text-textMuted">+ more. Add below.</p>}
+              <div className="flex gap-2 mt-2">
+                <input
+                  type="text"
+                  value={newAssignmentTitle}
+                  onChange={(e) => setNewAssignmentTitle(e.target.value)}
+                  placeholder="Assignment title"
+                  className="flex-1 rounded-lg border border-brintelli-border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
+                />
+                <Button variant="secondary" size="sm" onClick={addAssignment} disabled={savingAssignment} className="gap-1">
+                  {savingAssignment ? 'Adding...' : 'Add assignment'}
+                </Button>
+              </div>
+            </section>
+            <section className="rounded-2xl border border-brintelli-border/60 bg-white p-6 shadow-sm">
+              <h4 className="text-sm font-semibold text-text mb-3 flex items-center gap-2">
+                <MessageSquare className="h-4 w-4" /> Feedback ({feedback.length})
+              </h4>
+              <div className="max-h-40 overflow-y-auto space-y-2 text-sm">
+                {feedback.length === 0 ? (
+                  <p className="text-textMuted">No feedback yet.</p>
+                ) : (
+                  feedback.slice(0, 5).map((f) => (
+                    <div key={f.id || f._id} className="rounded-lg border border-brintelli-border/40 px-3 py-2">
+                      <span className="font-medium text-text">{f.userName || '—'}</span>
+                      {f.rating != null && <span className="text-textMuted ml-2">{f.rating}/5</span>}
+                      {f.comment && <p className="mt-1 text-textMuted text-xs line-clamp-2">{f.comment}</p>}
+                    </div>
+                  ))
+                )}
+              </div>
+            </section>
+          </div>
+        </div>
+      )}
+
+      {/* Settings: Speakers, LSM list, Tutor list */}
+      {activeOption === 'settings' && (
+        <div className="space-y-6">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <Settings className="h-5 w-5" /> Settings
+          </h3>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <section className="rounded-2xl border border-brintelli-border/60 bg-white p-6 shadow-sm">
+              <div className="mb-4 flex items-center gap-2">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-100 text-amber-600">
+                  <Mic className="h-4 w-4" />
+                </div>
+                <h2 className="text-lg font-semibold text-text">Speakers</h2>
+              </div>
+              <p className="text-sm text-textMuted mb-3">Add speakers for this workshop. You can select from Tutors and LSMs.</p>
+              <div className="mb-3 flex flex-wrap gap-2">
+                {speakerIds.map((id) => {
+                  const u = [...tutors, ...lsms].find((x) => (x.id || x._id) === id);
+                  return (
+                    <span key={id} className="inline-flex items-center gap-1.5 rounded-full bg-brand-100 text-brand-800 px-3 py-1 text-sm">
+                      {u?.name || u?.email || id}
+                      <button type="button" onClick={() => removeSpeaker(id)} className="hover:bg-brand-200 rounded-full p-0.5">
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </span>
+                  );
+                })}
+              </div>
+              <div className="flex flex-wrap gap-2 mb-3">
+                <select
+                  value=""
+                  onChange={(e) => { const v = e.target.value; if (v) { addSpeaker(v); e.target.value = ''; } }}
+                  className="rounded-lg border border-brintelli-border bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none min-w-[200px]"
+                >
+                  <option value="">Add speaker…</option>
+                  <optgroup label="Tutors">
+                    {tutors.filter((t) => !speakerIds.includes(t.id || t._id)).map((t) => (
+                      <option key={t.id} value={t.id}>{t.name} ({t.email})</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="LSMs">
+                    {lsms.filter((l) => !speakerIds.includes(l.id || l._id)).map((l) => (
+                      <option key={l.id} value={l.id}>{l.name} ({l.email})</option>
+                    ))}
+                  </optgroup>
+                </select>
+                <Button variant="primary" size="sm" onClick={saveSpeakers} disabled={savingSpeakers} className="gap-1">
+                  {savingSpeakers ? 'Saving…' : 'Save speakers'}
+                </Button>
+              </div>
+            </section>
+            <section className="rounded-2xl border border-brintelli-border/60 bg-white p-6 shadow-sm">
+              <div className="mb-4 flex items-center gap-2">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-100 text-violet-600">
+                  <UserCircle className="h-4 w-4" />
+                </div>
+                <h2 className="text-lg font-semibold text-text">Tutor</h2>
+              </div>
+              <p className="text-sm text-textMuted mb-3">Assign the main tutor for this workshop.</p>
+              <select
+                value={workshop.tutorId?.toString() || ''}
+                onChange={(e) => updateTutor(e.target.value)}
+                className="w-full rounded-lg border border-brintelli-border bg-white px-3 py-2.5 text-sm focus:border-brand-500 focus:outline-none"
+              >
+                <option value="">No tutor assigned</option>
+                {tutors.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} ({t.email})
+                  </option>
+                ))}
+              </select>
+            </section>
+          </div>
+          <section className="rounded-2xl border border-brintelli-border/60 bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-semibold text-text mb-3 flex items-center gap-2">
+              <Users className="h-5 w-5 text-sky-600" /> LSM (Learning Success Managers)
+            </h2>
+            <p className="text-sm text-textMuted mb-4">List of LSMs in the system. Assign speakers above to add them to this workshop.</p>
+            <div className="rounded-xl border border-brintelli-border/60 max-h-48 overflow-y-auto">
+              {lsms.length === 0 ? (
+                <p className="p-4 text-sm text-textMuted">No LSM users found.</p>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead className="bg-brintelli-baseAlt/50 sticky top-0">
+                    <tr>
+                      <th className="px-4 py-2.5 text-left font-medium text-textMuted">Name</th>
+                      <th className="px-4 py-2.5 text-left font-medium text-textMuted">Email</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {lsms.map((l) => (
+                      <tr key={l.id} className="border-t border-brintelli-border/40">
+                        <td className="px-4 py-2.5">{l.name || '—'}</td>
+                        <td className="px-4 py-2.5 text-textMuted">{l.email || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </section>
+          <section className="rounded-2xl border border-brintelli-border/60 bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-semibold text-text mb-3 flex items-center gap-2">
+              <UserCircle className="h-5 w-5 text-violet-600" /> Tutors
+            </h2>
+            <p className="text-sm text-textMuted mb-4">List of tutors. Assigned tutor for this workshop is selected above.</p>
+            <div className="rounded-xl border border-brintelli-border/60 max-h-48 overflow-y-auto">
+              {tutors.length === 0 ? (
+                <p className="p-4 text-sm text-textMuted">No tutors found.</p>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead className="bg-brintelli-baseAlt/50 sticky top-0">
+                    <tr>
+                      <th className="px-4 py-2.5 text-left font-medium text-textMuted">Name</th>
+                      <th className="px-4 py-2.5 text-left font-medium text-textMuted">Email</th>
+                      <th className="px-4 py-2.5 text-left font-medium text-textMuted">Assigned</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tutors.map((t) => (
+                      <tr key={t.id} className="border-t border-brintelli-border/40">
+                        <td className="px-4 py-2.5">{t.name || '—'}</td>
+                        <td className="px-4 py-2.5 text-textMuted">{t.email || '—'}</td>
+                        <td className="px-4 py-2.5">
+                          {workshop.tutorId?.toString() === t.id ? (
+                            <span className="text-green-600 font-medium">Yes</span>
+                          ) : (
+                            <span className="text-textMuted">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </section>
+        </div>
+      )}
+
+      {/* Resources */}
+      {activeOption === 'resources' && (
+        <div className="space-y-6">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <FileText className="h-5 w-5" /> Resources
+          </h3>
+          <section className="rounded-2xl border border-brintelli-border/60 bg-white p-6 shadow-sm max-w-2xl">
+            <ul className="mb-4 space-y-2">
+              {resources.length === 0 ? (
+                <li className="text-sm text-textMuted">No resources yet. Add links for participants.</li>
+              ) : (
+                resources.map((r, i) => (
+                  <li key={`${r.url}-${i}`} className="flex items-center justify-between rounded-lg bg-brintelli-baseAlt/50 px-3 py-2 text-sm">
+                    <a href={r.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-brand-600 hover:underline truncate max-w-[70%]">
+                      <Link2 className="h-3.5 w-3.5 shrink-0" />
+                      {r.label || r.url}
+                    </a>
+                    <button type="button" onClick={() => removeResource(i)} className="p-1 text-red-500 hover:bg-red-50 rounded">
+                      <X className="h-4 w-4" />
+                    </button>
+                  </li>
+                ))
+              )}
+            </ul>
+            <div className="flex flex-wrap gap-2">
+              <input
+                type="text"
+                value={newResourceLabel}
+                onChange={(e) => setNewResourceLabel(e.target.value)}
+                placeholder="Label"
+                className="w-32 rounded-lg border border-brintelli-border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
+              />
+              <input
+                type="url"
+                value={newResourceUrl}
+                onChange={(e) => setNewResourceUrl(e.target.value)}
+                placeholder="https://..."
+                className="min-w-[180px] flex-1 rounded-lg border border-brintelli-border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
+              />
+              <Button variant="secondary" size="sm" onClick={addResource} className="gap-1">
+                <Plus className="h-4 w-4" /> Add
+              </Button>
+              <Button variant="primary" size="sm" onClick={saveResources} disabled={savingResources} className="gap-1">
+                <Save className="h-4 w-4" />
+                {savingResources ? 'Saving...' : 'Save resources'}
+              </Button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {/* Quiz */}
+      {activeOption === 'quiz' && (
+        <div className="space-y-6">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <Trophy className="h-5 w-5" /> Quiz
+          </h3>
+          <section className="rounded-2xl border border-brintelli-border/60 bg-white p-6 shadow-sm max-w-2xl">
+            <p className="text-sm text-textMuted mb-4">
+              {quiz ? (
+                <>Quiz &quot;{quiz.title}&quot;. Attendees see it when published. Leaderboard lists participants; quiz points add to learners&apos; total.</>
+              ) : (
+                'Create a quiz and publish it for participants.'
+              )}
+            </p>
+            {quiz && (
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-sm text-text">Status:</span>
+                <Button variant="ghost" size="sm" disabled={quizPublishing} onClick={() => handlePublishQuiz(!quiz.published)}>
+                  {quiz.published ? 'Published' : 'Unpublished'} – click to toggle
+                </Button>
+              </div>
+            )}
+            <div className="flex gap-2">
+              <Button size="sm" disabled={quizSaving} onClick={handleSaveQuiz}>
+                {quizSaving ? 'Saving…' : quiz ? 'Update quiz' : 'Create quiz'}
+              </Button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {/* Participants */}
+      {activeOption === 'participants' && (
+        <div className="space-y-6">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <Users className="h-5 w-5" /> Participants
+          </h3>
+          <section className="rounded-2xl border border-brintelli-border/60 bg-white p-6 shadow-sm">
+            <div className="mb-4 flex items-center gap-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
+                <Users className="h-4 w-4" />
+              </div>
+              <h2 className="text-lg font-semibold text-text">Registered participants ({participants.length})</h2>
+            </div>
+            <div className="mb-6 max-h-48 overflow-y-auto rounded-xl border border-brintelli-border/60">
+              {participants.length === 0 ? (
+                <p className="p-4 text-sm text-textMuted">No one enrolled yet.</p>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead className="bg-brintelli-baseAlt/50 sticky top-0">
+                    <tr>
+                      <th className="px-4 py-2.5 text-left font-medium text-textMuted">Name</th>
+                      <th className="px-4 py-2.5 text-left font-medium text-textMuted">Email</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {participants.map((p) => (
+                      <tr key={p.id || p.email} className="border-t border-brintelli-border/40">
+                        <td className="px-4 py-2.5">{p.fullName || '—'}</td>
+                        <td className="px-4 py-2.5 text-textMuted">{p.email || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+            <div className="rounded-xl border border-brintelli-border/60 bg-brintelli-baseAlt/20 p-4">
+              <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-text">
+                <Mail className="h-4 w-4" /> Send email to enrolled
+              </h3>
+              <div className="space-y-3">
+                <select
+                  value={emailForm.type}
+                  onChange={(e) => setEmailForm((f) => ({ ...f, type: e.target.value }))}
+                  className="w-full rounded-lg border border-brintelli-border bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
+                >
+                  <option value="reminder">Reminder (date, time, link)</option>
+                  <option value="custom">Custom message</option>
+                </select>
+                <input
+                  type="text"
+                  value={emailForm.subject}
+                  onChange={(e) => setEmailForm((f) => ({ ...f, subject: e.target.value }))}
+                  placeholder="Subject (optional for reminder)"
+                  className="w-full rounded-lg border border-brintelli-border bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
+                />
+                <textarea
+                  value={emailForm.body}
+                  onChange={(e) => setEmailForm((f) => ({ ...f, body: e.target.value }))}
+                  placeholder="Body (optional – uses default reminder text)"
+                  rows={3}
+                  className="w-full rounded-lg border border-brintelli-border bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
+                />
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={sendEmail}
+                  disabled={sendingEmail || participants.length === 0}
+                  className="gap-2"
+                >
+                  {sendingEmail ? 'Sending...' : `Send to ${participants.length} participant(s)`}
+                </Button>
+              </div>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {/* Leaderboard */}
+      {activeOption === 'leaderboard' && (
+        <div className="space-y-6">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <Trophy className="h-5 w-5 text-brand-500" /> Leaderboard
+          </h3>
+          <p className="text-sm text-textMuted">Participants ranked by quiz score.</p>
+          {leaderboard.length === 0 ? (
+            <p className="text-sm text-textMuted py-8 rounded-xl border border-brintelli-border bg-brintelli-baseAlt/20 text-center">No attempts yet. Quiz scores will appear here.</p>
+          ) : (
+            <div className="rounded-xl border border-brintelli-border bg-white overflow-hidden">
               <table className="w-full text-sm">
-                <thead className="bg-brintelli-baseAlt/50 sticky top-0">
-                  <tr>
-                    <th className="px-4 py-2.5 text-left font-medium text-textMuted">Name</th>
-                    <th className="px-4 py-2.5 text-left font-medium text-textMuted">Email</th>
+                <thead>
+                  <tr className="bg-gradient-to-r from-brintelli-primary/10 to-brintelli-primaryDark/10 border-b border-brintelli-border">
+                    <th className="text-left py-3 px-4 font-semibold text-text w-20">Place</th>
+                    <th className="text-left py-3 px-4 font-semibold text-text">Player name</th>
+                    <th className="text-right py-3 px-4 font-semibold text-text">Points</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {participants.map((p) => (
-                    <tr key={p.id || p.email} className="border-t border-brintelli-border/40">
-                      <td className="px-4 py-2.5">{p.fullName || '—'}</td>
-                      <td className="px-4 py-2.5 text-textMuted">{p.email || '—'}</td>
+                  {leaderboard.map((r, idx) => (
+                    <tr key={r.userId} className={`border-b border-brintelli-border/60 last:border-0 ${idx < 3 ? 'bg-brintelli-baseAlt/20' : ''}`}>
+                      <td className="py-3 px-4 font-medium text-textMuted">#{r.rank}</td>
+                      <td className="py-3 px-4 font-medium text-text">{r.userName}</td>
+                      <td className="py-3 px-4 text-right font-semibold text-brand-600">{r.score} pts</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            )}
-          </div>
+            </div>
+          )}
+        </div>
+      )}
 
-          <div className="rounded-xl border border-brintelli-border/60 bg-brintelli-baseAlt/20 p-4">
-            <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-text">
-              <Mail className="h-4 w-4" /> Send email to enrolled
-            </h3>
-            <div className="space-y-3">
-              <select
-                value={emailForm.type}
-                onChange={(e) => setEmailForm((f) => ({ ...f, type: e.target.value }))}
-                className="w-full rounded-lg border border-brintelli-border bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
-              >
-                <option value="reminder">Reminder (date, time, link)</option>
-                <option value="custom">Custom message</option>
-              </select>
-              <input
-                type="text"
-                value={emailForm.subject}
-                onChange={(e) => setEmailForm((f) => ({ ...f, subject: e.target.value }))}
-                placeholder="Subject (optional for reminder)"
-                className="w-full rounded-lg border border-brintelli-border bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
-              />
-              <textarea
-                value={emailForm.body}
-                onChange={(e) => setEmailForm((f) => ({ ...f, body: e.target.value }))}
-                placeholder="Body (optional – uses default reminder text)"
-                rows={3}
-                className="w-full rounded-lg border border-brintelli-border bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
-              />
+      {/* Certificate */}
+      {activeOption === 'certificate' && (
+        <div className="space-y-6">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <Award className="h-5 w-5" /> Certificate
+          </h3>
+          <section className="rounded-2xl border border-brintelli-border/60 bg-white p-6 shadow-sm">
+            <p className="text-sm text-textMuted mb-4">
+              Generate completion certificates for participants, then send them by email. Participants can download from their workshop page.
+            </p>
+            <div className="flex flex-wrap gap-2 mb-4">
               <Button
                 variant="primary"
                 size="sm"
-                onClick={sendEmail}
-                disabled={sendingEmail || participants.length === 0}
+                onClick={handleGenerateCertificates}
+                disabled={certsGenerating || participants.length === 0}
                 className="gap-2"
               >
-                {sendingEmail ? 'Sending...' : `Send to ${participants.length} participant(s)`}
+                {certsGenerating ? 'Generating...' : 'Generate certificates'}
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleSendCertificates}
+                disabled={certsSending || certificates.length === 0}
+                className="gap-2"
+              >
+                <Send className="h-4 w-4" />
+                {certsSending ? 'Sending...' : 'Send to participants'}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={loadCertificates} disabled={certsLoading} className="gap-2">
+                <RefreshCw className="h-4 w-4" />
+                Refresh
               </Button>
             </div>
-          </div>
-        </section>
-
-        {/* Assignments */}
-        <section className="rounded-2xl border border-brintelli-border/60 bg-white p-6 shadow-sm">
-          <div className="mb-4 flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-100 text-amber-600">
-              <FileText className="h-4 w-4" />
+            <div className="rounded-xl border border-brintelli-border/60 max-h-48 overflow-y-auto">
+              {certificates.length === 0 ? (
+                <p className="p-4 text-sm text-textMuted">No certificates yet. Generate for all enrolled participants first.</p>
+              ) : (
+                <ul className="divide-y divide-brintelli-border/60">
+                  {certificates.map((c) => (
+                    <li key={c.id} className="flex items-center justify-between px-4 py-3 text-sm">
+                      <span className="font-medium text-text">{c.userName}</span>
+                      <span className="text-textMuted font-mono text-xs">{c.certificateNumber}</span>
+                      <Button variant="ghost" size="sm" onClick={() => handleDownloadCertificate(c.id)} className="gap-1">
+                        <Download className="h-3.5 w-3.5" /> Download
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
-            <h2 className="text-lg font-semibold text-text">Assignments</h2>
-          </div>
-          <ul className="mb-4 space-y-2">
-            {assignments.length === 0 ? (
-              <li className="text-sm text-textMuted">No assignments yet.</li>
-            ) : (
-              assignments.map((a) => (
-                <li key={a.id || a._id} className="flex items-center justify-between rounded-lg bg-brintelli-baseAlt/50 px-3 py-2 text-sm">
-                  <span>{a.title || 'Untitled'}</span>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      workshopAPI.getSubmissions(workshopId, a.id || a._id).then((r) =>
-                        r?.success && toast.success(`${(r.data?.submissions || []).length} submission(s)`)
-                      )
-                    }
-                    className="text-brand-600 hover:underline text-xs"
-                  >
-                    View submissions
-                  </button>
-                </li>
-              ))
-            )}
-          </ul>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={newAssignmentTitle}
-              onChange={(e) => setNewAssignmentTitle(e.target.value)}
-              placeholder="Assignment title"
-              className="flex-1 rounded-lg border border-brintelli-border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
-            />
-            <Button variant="secondary" size="sm" onClick={addAssignment} disabled={savingAssignment} className="gap-1">
-              {savingAssignment ? 'Adding...' : 'Add assignment'}
-            </Button>
-          </div>
-        </section>
-
-        {/* Feedback */}
-        <section className="rounded-2xl border border-brintelli-border/60 bg-white p-6 shadow-sm">
-          <div className="mb-4 flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-100 text-sky-600">
-              <MessageSquare className="h-4 w-4" />
-            </div>
-            <h2 className="text-lg font-semibold text-text">Feedback ({feedback.length})</h2>
-          </div>
-          <div className="max-h-40 overflow-y-auto space-y-2 text-sm">
-            {feedback.length === 0 ? (
-              <p className="text-textMuted">No feedback yet.</p>
-            ) : (
-              feedback.map((f) => (
-                <div key={f.id || f._id} className="rounded-lg border border-brintelli-border/40 px-3 py-2">
-                  <span className="font-medium text-text">{f.userName || '—'}</span>
-                  {f.rating != null && <span className="text-textMuted ml-2">{f.rating}/5</span>}
-                  {f.comment && <p className="mt-1 text-textMuted text-xs line-clamp-2">{f.comment}</p>}
-                </div>
-              ))
-            )}
-          </div>
-        </section>
-
-        {/* Quiz – create/publish */}
-        <section className="rounded-2xl border border-brintelli-border/60 bg-white p-6 shadow-sm">
-          <div className="mb-4 flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-100 text-rose-600">
-              <Trophy className="h-4 w-4" />
-            </div>
-            <h2 className="text-lg font-semibold text-text">Quiz</h2>
-          </div>
-          <p className="text-sm text-textMuted mb-4">
-            {quiz ? (
-              <>Quiz &quot;{quiz.title}&quot;. Attendees see it when published. Leaderboard lists participants; quiz points add to learners&apos; total.</>
-            ) : (
-              'Create a quiz and publish it for participants.'
-            )}
-          </p>
-          {quiz && (
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-sm text-text">Status:</span>
-              <Button variant="ghost" size="sm" disabled={quizPublishing} onClick={() => handlePublishQuiz(!quiz.published)}>
-                {quiz.published ? 'Published' : 'Unpublished'} – click to toggle
-              </Button>
-            </div>
-          )}
-          <div className="flex gap-2">
-            <Button size="sm" disabled={quizSaving} onClick={handleSaveQuiz}>
-              {quizSaving ? 'Saving…' : quiz ? 'Update quiz' : 'Create quiz'}
-            </Button>
-          </div>
-        </section>
-
-        {/* Doubts – list and answer */}
-        <section className="rounded-2xl border border-brintelli-border/60 bg-white p-6 shadow-sm lg:col-span-2">
-          <div className="mb-4 flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-100 text-sky-600">
-              <MessageSquare className="h-4 w-4" />
-            </div>
-            <h2 className="text-lg font-semibold text-text">Doubts</h2>
-          </div>
-          <p className="text-sm text-textMuted mb-4">Student doubts. Answer them below.</p>
-          {doubts.length === 0 ? (
-            <p className="text-sm text-textMuted">No doubts yet.</p>
-          ) : (
-            <ul className="space-y-4">
-              {doubts.map((d) => {
-                const id = d.id || d._id;
-                const answered = !!d.answer;
-                return (
-                  <li key={id} className="rounded-xl border border-brintelli-border/60 bg-brintelli-baseAlt/30 p-4">
-                    <p className="font-medium text-text mb-1">{d.userName || 'Student'}</p>
-                    <p className="text-sm text-text mb-2">{d.question}</p>
-                    {answered ? (
-                      <p className="text-sm text-green-700 bg-green-50 rounded-lg px-3 py-2">{d.answer}</p>
-                    ) : (
-                      <div className="flex gap-2 flex-wrap">
-                        <textarea
-                          placeholder="Your answer..."
-                          value={answerDraft[id] || ''}
-                          onChange={(e) => setAnswerDraft((p) => ({ ...p, [id]: e.target.value }))}
-                          className="flex-1 min-w-[200px] min-h-[80px] rounded-lg border border-brintelli-border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
-                        />
-                        <Button size="sm" disabled={answeringId === id} onClick={() => handleAnswerDoubt(id)}>
-                          {answeringId === id ? 'Posting…' : 'Post answer'}
-                        </Button>
-                      </div>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-          <Button variant="ghost" size="sm" onClick={loadManageData} className="mt-4 gap-2">
-            <RefreshCw className="h-4 w-4" /> Refresh doubts
-          </Button>
-        </section>
-
-        {/* Certificates – generate, send, list */}
-        <section className="rounded-2xl border border-brintelli-border/60 bg-white p-6 shadow-sm lg:col-span-2">
-          <div className="mb-4 flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-100 text-brand-600">
-              <Award className="h-4 w-4" />
-            </div>
-            <h2 className="text-lg font-semibold text-text">Certificate maker</h2>
-          </div>
-          <p className="text-sm text-textMuted mb-4">
-            Generate completion certificates for participants, then send them by email. Participants can download from their workshop page.
-          </p>
-          <div className="flex flex-wrap gap-2 mb-4">
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleGenerateCertificates}
-              disabled={certsGenerating || participants.length === 0}
-              className="gap-2"
-            >
-              {certsGenerating ? 'Generating...' : 'Generate certificates'}
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={handleSendCertificates}
-              disabled={certsSending || certificates.length === 0}
-              className="gap-2"
-            >
-              <Send className="h-4 w-4" />
-              {certsSending ? 'Sending...' : 'Send to participants'}
-            </Button>
-            <Button variant="ghost" size="sm" onClick={loadCertificates} disabled={certsLoading} className="gap-2">
-              <RefreshCw className="h-4 w-4" />
-              Refresh
-            </Button>
-          </div>
-          <div className="rounded-xl border border-brintelli-border/60 max-h-48 overflow-y-auto">
-            {certificates.length === 0 ? (
-              <p className="p-4 text-sm text-textMuted">No certificates yet. Generate for all enrolled participants first.</p>
-            ) : (
-              <ul className="divide-y divide-brintelli-border/60">
-                {certificates.map((c) => (
-                  <li key={c.id} className="flex items-center justify-between px-4 py-3 text-sm">
-                    <span className="font-medium text-text">{c.userName}</span>
-                    <span className="text-textMuted font-mono text-xs">{c.certificateNumber}</span>
-                    <Button variant="ghost" size="sm" onClick={() => handleDownloadCertificate(c.id)} className="gap-1">
-                      <Download className="h-3.5 w-3.5" /> Download
-                    </Button>
+            <div className="mt-6 pt-6 border-t border-brintelli-border/60">
+              <h4 className="text-sm font-semibold text-text mb-3 flex items-center gap-2">
+                <Gift className="h-4 w-4" /> Vouchers
+              </h4>
+              <ul className="mb-4 space-y-2 text-sm">
+                {vouchers.map((v) => (
+                  <li key={v.id || v._id} className="flex justify-between items-center rounded-lg bg-brintelli-baseAlt/50 px-3 py-2">
+                    <code className="font-mono text-brand-600">{v.code}</code>
+                    <span className="text-textMuted text-xs">Sent to {Array.isArray(v.sentTo) ? v.sentTo.length : 0}</span>
                   </li>
                 ))}
+                {vouchers.length === 0 && <p className="text-textMuted">No vouchers yet.</p>}
+              </ul>
+              <div className="flex flex-wrap gap-2 items-center">
+                <input
+                  type="text"
+                  value={newVoucherCode}
+                  onChange={(e) => setNewVoucherCode(e.target.value)}
+                  placeholder="Code (optional)"
+                  className="w-32 rounded-lg border border-brintelli-border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
+                />
+                <input
+                  type="date"
+                  value={newVoucherExpiry}
+                  onChange={(e) => setNewVoucherExpiry(e.target.value)}
+                  className="rounded-lg border border-brintelli-border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
+                />
+                <Button variant="primary" size="sm" onClick={createVoucherAndSend} disabled={savingVoucher} className="gap-1">
+                  {savingVoucher ? 'Creating...' : 'Create & send to attendees'}
+                </Button>
+              </div>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {/* Doubts */}
+      {activeOption === 'doubts' && (
+        <div className="space-y-6">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <MessageSquare className="h-5 w-5" /> Doubts
+          </h3>
+          <section className="rounded-2xl border border-brintelli-border/60 bg-white p-6 shadow-sm">
+            <p className="text-sm text-textMuted mb-4">Student doubts. Answer them below.</p>
+            {doubts.length === 0 ? (
+              <p className="text-sm text-textMuted">No doubts yet.</p>
+            ) : (
+              <ul className="space-y-4">
+                {doubts.map((d) => {
+                  const id = d.id || d._id;
+                  const answered = !!d.answer;
+                  return (
+                    <li key={id} className="rounded-xl border border-brintelli-border/60 bg-brintelli-baseAlt/30 p-4">
+                      <p className="font-medium text-text mb-1">{d.userName || 'Student'}</p>
+                      <p className="text-sm text-text mb-2">{d.question}</p>
+                      {answered ? (
+                        <p className="text-sm text-green-700 bg-green-50 rounded-lg px-3 py-2">{d.answer}</p>
+                      ) : (
+                        <div className="flex gap-2 flex-wrap">
+                          <textarea
+                            placeholder="Your answer..."
+                            value={answerDraft[id] || ''}
+                            onChange={(e) => setAnswerDraft((p) => ({ ...p, [id]: e.target.value }))}
+                            className="flex-1 min-w-[200px] min-h-[80px] rounded-lg border border-brintelli-border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
+                          />
+                          <Button size="sm" disabled={answeringId === id} onClick={() => handleAnswerDoubt(id)}>
+                            {answeringId === id ? 'Posting…' : 'Post answer'}
+                          </Button>
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             )}
-          </div>
-        </section>
-
-        {/* Vouchers */}
-        <section className="rounded-2xl border border-brintelli-border/60 bg-white p-6 shadow-sm">
-          <div className="mb-4 flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-100 text-teal-600">
-              <Gift className="h-4 w-4" />
-            </div>
-            <h2 className="text-lg font-semibold text-text">Vouchers</h2>
-          </div>
-          <ul className="mb-4 space-y-2 text-sm">
-            {vouchers.map((v) => (
-              <li key={v.id || v._id} className="flex justify-between items-center rounded-lg bg-brintelli-baseAlt/50 px-3 py-2">
-                <code className="font-mono text-brand-600">{v.code}</code>
-                <span className="text-textMuted text-xs">Sent to {Array.isArray(v.sentTo) ? v.sentTo.length : 0}</span>
-              </li>
-            ))}
-            {vouchers.length === 0 && <p className="text-textMuted">No vouchers yet.</p>}
-          </ul>
-          <div className="flex flex-wrap gap-2 items-center">
-            <input
-              type="text"
-              value={newVoucherCode}
-              onChange={(e) => setNewVoucherCode(e.target.value)}
-              placeholder="Code (optional)"
-              className="w-32 rounded-lg border border-brintelli-border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
-            />
-            <input
-              type="date"
-              value={newVoucherExpiry}
-              onChange={(e) => setNewVoucherExpiry(e.target.value)}
-              className="rounded-lg border border-brintelli-border px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
-            />
-            <Button variant="primary" size="sm" onClick={createVoucherAndSend} disabled={savingVoucher} className="gap-1">
-              {savingVoucher ? 'Creating...' : 'Create & send to attendees'}
+            <Button variant="ghost" size="sm" onClick={loadManageData} className="mt-4 gap-2">
+              <RefreshCw className="h-4 w-4" /> Refresh doubts
             </Button>
-          </div>
-        </section>
-      </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 };

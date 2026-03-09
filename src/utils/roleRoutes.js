@@ -20,7 +20,7 @@ export const getRoleDashboard = (role) => {
     sales_admin: '/sales/dashboard',
     sales_lead: '/sales/dashboard',
     sales_agent: '/sales/dashboard',
-    marketing: '/admin-portal/marketing/referral-users',
+    marketing: '/marketing/dashboard',
     hr: '/external-hr/dashboard',
     // Alternative role names (from database or different formats)
     'program-manager': '/program-manager/dashboard',

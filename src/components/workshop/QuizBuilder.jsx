@@ -90,38 +90,32 @@ export default function QuizBuilder({ quiz, onChange }) {
   return (
     <div className="space-y-6">
       <div>
-        <label className="mb-1 block text-sm font-medium text-text">Quiz title</label>
+        <h4 className="text-sm font-medium text-textSoft mb-2">Quiz title</h4>
         <input
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className="w-full rounded-xl border border-brintelli-border px-4 py-2 text-sm"
+          className="w-full rounded-lg border border-brintelli-border px-3 py-2 text-sm bg-white"
           placeholder="Workshop Quiz"
         />
       </div>
 
-      <div className="flex items-center justify-between">
-        <h4 className="text-sm font-semibold text-text">Questions</h4>
-        <Button type="button" size="sm" variant="ghost" onClick={addQuestion} className="gap-1">
+      <div className="flex items-center justify-between gap-2">
+        <h4 className="text-sm font-medium text-textSoft">Questions</h4>
+        <Button type="button" size="sm" variant="secondary" onClick={addQuestion} className="gap-1">
           <Plus className="h-4 w-4" /> Add question
         </Button>
       </div>
 
       {questions.length === 0 ? (
-        <p className="text-sm text-textMuted">No questions yet. Add a question to build the quiz, poll, or review.</p>
+        <p className="text-sm text-textMuted py-4">No questions yet. Add a question to build the quiz, poll, or review.</p>
       ) : (
-        <ul className="space-y-6">
+        <div className="space-y-6">
           {questions.map((q, qIdx) => (
-            <li key={qIdx} className="rounded-xl border border-brintelli-border bg-white p-4 shadow-sm">
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <span className="text-xs font-medium text-textMuted">Question {qIdx + 1}</span>
-                <button type="button" onClick={() => removeQuestion(qIdx)} className="text-red-600 hover:text-red-700" aria-label="Remove question">
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-              <div className="space-y-3">
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-textMuted">Type</label>
+            <div key={qIdx} className="border-b border-gray-100 pb-6 last:border-0 last:pb-0">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <span className="text-xs text-textMuted font-medium">
+                  Question {qIdx + 1}
                   <select
                     value={q.type}
                     onChange={(e) => {
@@ -132,122 +126,119 @@ export default function QuizBuilder({ quiz, onChange }) {
                       else if (type === "quiz-multi") updateQuestion(qIdx, { type, options: opts, correctIndices: q.correctIndex != null ? [q.correctIndex] : (q.correctIndices || []), correctIndex: undefined });
                       else updateQuestion(qIdx, { type, options: opts, correctIndex: Array.isArray(q.correctIndices) && q.correctIndices.length ? q.correctIndices[0] : (q.correctIndex ?? 0), correctIndices: [] });
                     }}
-                    className="w-full rounded-lg border border-brintelli-border px-3 py-2 text-sm"
+                    className="ml-2 rounded border border-brintelli-border/60 bg-white px-2 py-1 text-xs text-textMuted focus:outline-none focus:ring-1 focus:ring-brand-500"
                   >
                     {QUESTION_TYPES.map((t) => (
                       <option key={t.value} value={t.value}>{t.label}</option>
                     ))}
                   </select>
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-textMuted">Question text</label>
-                  <input
-                    type="text"
-                    value={q.question}
-                    onChange={(e) => updateQuestion(qIdx, { question: e.target.value })}
-                    className="w-full rounded-lg border border-brintelli-border px-3 py-2 text-sm"
-                    placeholder="Enter the question"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-textMuted">Question image URL (optional)</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="url"
-                      value={q.questionImage || ""}
-                      onChange={(e) => updateQuestion(qIdx, { questionImage: e.target.value })}
-                      className="flex-1 rounded-lg border border-brintelli-border px-3 py-2 text-sm"
-                      placeholder="https://..."
-                    />
-                    {q.questionImage && (
-                      <img src={q.questionImage} alt="" className="h-10 w-10 rounded object-cover" onError={(e) => e.target.style.display = "none"} />
-                    )}
+                </span>
+                <button type="button" onClick={() => removeQuestion(qIdx)} className="text-textMuted hover:text-red-600 p-1" aria-label="Remove question">
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+              <p className="font-medium text-sm text-text mb-1">
+                <input
+                  type="text"
+                  value={q.question}
+                  onChange={(e) => updateQuestion(qIdx, { question: e.target.value })}
+                  className="w-full bg-transparent border-0 border-b border-transparent hover:border-brintelli-border/40 focus:border-brand-500 focus:outline-none py-1 text-sm font-medium"
+                  placeholder="Enter the question"
+                />
+              </p>
+              {q.questionImage && (
+                <img src={q.questionImage} alt="" className="my-2 max-h-48 rounded-lg object-contain" onError={(e) => e.target.style.display = "none"} />
+              )}
+              <input
+                type="url"
+                value={q.questionImage || ""}
+                onChange={(e) => updateQuestion(qIdx, { questionImage: e.target.value })}
+                className="mt-1 block w-full rounded border border-brintelli-border/60 px-2 py-1.5 text-xs text-textMuted placeholder:text-textMuted bg-white/80"
+                placeholder="Question image URL (optional)"
+              />
+              {q.type === "review" && q.reviewType === "scale" && (
+                <p className="text-xs text-textMuted mt-2">Rating 1–5. Learners pick one option.</p>
+              )}
+              {q.type !== "review" && (
+                <div className="space-y-2 mt-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-textMuted">Options</span>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => addOption(qIdx)} className="h-7 text-xs">+ Option</Button>
                   </div>
-                </div>
-                {q.type === "review" && q.reviewType === "scale" && (
-                  <p className="text-xs text-textMuted">Rating 1–5 is used. Students pick one option.</p>
-                )}
-                {q.type !== "review" && (
-                  <>
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-medium text-textMuted">Options</label>
-                      <Button type="button" variant="ghost" size="sm" onClick={() => addOption(qIdx)}>+ Option</Button>
-                    </div>
-                    <ul className="space-y-2">
-                      {(q.options || []).map((opt, oIdx) => (
-                        <li key={oIdx} className="flex flex-wrap items-center gap-2 rounded-lg border border-brintelli-border/60 bg-brintelli-baseAlt/30 p-2">
-                          {q.type === "quiz" && (
-                            <input
-                              type="radio"
-                              name={`correct-${qIdx}`}
-                              checked={q.correctIndex === oIdx}
-                              onChange={() => updateQuestion(qIdx, { correctIndex: oIdx })}
-                              className="rounded-full"
-                              aria-label={`Correct answer: option ${oIdx + 1}`}
-                            />
-                          )}
-                          {q.type === "quiz-multi" && (
-                            <input
-                              type="checkbox"
-                              checked={(q.correctIndices || []).includes(oIdx)}
-                              onChange={() => {
-                                const prev = q.correctIndices || [];
-                                const next = prev.includes(oIdx) ? prev.filter((i) => i !== oIdx) : [...prev, oIdx].sort((a, b) => a - b);
-                                updateQuestion(qIdx, { correctIndices: next });
-                              }}
-                              className="rounded"
-                              aria-label={`Correct answer: option ${oIdx + 1}`}
-                            />
-                          )}
+                  <ul className="space-y-2">
+                    {(q.options || []).map((opt, oIdx) => (
+                      <li key={oIdx} className="flex items-start gap-3 rounded-lg border border-brintelli-border/60 p-2 hover:bg-brintelli-baseAlt/30 bg-white">
+                        {q.type === "quiz" && (
+                          <input
+                            type="radio"
+                            name={`correct-${qIdx}`}
+                            checked={q.correctIndex === oIdx}
+                            onChange={() => updateQuestion(qIdx, { correctIndex: oIdx })}
+                            className="mt-1 shrink-0"
+                            aria-label={`Correct: option ${oIdx + 1}`}
+                          />
+                        )}
+                        {q.type === "quiz-multi" && (
+                          <input
+                            type="checkbox"
+                            checked={(q.correctIndices || []).includes(oIdx)}
+                            onChange={() => {
+                              const prev = q.correctIndices || [];
+                              const next = prev.includes(oIdx) ? prev.filter((i) => i !== oIdx) : [...prev, oIdx].sort((a, b) => a - b);
+                              updateQuestion(qIdx, { correctIndices: next });
+                            }}
+                            className="mt-1 shrink-0 rounded"
+                            aria-label={`Correct: option ${oIdx + 1}`}
+                          />
+                        )}
+                        <span className="flex-1 flex items-center gap-2 flex-wrap min-w-0">
+                          {opt.image && <img src={opt.image} alt="" className="max-h-16 rounded object-contain shrink-0" onError={(e) => e.target.style.display = "none"} />}
                           <input
                             type="text"
                             value={opt.text}
                             onChange={(e) => updateOption(qIdx, oIdx, "text", e.target.value)}
-                            className="min-w-[120px] flex-1 rounded border border-brintelli-border px-2 py-1 text-sm"
+                            className="flex-1 min-w-[100px] rounded border border-brintelli-border/60 px-2 py-1.5 text-sm bg-transparent focus:bg-white"
                             placeholder="Option text"
                           />
-                          <span className="text-xs text-textMuted">or image URL:</span>
                           <input
                             type="url"
                             value={opt.image || ""}
                             onChange={(e) => updateOption(qIdx, oIdx, "image", e.target.value)}
-                            className="min-w-[140px] flex-1 rounded border border-brintelli-border px-2 py-1 text-sm"
-                            placeholder="https://..."
+                            className="w-full sm:w-auto min-w-0 rounded border border-brintelli-border/40 px-2 py-1 text-xs text-textMuted placeholder:text-textMuted"
+                            placeholder="Image URL"
                           />
-                          {opt.image && <img src={opt.image} alt="" className="h-8 w-8 rounded object-cover" onError={(e) => e.target.style.display = "none"} />}
-                          {(q.options?.length || 0) > 1 && (
-                            <button type="button" onClick={() => removeOption(qIdx, oIdx)} className="text-red-600 hover:text-red-700" aria-label="Remove option">
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-                {q.type === "review" && (
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-textMuted">Review kind</label>
-                    <select
-                      value={q.reviewType || "scale"}
-                      onChange={(e) => {
-                        const reviewType = e.target.value;
-                        updateQuestion(qIdx, {
-                          reviewType,
-                          options: reviewType === "scale" ? [{ text: "1" }, { text: "2" }, { text: "3" }, { text: "4" }, { text: "5" }] : [],
-                        });
-                      }}
-                      className="rounded-lg border border-brintelli-border px-3 py-2 text-sm"
-                    >
-                      <option value="scale">Rating 1–5</option>
-                      <option value="freetext">Free text feedback</option>
-                    </select>
-                  </div>
-                )}
-              </div>
-            </li>
+                        </span>
+                        {(q.options?.length || 0) > 1 && (
+                          <button type="button" onClick={() => removeOption(qIdx, oIdx)} className="text-textMuted hover:text-red-600 p-1 shrink-0" aria-label="Remove option">
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {q.type === "review" && (
+                <div className="mt-2">
+                  <select
+                    value={q.reviewType || "scale"}
+                    onChange={(e) => {
+                      const reviewType = e.target.value;
+                      updateQuestion(qIdx, {
+                        reviewType,
+                        options: reviewType === "scale" ? [{ text: "1" }, { text: "2" }, { text: "3" }, { text: "4" }, { text: "5" }] : [],
+                      });
+                    }}
+                    className="rounded-lg border border-brintelli-border px-3 py-2 text-sm bg-white"
+                  >
+                    <option value="scale">Rating 1–5</option>
+                    <option value="freetext">Free text feedback</option>
+                  </select>
+                </div>
+              )}
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );

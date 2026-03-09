@@ -387,32 +387,32 @@ const TutorWorkshopDetail = () => {
         {activeOption === 'quiz' && (
           <div className="p-6">
             <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
-              <Trophy className="h-5 w-5" /> Quiz, Polls &amp; Reviews
+              <Trophy className="h-5 w-5" /> Quiz
             </h3>
-            <p className="text-sm text-textMuted mb-4">
-              Create quiz questions (multiple choice with one correct answer), polls (multiple choice, no correct answer), or reviews (rating 1–5 or free text). You can add images to questions and options. Publish when ready so students can attempt.
-            </p>
-            <QuizBuilder
-              quiz={quiz || { title: 'Workshop Quiz', questions: [] }}
-              onChange={(next) => setQuiz(next)}
-            />
-            {quiz && (
-              <div className="mt-4 flex items-center gap-2">
-                <span className="text-sm text-text">Status:</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={quizPublishing}
-                  onClick={() => handlePublishQuiz(!quiz.published)}
-                >
-                  {quiz.published ? 'Published' : 'Unpublished'} – click to toggle
-                </Button>
+            <div className="rounded-xl border border-brintelli-border bg-brintelli-baseAlt/20 p-4 sm:p-6 space-y-6">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm text-textMuted">Build quiz, poll, or review questions. Learners will see this same layout when they take it.</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  {quiz && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={quizPublishing}
+                      onClick={() => handlePublishQuiz(!quiz.published)}
+                      className="text-textMuted hover:text-text"
+                    >
+                      {quiz.published ? 'Published' : 'Unpublished'} · click to toggle
+                    </Button>
+                  )}
+                  <Button size="sm" disabled={quizSaving} onClick={handleSaveQuiz}>
+                    {quizSaving ? 'Saving…' : quiz ? 'Update quiz' : 'Create quiz'}
+                  </Button>
+                </div>
               </div>
-            )}
-            <div className="mt-4 flex gap-2">
-              <Button size="sm" disabled={quizSaving} onClick={handleSaveQuiz}>
-                {quizSaving ? 'Saving…' : quiz ? 'Update quiz' : 'Create quiz'}
-              </Button>
+              <QuizBuilder
+                quiz={quiz || { title: 'Workshop Quiz', questions: [] }}
+                onChange={(next) => setQuiz(next)}
+              />
             </div>
           </div>
         )}

@@ -165,9 +165,12 @@ export default function QuizBuilder({ quiz, onChange }) {
                     <span className="text-xs text-textMuted">Options</span>
                     <Button type="button" variant="ghost" size="sm" onClick={() => addOption(qIdx)} className="h-7 text-xs">+ Option</Button>
                   </div>
-                  <ul className="space-y-2">
+                  <div className="space-y-2">
                     {(q.options || []).map((opt, oIdx) => (
-                      <li key={oIdx} className="flex items-start gap-3 rounded-lg border border-brintelli-border/60 p-2 hover:bg-brintelli-baseAlt/30 bg-white">
+                      <div
+                        key={oIdx}
+                        className="flex items-start gap-3 cursor-default rounded-lg border border-brintelli-border/60 p-2 hover:bg-brintelli-baseAlt/30"
+                      >
                         {q.type === "quiz" && (
                           <input
                             type="radio"
@@ -197,25 +200,32 @@ export default function QuizBuilder({ quiz, onChange }) {
                             type="text"
                             value={opt.text}
                             onChange={(e) => updateOption(qIdx, oIdx, "text", e.target.value)}
-                            className="flex-1 min-w-[100px] rounded border border-brintelli-border/60 px-2 py-1.5 text-sm bg-transparent focus:bg-white"
-                            placeholder="Option text"
-                          />
-                          <input
-                            type="url"
-                            value={opt.image || ""}
-                            onChange={(e) => updateOption(qIdx, oIdx, "image", e.target.value)}
-                            className="w-full sm:w-auto min-w-0 rounded border border-brintelli-border/40 px-2 py-1 text-xs text-textMuted placeholder:text-textMuted"
-                            placeholder="Image URL"
+                            className="flex-1 min-w-0 text-sm bg-transparent border-none focus:outline-none focus:ring-0 p-0 placeholder:text-textMuted"
+                            placeholder={opt.image ? "" : "Option text"}
                           />
                         </span>
                         {(q.options?.length || 0) > 1 && (
-                          <button type="button" onClick={() => removeOption(qIdx, oIdx)} className="text-textMuted hover:text-red-600 p-1 shrink-0" aria-label="Remove option">
+                          <button type="button" onClick={() => removeOption(qIdx, oIdx)} className="text-textMuted hover:text-red-600 p-1 shrink-0 mt-0.5" aria-label="Remove option">
                             <Trash2 className="h-4 w-4" />
                           </button>
                         )}
-                      </li>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
+                  <div className="pt-1 space-y-1.5">
+                    {(q.options || []).map((opt, oIdx) => (
+                      <div key={oIdx} className="flex items-center gap-2 pl-8">
+                        <span className="text-xs text-textMuted w-16">Option {oIdx + 1} image:</span>
+                        <input
+                          type="url"
+                          value={opt.image || ""}
+                          onChange={(e) => updateOption(qIdx, oIdx, "image", e.target.value)}
+                          className="flex-1 max-w-xs rounded border border-brintelli-border/40 px-2 py-1 text-xs text-textMuted placeholder:text-textMuted bg-white"
+                          placeholder="https://..."
+                        />
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
               {q.type === "review" && (

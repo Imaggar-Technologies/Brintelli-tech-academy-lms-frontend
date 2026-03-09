@@ -110,6 +110,12 @@ export const workshopAPI = {
   // Resources
   updateResources: (id, data) => apiRequest(`/api/workshops/${id}/resources`, { method: 'PATCH', body: JSON.stringify(data) }),
 
+  // Attendance
+  startAttendance: (id) => apiRequest(`/api/workshops/${id}/attendance/start`, { method: 'POST' }),
+  stopAttendance: (id) => apiRequest(`/api/workshops/${id}/attendance/stop`, { method: 'POST' }),
+  clockIn: (id) => apiRequest(`/api/workshops/${id}/attendance/clock-in`, { method: 'POST' }),
+  getAttendance: (id) => apiRequest(`/api/workshops/${id}/attendance`),
+
   // Certificates
   getMyCertificate: (id) => apiRequest(`/api/workshops/${id}/certificates/me`),
   generateCertificates: (id, participantIds = null) =>

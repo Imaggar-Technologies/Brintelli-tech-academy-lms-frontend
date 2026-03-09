@@ -16,8 +16,8 @@ import {
   Video,
   Plus,
   Trash2,
+  ClipboardCheck,
 } from 'lucide-react';
-import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
 import QuizBuilder from '../../components/workshop/QuizBuilder';
 import workshopAPI from '../../api/workshop';
@@ -43,6 +43,12 @@ const TutorWorkshopDetail = () => {
   const [resourcesNotify, setResourcesNotify] = useState(false);
   const [noteContent, setNoteContent] = useState('');
   const [noteSending, setNoteSending] = useState(false);
+  const [attendanceStarting, setAttendanceStarting] = useState(false);
+  const [attendanceStopping, setAttendanceStopping] = useState(false);
+  const [attendees, setAttendees] = useState([]);
+  const [certificates, setCertificates] = useState([]);
+  const [certsGenerating, setCertsGenerating] = useState(false);
+  const [certsSending, setCertsSending] = useState(false);
 
   const hasMeetingLink = workshop?.meetingLink && (workshop?.deliveryMode === 'LIVE' || workshop?.meetingLink);
   const hasNotes = Array.isArray(workshop?.tutorAnnouncements) && workshop.tutorAnnouncements.length > 0;
@@ -150,63 +156,85 @@ const TutorWorkshopDetail = () => {
     );
   }
 
-  const title = workshop.title || 'Workshop';
-
   return (
     <>
-      <PageHeader
-        title={title}
-        description={workshop.description || workshop.subject || ''}
-        actions={
-          <div className="flex items-center gap-2">
-            {hasMeetingLink && (
-              <Button
-                variant="primary"
-                size="sm"
-                className="gap-2"
-                onClick={() => window.open(workshop.meetingLink, '_blank')}
-              >
-                <Video className="h-4 w-4" /> Join
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+        <Button variant="ghost" size="sm" className="gap-2" onClick={() => navigate('/tutor/workshops')}>
+          <ChevronLeft className="h-4 w-4" /> Back to Workshops
+        </Button>
+        {hasMeetingLink && (
+          <Button variant="primary" size="sm" className="gap-2" onClick={() => window.open(workshop.meetingLink, '_blank')}>
+            <Video className="h-4 w-4" /> Join
+          </Button>
+        )}
+      </div>
+
+      {/* Option bar at top */}
+      <div className="flex flex-wrap items-center gap-1 rounded-xl bg-gradient-to-r from-brintelli-primary/90 to-brintelli-primaryDark shadow-sm px-3 py-2 mb-6">
+        {optionsNavItems.map((opt) => (
+          <button
+            key={opt.id}
+            type="button"
+            onClick={() => setActiveOption(opt.id)}
+            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              activeOption === opt.id ? 'bg-white/20 text-white' : 'text-white/90 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            <opt.icon className="h-4 w-4" />
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
+      {activeOption === 'dashboard' && (
+        <div className="p-6 space-y-6">
+          <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+            <LayoutDashboard className="h-5 w-5" /> Dashboard
+          </h3>
+          <div className="rounded-lg border border-brintelli-border p-4 space-y-3">
+            <h4 className="text-sm font-medium flex items-center gap-2">
+              <ClipboardCheck className="h-4 w-4" /> Attendance
+            </h4>
+            <p className="text-sm text-textMuted">Start attendance so learners can clock in from the workshop page. They will receive an email notification.</p>
+            {workshop?.attendanceOpen ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm text-green-700 font-medium">Attendance in progress</span>
+                <span className="text-sm text-textMuted">({(workshop.attendees || []).length} clocked in)</span>
+                <Button size="sm" variant="secondary" disabled={attendanceStopping} onClick={async () => {
+                  setAttendanceStopping(true);
+                  try {
+                    const res = await workshopAPI.stopAttendance(workshopId);
+                    if (res?.success && res?.data?.workshop) setWorkshop((w) => (w ? { ...w, attendanceOpen: false } : null));
+                    toast.success(res?.message || 'Attendance closed');
+                  } catch (e) { toast.error(e.message || 'Failed to stop'); }
+                  finally { setAttendanceStopping(false); }
+                }}>
+                  {attendanceStopping ? 'Stopping…' : 'Stop attendance'}
+                </Button>
+              </div>
+            ) : (
+              <Button size="sm" disabled={attendanceStarting} onClick={async () => {
+                setAttendanceStarting(true);
+                try {
+                  const res = await workshopAPI.startAttendance(workshopId);
+                  if (res?.success) {
+                    setWorkshop((w) => (w ? { ...w, attendanceOpen: true } : null));
+                    toast.success(res?.message || 'Attendance started. Learners have been notified.');
+                  } else throw new Error(res?.error);
+                } catch (e) { toast.error(e.message || 'Failed to start'); }
+                finally { setAttendanceStarting(false); }
+              }}>
+                {attendanceStarting ? 'Starting…' : 'Start attendance'}
               </Button>
             )}
-            <Button variant="secondary" size="sm" className="gap-2" onClick={() => navigate('/tutor/workshops')}>
-              <ChevronLeft className="h-4 w-4" /> Back to Workshops
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="ghost" size="sm" onClick={loadAll} className="gap-2">
+              <RefreshCw className="h-4 w-4" /> Refresh
             </Button>
           </div>
-        }
-      />
-
-      <div className="rounded-2xl border border-brintelli-border/60 bg-white shadow-sm overflow-hidden">
-        {/* Tab bar – same as learner: gradient banner + options */}
-        <div className="flex flex-wrap items-center gap-1 rounded-xl bg-gradient-to-r from-brintelli-primary/90 to-brintelli-primaryDark shadow-sm px-3 py-2 m-2">
-          {optionsNavItems.map((opt) => (
-            <button
-              key={opt.id}
-              type="button"
-              onClick={() => setActiveOption(opt.id)}
-              className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                activeOption === opt.id ? 'bg-white/20 text-white' : 'text-white/90 hover:bg-white/10 hover:text-white'
-              }`}
-            >
-              <opt.icon className="h-4 w-4" />
-              {opt.label}
-            </button>
-          ))}
         </div>
-
-        {activeOption === 'dashboard' && (
-          <div className="p-6">
-            <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
-              <LayoutDashboard className="h-5 w-5" /> Dashboard
-            </h3>
-            <p className="text-sm text-textMuted mb-4">Overview of this workshop. Use the tabs to manage quiz, doubts, resources, and certificates.</p>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="ghost" size="sm" onClick={loadAll} className="gap-2">
-                <RefreshCw className="h-4 w-4" /> Refresh
-              </Button>
-            </div>
-          </div>
-        )}
+      )}
 
         {activeOption === 'resources-notes' && (
           <div className="p-6 space-y-6">
@@ -509,15 +537,14 @@ const TutorWorkshopDetail = () => {
           </div>
         )}
 
-        {activeOption === 'certifications' && (
-          <div className="p-6">
-            <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
-              <Award className="h-5 w-5" /> Certifications
-            </h3>
-            <p className="text-sm text-textMuted">Certificate generation and sending is available in the Program Manager workshop manage page.</p>
-          </div>
-        )}
-      </div>
+      {activeOption === 'certifications' && (
+        <div className="p-6">
+          <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+            <Award className="h-5 w-5" /> Certifications
+          </h3>
+          <p className="text-sm text-textMuted">Certificate generation and sending is available in the Program Manager workshop manage page.</p>
+        </div>
+      )}
     </>
   );
 };

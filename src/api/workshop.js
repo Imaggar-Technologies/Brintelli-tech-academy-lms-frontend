@@ -72,6 +72,10 @@ export const workshopAPI = {
     return apiRequest(`/api/workshops/${id}/participants`);
   },
 
+  // Presence: touch (call when viewing workshop), get list with last active (tutor/LSM/PM only)
+  touchPresence: (id) => apiRequest(`/api/workshops/${id}/presence`, { method: 'POST' }),
+  getParticipantsWithPresence: (id) => apiRequest(`/api/workshops/${id}/participants/presence`),
+
   // Send email to all enrolled participants
   sendEmailToEnrolled: async (id, { subject, body, type = 'custom' }) => {
     return apiRequest(`/api/workshops/${id}/send-email`, {

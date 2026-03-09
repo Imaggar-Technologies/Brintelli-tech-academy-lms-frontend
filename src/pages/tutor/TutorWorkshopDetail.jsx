@@ -24,9 +24,11 @@ import {
   Clock,
   Download,
   Upload,
+  Eye,
 } from 'lucide-react';
 import Button from '../../components/Button';
 import QuizBuilder from '../../components/workshop/QuizBuilder';
+import CreateAssessmentModal from '../../components/workshop/CreateAssessmentModal';
 import workshopAPI from '../../api/workshop';
 import uploadAPI from '../../api/upload';
 
@@ -53,7 +55,11 @@ const TutorWorkshopDetail = () => {
   const [noteSending, setNoteSending] = useState(false);
   const [resourcesNotesSubTab, setResourcesNotesSubTab] = useState('resources'); // 'resources' | 'notes'
   const [resourceUploading, setResourceUploading] = useState(false);
+  const [createAssessmentModalOpen, setCreateAssessmentModalOpen] = useState(false);
+  const [assessmentCreating, setAssessmentCreating] = useState(false);
   const [attendanceStarting, setAttendanceStarting] = useState(false);
+  const [participantsWithPresence, setParticipantsWithPresence] = useState([]);
+  const [presenceOnlineCount, setPresenceOnlineCount] = useState(0);
   const [attendanceStopping, setAttendanceStopping] = useState(false);
   const [attendees, setAttendees] = useState([]);
   const [certificates, setCertificates] = useState([]);
@@ -104,6 +110,32 @@ const TutorWorkshopDetail = () => {
         setDashboardStats(null);
       }
     })();
+  }, [activeOption, workshopId]);
+
+  // Heartbeat: touch presence when viewing workshop (tutor/LSM/PM)
+  useEffect(() => {
+    if (!workshopId) return;
+    const touch = () => workshopAPI.touchPresence(workshopId).catch(() => {});
+    touch();
+    const interval = setInterval(touch, 60 * 1000);
+    return () => clearInterval(interval);
+  }, [workshopId]);
+
+  // Fetch participants with presence when on dashboard (poll every 30s)
+  useEffect(() => {
+    if (activeOption !== 'dashboard' || !workshopId) return;
+    const fetchPresence = async () => {
+      try {
+        const res = await workshopAPI.getParticipantsWithPresence(workshopId);
+        if (res?.success && res.data) {
+          setParticipantsWithPresence(res.data.participants || []);
+          setPresenceOnlineCount(res.data.onlineCount ?? 0);
+        }
+      } catch (_) {}
+    };
+    fetchPresence();
+    const interval = setInterval(fetchPresence, 30 * 1000);
+    return () => clearInterval(interval);
   }, [activeOption, workshopId]);
 
   const loadAll = async () => {
@@ -290,6 +322,48 @@ const TutorWorkshopDetail = () => {
             </div>
           </div>
 
+          {/* Participants (who's online / last active) */}
+          <div className="rounded-lg border border-brintelli-border p-4 space-y-3">
+            <h4 className="text-sm font-medium flex items-center gap-2">
+              <Users className="h-4 w-4" /> Participants
+              <span className="text-textMuted font-normal">
+                ({presenceOnlineCount} online · {participantsWithPresence.length} enrolled)
+              </span>
+            </h4>
+            <p className="text-sm text-textMuted">Enrolled learners. Green = currently viewing workshop; otherwise last active time.</p>
+            {participantsWithPresence.length === 0 ? (
+              <p className="text-sm text-textMuted">No enrolled participants yet.</p>
+            ) : (
+              <ul className="space-y-2 max-h-64 overflow-y-auto">
+                {participantsWithPresence.map((p) => {
+                  const lastActive = p.lastActiveAt ? (() => {
+                    const sec = Math.floor((Date.now() - new Date(p.lastActiveAt).getTime()) / 1000);
+                    if (sec < 60) return 'just now';
+                    if (sec < 3600) return `${Math.floor(sec / 60)} min ago`;
+                    if (sec < 86400) return `${Math.floor(sec / 3600)} h ago`;
+                    return `${Math.floor(sec / 86400)} d ago`;
+                  })() : null;
+                  return (
+                    <li key={p.userId} className="flex items-center justify-between gap-2 py-1.5 border-b border-brintelli-border/40 last:border-0">
+                      <span className="font-medium text-text truncate">{p.fullName}</span>
+                      <span className="shrink-0 flex items-center gap-1.5 text-xs">
+                        {p.isOnline ? (
+                          <span className="inline-flex items-center gap-1 text-green-700">
+                            <span className="w-2 h-2 rounded-full bg-green-500" aria-hidden /> Online
+                          </span>
+                        ) : lastActive ? (
+                          <span className="text-textMuted">Last active: {lastActive}</span>
+                        ) : (
+                          <span className="text-textMuted">—</span>
+                        )}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+
           {/* Attendance */}
           <div className="rounded-lg border border-brintelli-border p-4 space-y-3">
             <h4 className="text-sm font-medium flex items-center gap-2">
@@ -375,19 +449,30 @@ const TutorWorkshopDetail = () => {
             <div className="flex-1 space-y-4 mb-4">
               {resourceList.length > 0 && (
                 <div>
-                  <h4 className="text-xs font-medium text-textMuted mb-2">Resources</h4>
-                  <ul className="space-y-1">
+                  <h4 className="text-xs font-medium text-textMuted mb-3">Resources</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {resourceList.map((r, i) => (
-                      <li key={`res-${i}`} className="flex items-center justify-between gap-2 py-1.5 border-b border-brintelli-border/40">
-                        <a href={r.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-brand-600 hover:underline truncate text-sm">
-                          {r.label || 'Resource'} <ExternalLink className="h-3 w-3 shrink-0" />
+                      <div key={`res-${i}`} className="rounded-xl border border-brintelli-border bg-white p-4 shadow-sm flex flex-col">
+                        <div className="flex items-start justify-between gap-2 mb-3">
+                          <div className="min-w-0 flex-1 flex items-center gap-2">
+                            <FileText className="h-5 w-5 text-brand-500 shrink-0" />
+                            <span className="font-medium text-text truncate" title={r.label || r.url}>{r.label || 'Resource'}</span>
+                          </div>
+                          <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700 shrink-0 -mt-1 -mr-1" onClick={() => setResourceList((prev) => prev.filter((_, idx) => idx !== i))} aria-label="Remove resource">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <a
+                          href={r.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-brand-50 text-brand-600 hover:bg-brand-100 font-medium text-sm transition-colors"
+                        >
+                          <Eye className="h-4 w-4" /> View
                         </a>
-                        <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700 shrink-0" onClick={() => setResourceList((prev) => prev.filter((_, idx) => idx !== i))}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </li>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 </div>
               )}
               {hasNotes && (
@@ -654,31 +739,82 @@ const TutorWorkshopDetail = () => {
 
         {activeOption === 'assessment-assignments' && (
           <div className="p-6">
-            <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
-              <FileCheck className="h-5 w-5" /> Assessment & Assignments
-            </h3>
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <FileCheck className="h-5 w-5" /> Assessment & Assignments
+              </h3>
+              <Button size="sm" onClick={() => setCreateAssessmentModalOpen(true)} className="gap-1.5 bg-gradient-to-r from-brintelli-primary to-brintelli-primaryDark border-0">
+                <Plus className="h-4 w-4" /> Create assessment
+              </Button>
+            </div>
+            <p className="text-sm text-textMuted mb-4">Assignments appear as cards below. Students can submit from their workshop view.</p>
             {assignments.length === 0 ? (
-              <p className="text-sm text-textMuted">No assignments yet.</p>
+              <div className="rounded-xl border border-brintelli-border bg-brintelli-baseAlt/20 p-8 text-center">
+                <FileCheck className="h-12 w-12 text-textMuted mx-auto mb-3 opacity-60" />
+                <p className="text-sm text-textMuted mb-4">No assessments yet. Create one to get started.</p>
+                <Button size="sm" onClick={() => setCreateAssessmentModalOpen(true)}>Create assessment</Button>
+              </div>
             ) : (
-              <ul className="space-y-2">
+              <div className="space-y-4">
                 {assignments.map((a) => (
-                  <li key={a.id || a._id} className="flex justify-between items-center py-2 border-b border-brintelli-border/40">
-                    <span>{a.title || 'Untitled'}</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        workshopAPI.getSubmissions(workshopId, a.id || a._id).then((r) =>
-                          r?.success ? toast.success(`${(r.data?.submissions || []).length} submission(s)`) : null
-                        )
-                      }
-                    >
-                      View submissions
-                    </Button>
-                  </li>
+                  <div
+                    key={a.id || a._id}
+                    className="rounded-xl border border-brintelli-border bg-white p-5 shadow-sm transition hover:border-brand-500 hover:shadow-md"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-text mb-1">{a.title || 'Untitled'}</h4>
+                        {a.description && (
+                          <p className="text-sm text-textMuted mb-2 line-clamp-2">{a.description}</p>
+                        )}
+                        <div className="flex flex-wrap items-center gap-2">
+                          {a.dueDate && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs font-medium">
+                              <Clock className="h-3.5 w-3.5" /> Due: {new Date(a.dueDate).toLocaleDateString()}
+                            </span>
+                          )}
+                          <span className="px-2 py-0.5 rounded-full bg-brintelli-baseAlt text-xs text-textMuted">
+                            Assignment
+                          </span>
+                        </div>
+                      </div>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="shrink-0"
+                        onClick={() =>
+                          workshopAPI.getSubmissions(workshopId, a.id || a._id).then((r) => {
+                            if (r?.success) toast.success(`${(r.data?.submissions || []).length} submission(s)`);
+                          })
+                        }
+                      >
+                        View submissions
+                      </Button>
+                    </div>
+                  </div>
                 ))}
-              </ul>
+              </div>
             )}
+            <CreateAssessmentModal
+              isOpen={createAssessmentModalOpen}
+              onClose={() => setCreateAssessmentModalOpen(false)}
+              loading={assessmentCreating}
+              onSubmit={async (data) => {
+                setAssessmentCreating(true);
+                try {
+                  const res = await workshopAPI.createAssignment(workshopId, data);
+                  if (res?.success && res?.data?.assignment) {
+                    setAssignments((prev) => [res.data.assignment, ...prev]);
+                    setCreateAssessmentModalOpen(false);
+                    toast.success('Assessment created');
+                  } else throw new Error(res?.error);
+                } catch (e) {
+                  toast.error(e?.message || 'Failed to create assessment');
+                } finally {
+                  setAssessmentCreating(false);
+                }
+              }}
+            />
           </div>
         )}
 

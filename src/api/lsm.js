@@ -74,6 +74,13 @@ export const lsmAPI = {
     });
   },
 
+  // Remove batch (allowed when no students enrolled or all students are in another batch)
+  deleteBatch: async (batchId) => {
+    return apiRequest(`/api/lsm/batches/${batchId}`, {
+      method: 'DELETE',
+    });
+  },
+
   // Get enrolled students for a batch
   getBatchStudents: async (batchId) => {
     return apiRequest(`/api/lsm/batches/${batchId}/students`);

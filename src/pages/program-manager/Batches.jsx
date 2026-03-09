@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { Plus, ChevronLeft, ChevronRight, Calendar, Users, X, Search, RefreshCw } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Calendar, Users, X, Search, RefreshCw, Trash2 } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
 import Pagination from '../../components/Pagination';
+import ConfirmDialog from '../../components/ConfirmDialog';
 import lsmAPI from '../../api/lsm';
 import programAPI from '../../api/program';
 
@@ -24,6 +25,8 @@ const Batches = () => {
   const [selectedBatch, setSelectedBatch] = useState(null);
   const [batchStudents, setBatchStudents] = useState([]);
   const [loadingStudents, setLoadingStudents] = useState(false);
+  const [removeConfirm, setRemoveConfirm] = useState(null);
+  const [removingId, setRemovingId] = useState(null);
 
   useEffect(() => {
     fetchPrograms();
@@ -137,6 +140,41 @@ const Batches = () => {
 
   return (
     <>
+      <ConfirmDialog
+        isOpen={!!removeConfirm}
+        onClose={() => setRemoveConfirm(null)}
+        title="Remove batch"
+        message={
+          removeConfirm
+            ? removeConfirm.enrolled === 0
+              ? `Remove "${removeConfirm.name}"? This batch has no enrolled students. This cannot be undone.`
+              : `Remove "${removeConfirm.name}"? Only allowed if all enrolled students are in another batch. They will be unassigned from this batch.`
+            : ''
+        }
+        confirmLabel="Remove batch"
+        cancelLabel="Cancel"
+        variant="danger"
+        loading={removingId === removeConfirm?.id}
+        onConfirm={async () => {
+          if (!removeConfirm?.id) return;
+          setRemovingId(removeConfirm.id);
+          try {
+            const res = await lsmAPI.deleteBatch(removeConfirm.id);
+            if (res?.success) {
+              toast.success(res.message || 'Batch removed');
+              setRemoveConfirm(null);
+              fetchBatches();
+            } else {
+              toast.error(res?.error || 'Failed to remove batch');
+            }
+          } catch (err) {
+            toast.error(err?.message || 'Failed to remove batch');
+          } finally {
+            setRemovingId(null);
+          }
+        }}
+      />
+
       <PageHeader
         title="Batches"
         description="Manage all batches"
@@ -310,6 +348,22 @@ const Batches = () => {
                           >
                             <Calendar className="h-3 w-3" />
                             Sessions
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setRemoveConfirm({
+                                id: batch.id || batch._id,
+                                name: batch.name || 'This batch',
+                                enrolled: batch.students?.length ?? batch.enrolled ?? 0,
+                              });
+                            }}
+                            disabled={removingId === (batch.id || batch._id)}
+                            className="text-[10px] font-medium text-red-600 hover:text-red-700 flex items-center gap-1 transition-colors disabled:opacity-50"
+                            title="Remove batch (allowed when no students or all are in another batch)"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                            Remove
                           </button>
                         </div>
                       </td>

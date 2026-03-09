@@ -45,7 +45,6 @@ const TutorWorkshopDetail = () => {
   const [noteSending, setNoteSending] = useState(false);
 
   const hasMeetingLink = workshop?.meetingLink && (workshop?.deliveryMode === 'LIVE' || workshop?.meetingLink);
-  const resources = Array.isArray(workshop?.resources) ? workshop.resources : [];
   const hasNotes = Array.isArray(workshop?.tutorAnnouncements) && workshop.tutorAnnouncements.length > 0;
 
   const optionsNavItems = [
@@ -61,6 +60,11 @@ const TutorWorkshopDetail = () => {
   useEffect(() => {
     if (workshopId) loadAll();
   }, [workshopId]);
+
+  useEffect(() => {
+    const list = Array.isArray(workshop?.resources) ? workshop.resources : [];
+    setResourceList(list.map((r) => ({ label: r.label || '', url: r.url || '' })));
+  }, [workshop?.resources]);
 
   const loadAll = async () => {
     setLoading(true);
@@ -206,32 +210,177 @@ const TutorWorkshopDetail = () => {
         )}
 
         {activeOption === 'resources-notes' && (
-          <div className="p-6">
-            <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+          <div className="p-6 space-y-6">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
               <FileText className="h-5 w-5" /> Resources & Notes
             </h3>
-            {resources.length > 0 && (
-              <ul className="space-y-2 mb-4">
-                {resources.map((r, i) => (
-                  <li key={i}>
-                    <a href={r.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-brand-600 hover:underline">
-                      {r.label || 'Resource'} <ExternalLink className="h-3 w-3" />
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {hasNotes && (
-              <div>
-                <h4 className="text-sm font-medium flex items-center gap-1.5 mb-2"><StickyNote className="h-4 w-4" /> Notes</h4>
-                <ul className="space-y-2 text-sm text-text">
-                  {workshop.tutorAnnouncements.map((note, i) => (
-                    <li key={i}>{typeof note === 'string' ? note : (note?.text || note?.content || '')}</li>
+
+            {/* Create & manage resources */}
+            <div className="rounded-lg border border-brintelli-border p-4 space-y-4">
+              <h4 className="text-sm font-medium text-text">Resources</h4>
+              <p className="text-sm text-textMuted">Add links (docs, slides, videos). Save to store; check "Notify participants" to push and email students.</p>
+              <div className="flex flex-wrap gap-2 items-end">
+                <div className="flex-1 min-w-[140px]">
+                  <label className="block text-xs font-medium text-textMuted mb-1">Label</label>
+                  <input
+                    type="text"
+                    value={newResourceLabel}
+                    onChange={(e) => setNewResourceLabel(e.target.value)}
+                    placeholder="e.g. Slide deck"
+                    className="w-full rounded-lg border border-brintelli-border px-3 py-2 text-sm"
+                  />
+                </div>
+                <div className="flex-1 min-w-[200px]">
+                  <label className="block text-xs font-medium text-textMuted mb-1">URL</label>
+                  <input
+                    type="url"
+                    value={newResourceUrl}
+                    onChange={(e) => setNewResourceUrl(e.target.value)}
+                    placeholder="https://..."
+                    className="w-full rounded-lg border border-brintelli-border px-3 py-2 text-sm"
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    const label = newResourceLabel.trim();
+                    const url = newResourceUrl.trim();
+                    if (!url && !label) return;
+                    setResourceList((prev) => [...prev, { label: label || url, url: url || label }]);
+                    setNewResourceLabel('');
+                    setNewResourceUrl('');
+                  }}
+                >
+                  <Plus className="h-4 w-4 mr-1" /> Add resource
+                </Button>
+              </div>
+              {resourceList.length > 0 && (
+                <ul className="space-y-2">
+                  {resourceList.map((r, i) => (
+                    <li key={`res-${i}`} className="flex items-center justify-between gap-2 py-1 border-b border-brintelli-border/50">
+                      <a href={r.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-brand-600 hover:underline truncate">
+                        {r.label || 'Resource'} <ExternalLink className="h-3 w-3 shrink-0" />
+                      </a>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-600 hover:text-red-700"
+                        onClick={() => setResourceList((prev) => prev.filter((_, idx) => idx !== i))}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </li>
                   ))}
                 </ul>
+              )}
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={resourcesNotify}
+                    onChange={(e) => setResourcesNotify(e.target.checked)}
+                    className="rounded border-brintelli-border"
+                  />
+                  Notify participants (email when saving)
+                </label>
+                <Button
+                  size="sm"
+                  disabled={resourcesSaving}
+                  onClick={async () => {
+                    setResourcesSaving(true);
+                    try {
+                      const res = await workshopAPI.updateResources(workshopId, {
+                        resources: resourceList,
+                        notifyParticipants: resourcesNotify,
+                      });
+                      if (res?.success) {
+                        setWorkshop((w) => (w ? { ...w, resources: res.data?.resources ?? resourceList } : null));
+                        toast.success(res.message || 'Resources saved');
+                        if (resourcesNotify) setResourcesNotify(false);
+                      } else throw new Error(res?.error);
+                    } catch (e) {
+                      toast.error(e.message || 'Failed to save resources');
+                    } finally {
+                      setResourcesSaving(false);
+                    }
+                  }}
+                >
+                  {resourcesSaving ? 'Saving…' : 'Save resources'}
+                </Button>
               </div>
-            )}
-            {resources.length === 0 && !hasNotes && <p className="text-sm text-textMuted">No resources or notes yet.</p>}
+            </div>
+
+            {/* Notes (announcements) */}
+            <div className="rounded-lg border border-brintelli-border p-4 space-y-4">
+              <h4 className="text-sm font-medium text-text flex items-center gap-1.5">
+                <StickyNote className="h-4 w-4" /> Notes
+              </h4>
+              {hasNotes && (
+                <ul className="space-y-2 text-sm text-text">
+                  {(workshop?.tutorAnnouncements || []).map((note, i) => (
+                    <li key={`note-${i}`} className="py-2 border-b border-brintelli-border/50 last:border-0">
+                      {typeof note === 'string' ? note : (note?.content ?? note?.text ?? '')}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div>
+                <label className="block text-xs font-medium text-textMuted mb-1">New note</label>
+                <textarea
+                  value={noteContent}
+                  onChange={(e) => setNoteContent(e.target.value)}
+                  placeholder="Announcement or note for students..."
+                  rows={3}
+                  className="w-full rounded-lg border border-brintelli-border px-3 py-2 text-sm"
+                />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={noteSending || !noteContent.trim()}
+                  onClick={async () => {
+                    setNoteSending(true);
+                    try {
+                      const res = await workshopAPI.postWorkshopNote(workshopId, { content: noteContent.trim(), sendEmail: false });
+                      if (res?.success) {
+                        setWorkshop((w) => (w ? { ...w, tutorAnnouncements: res.data?.notes ?? [...(w.tutorAnnouncements || []), { content: noteContent.trim() }] } : null));
+                        setNoteContent('');
+                        toast.success('Note saved');
+                      } else throw new Error(res?.error);
+                    } catch (e) {
+                      toast.error(e.message || 'Failed to save note');
+                    } finally {
+                      setNoteSending(false);
+                    }
+                  }}
+                >
+                  {noteSending ? 'Saving…' : 'Save note'}
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={noteSending || !noteContent.trim()}
+                  onClick={async () => {
+                    setNoteSending(true);
+                    try {
+                      const res = await workshopAPI.postWorkshopNote(workshopId, { content: noteContent.trim(), sendEmail: true });
+                      if (res?.success) {
+                        setWorkshop((w) => (w ? { ...w, tutorAnnouncements: res.data?.notes ?? [...(w.tutorAnnouncements || []), { content: noteContent.trim() }] } : null));
+                        setNoteContent('');
+                        toast.success(res.message || 'Note saved and participants notified');
+                      } else throw new Error(res?.error);
+                    } catch (e) {
+                      toast.error(e.message || 'Failed to save and send');
+                    } finally {
+                      setNoteSending(false);
+                    }
+                  }}
+                >
+                  {noteSending ? 'Sending…' : 'Save & push to participants'}
+                </Button>
+              </div>
+            </div>
           </div>
         )}
 

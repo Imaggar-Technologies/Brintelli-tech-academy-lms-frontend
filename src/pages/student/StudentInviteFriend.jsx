@@ -104,11 +104,21 @@ const StudentInviteFriend = () => {
     return status || 'Pending';
   };
 
+  const formatExpiry = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+      const d = new Date(dateStr);
+      return Number.isNaN(d.getTime()) ? String(dateStr) : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    } catch {
+      return String(dateStr);
+    }
+  };
+
   return (
     <>
       <PageHeader
         title="Invite your friend"
-        description="Share your referral link and get rewarded. You can also check coupon codes and vouchers here."
+        description="Share your referral link so friends can sign up—you earn 100 points per join. Use your coupons at checkout, and copy voucher codes to send to friends."
       />
 
       {totalReferralPoints > 0 && (
@@ -152,8 +162,8 @@ const StudentInviteFriend = () => {
               <UserPlus className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-text">Your referral link</h3>
-              <p className="text-sm text-textSoft">Share this link; when friends sign up, they’ll be linked to you.</p>
+              <h3 className="text-lg font-semibold text-text">Invite friends with your link</h3>
+              <p className="text-sm text-textSoft">Send this link to friends. When they sign up, you earn 100 points and they get a 10% welcome discount.</p>
             </div>
           </div>
           <div className="p-4 space-y-4">
@@ -290,7 +300,7 @@ const StudentInviteFriend = () => {
           </div>
           <div>
             <h3 className="text-lg font-semibold text-text">My vouchers</h3>
-            <p className="text-sm text-textSoft">Vouchers sent to you by tutors, admins, or Brintelli. Expired vouchers are listed first.</p>
+            <p className="text-sm text-textSoft">Vouchers sent to you by tutors, admins, or Brintelli. You can use these at checkout or copy a code to send to a friend. Expired vouchers are listed first.</p>
           </div>
         </div>
         <div className="p-4">
@@ -318,7 +328,17 @@ const StudentInviteFriend = () => {
                       <span className="text-sm text-textSoft">{v.description}</span>
                     )}
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="shrink-0 gap-1"
+                      onClick={() => copyToClipboard(v.code, 'Voucher code')}
+                      title="Copy code to send to a friend"
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                      Copy & send to friend
+                    </Button>
                     {v.expiresAt && (
                       <span className={`text-xs ${v.isExpired ? 'text-amber-700 font-medium' : 'text-textMuted'}`}>
                         {v.isExpired ? 'Expired' : 'Expires'}: {formatExpiry(v.expiresAt)}

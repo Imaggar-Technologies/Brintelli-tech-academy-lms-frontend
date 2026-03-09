@@ -109,6 +109,11 @@ export const workshopAPI = {
 
   // Resources
   updateResources: (id, data) => apiRequest(`/api/workshops/${id}/resources`, { method: 'PATCH', body: JSON.stringify(data) }),
+  recordResourceDownload: (id, resourceIndex) =>
+    apiRequest(`/api/workshops/${id}/resources/download`, { method: 'POST', body: JSON.stringify({ resourceIndex }) }),
+
+  // Dashboard (tutor)
+  getDashboardStats: (id) => apiRequest(`/api/workshops/${id}/dashboard-stats`),
 
   // Attendance
   startAttendance: (id) => apiRequest(`/api/workshops/${id}/attendance/start`, { method: 'POST' }),

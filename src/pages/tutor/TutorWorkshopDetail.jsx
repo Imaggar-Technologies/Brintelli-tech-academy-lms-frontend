@@ -17,6 +17,12 @@ import {
   Plus,
   Trash2,
   ClipboardCheck,
+  Users,
+  HelpCircle,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Download,
 } from 'lucide-react';
 import Button from '../../components/Button';
 import QuizBuilder from '../../components/workshop/QuizBuilder';
@@ -49,6 +55,7 @@ const TutorWorkshopDetail = () => {
   const [certificates, setCertificates] = useState([]);
   const [certsGenerating, setCertsGenerating] = useState(false);
   const [certsSending, setCertsSending] = useState(false);
+  const [dashboardStats, setDashboardStats] = useState(null);
 
   const hasMeetingLink = workshop?.meetingLink && (workshop?.deliveryMode === 'LIVE' || workshop?.meetingLink);
   const hasNotes = Array.isArray(workshop?.tutorAnnouncements) && workshop.tutorAnnouncements.length > 0;
@@ -80,6 +87,18 @@ const TutorWorkshopDetail = () => {
         if (attRes?.success && attRes.data?.attendees) setAttendees(attRes.data.attendees);
         if (certRes?.success && certRes.data?.certificates) setCertificates(certRes.data.certificates || []);
       } catch (_) {}
+    })();
+  }, [activeOption, workshopId]);
+
+  useEffect(() => {
+    if (activeOption !== 'dashboard' || !workshopId) return;
+    (async () => {
+      try {
+        const res = await workshopAPI.getDashboardStats(workshopId);
+        if (res?.success && res.data) setDashboardStats(res.data);
+      } catch (_) {
+        setDashboardStats(null);
+      }
     })();
   }, [activeOption, workshopId]);
 
@@ -202,6 +221,54 @@ const TutorWorkshopDetail = () => {
           <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
             <LayoutDashboard className="h-5 w-5" /> Dashboard
           </h3>
+
+          {/* Metric cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div className="rounded-lg border border-brintelli-border bg-white p-4 shadow-sm">
+              <div className="flex items-center gap-2 text-textMuted mb-1">
+                <Users className="h-4 w-4" />
+                <span className="text-xs font-medium">Attendees</span>
+              </div>
+              <p className="text-2xl font-semibold text-text">{dashboardStats?.attendeesCount ?? (workshop?.attendees?.length ?? 0)}</p>
+            </div>
+            <div className="rounded-lg border border-brintelli-border bg-white p-4 shadow-sm">
+              <div className="flex items-center gap-2 text-textMuted mb-1">
+                <HelpCircle className="h-4 w-4" />
+                <span className="text-xs font-medium">Questions</span>
+              </div>
+              <p className="text-2xl font-semibold text-text">{dashboardStats?.questionsCount ?? 0}</p>
+            </div>
+            <div className="rounded-lg border border-brintelli-border bg-white p-4 shadow-sm">
+              <div className="flex items-center gap-2 text-textMuted mb-1">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <span className="text-xs font-medium">Correct</span>
+              </div>
+              <p className="text-2xl font-semibold text-green-700">{dashboardStats?.totalCorrect ?? 0}</p>
+            </div>
+            <div className="rounded-lg border border-brintelli-border bg-white p-4 shadow-sm">
+              <div className="flex items-center gap-2 text-textMuted mb-1">
+                <XCircle className="h-4 w-4 text-amber-600" />
+                <span className="text-xs font-medium">Wrong</span>
+              </div>
+              <p className="text-2xl font-semibold text-amber-700">{dashboardStats?.totalWrong ?? 0}</p>
+            </div>
+            <div className="rounded-lg border border-brintelli-border bg-white p-4 shadow-sm">
+              <div className="flex items-center gap-2 text-textMuted mb-1">
+                <Clock className="h-4 w-4" />
+                <span className="text-xs font-medium">Duration</span>
+              </div>
+              <p className="text-2xl font-semibold text-text">{dashboardStats?.durationMinutes != null ? `${dashboardStats.durationMinutes} min` : '—'}</p>
+            </div>
+            <div className="rounded-lg border border-brintelli-border bg-white p-4 shadow-sm">
+              <div className="flex items-center gap-2 text-textMuted mb-1">
+                <FileText className="h-4 w-4" />
+                <span className="text-xs font-medium">Resources</span>
+              </div>
+              <p className="text-2xl font-semibold text-text">{dashboardStats?.resourcesCount ?? (workshop?.resources?.length ?? 0)}</p>
+            </div>
+          </div>
+
+          {/* Attendance */}
           <div className="rounded-lg border border-brintelli-border p-4 space-y-3">
             <h4 className="text-sm font-medium flex items-center gap-2">
               <ClipboardCheck className="h-4 w-4" /> Attendance
@@ -239,8 +306,37 @@ const TutorWorkshopDetail = () => {
               </Button>
             )}
           </div>
+
+          {/* Resources & downloads */}
+          <div className="rounded-lg border border-brintelli-border p-4 space-y-3">
+            <h4 className="text-sm font-medium flex items-center gap-2">
+              <Download className="h-4 w-4" /> Resources &amp; who downloaded
+            </h4>
+            <p className="text-sm text-textMuted">Downloads are recorded when learners open a resource link from the workshop page.</p>
+            {(!dashboardStats?.resourceStats || dashboardStats.resourceStats.length === 0) ? (
+              <p className="text-sm text-textMuted">No resources added yet. Add links in Resources &amp; Notes.</p>
+            ) : (
+              <ul className="space-y-3">
+                {dashboardStats.resourceStats.map((rs) => (
+                  <li key={rs.resourceIndex} className="border-b border-brintelli-border/50 pb-3 last:border-0 last:pb-0">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <a href={rs.url} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-brand-600 hover:underline inline-flex items-center gap-1">
+                        {rs.label || rs.url || `Resource ${rs.resourceIndex + 1}`}
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                      <span className="text-sm text-textMuted">{rs.downloadCount} download{rs.downloadCount !== 1 ? 's' : ''}</span>
+                    </div>
+                    {rs.downloadCount > 0 && rs.downloadedByNames && (
+                      <p className="text-xs text-textMuted mt-1">Who: {rs.downloadedByNames.join(', ')}</p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
           <div className="flex flex-wrap gap-2">
-            <Button variant="ghost" size="sm" onClick={loadAll} className="gap-2">
+            <Button variant="ghost" size="sm" onClick={() => { loadAll(); workshopAPI.getDashboardStats(workshopId).then((r) => r?.success && r.data && setDashboardStats(r.data)); }} className="gap-2">
               <RefreshCw className="h-4 w-4" /> Refresh
             </Button>
           </div>

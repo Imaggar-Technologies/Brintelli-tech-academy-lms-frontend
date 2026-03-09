@@ -369,7 +369,13 @@ const StudentWorkshopDetail = () => {
                 <ul className="space-y-2">
                   {resources.map((r, i) => (
                     <li key={`res-${i}`}>
-                      <a href={r.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-brand-600 hover:underline">
+                      <a
+                        href={r.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 text-brand-600 hover:underline"
+                        onClick={() => workshopAPI.recordResourceDownload(workshopId, i).catch(() => {})}
+                      >
                         {r.label || 'Resource'} <ExternalLink className="h-3 w-3" />
                       </a>
                     </li>

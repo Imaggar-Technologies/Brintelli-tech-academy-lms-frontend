@@ -133,7 +133,12 @@ export const workshopAPI = {
       body: JSON.stringify(participantIds != null ? { participantIds } : {}),
     }),
   getCertificates: (id) => apiRequest(`/api/workshops/${id}/certificates`),
-  downloadCertificate: (id, certId) => apiRequestBlob(`/api/workshops/${id}/certificates/${certId}/download`),
+  /** Preview how the certificate will look (sample or for userId). Returns blob. */
+  getCertificatePreview: (id, userId = null) =>
+    apiRequestBlob(`/api/workshops/${id}/certificates/preview${userId ? `?userId=${encodeURIComponent(userId)}` : ''}`),
+  /** Download or preview an existing certificate. preview=true returns same PDF with inline disposition. */
+  downloadCertificate: (id, certId, preview = false) =>
+    apiRequestBlob(`/api/workshops/${id}/certificates/${certId}/download${preview ? '?preview=1' : ''}`),
   sendCertificatesToParticipants: (id, participantIds = null) =>
     apiRequest(`/api/workshops/${id}/certificates/send`, {
       method: 'POST',

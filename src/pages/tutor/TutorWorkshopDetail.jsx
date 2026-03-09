@@ -27,7 +27,9 @@ import {
   Eye,
 } from 'lucide-react';
 import Button from '../../components/Button';
-import QuizBuilder from '../../components/workshop/QuizBuilder';
+import Modal from '../../components/Modal';
+import QuizQuestionCards from '../../components/workshop/QuizQuestionCards';
+import QuestionEditModal from '../../components/workshop/QuestionEditModal';
 import CreateAssessmentModal from '../../components/workshop/CreateAssessmentModal';
 import workshopAPI from '../../api/workshop';
 import uploadAPI from '../../api/upload';
@@ -44,6 +46,8 @@ const TutorWorkshopDetail = () => {
   const [activeOption, setActiveOption] = useState('dashboard');
   const [quizSaving, setQuizSaving] = useState(false);
   const [quizPublishing, setQuizPublishing] = useState(false);
+  const [quizQuestionModalOpen, setQuizQuestionModalOpen] = useState(false);
+  const [quizQuestionEditIndex, setQuizQuestionEditIndex] = useState(null);
   const [answerDraft, setAnswerDraft] = useState({});
   const [answeringId, setAnsweringId] = useState(null);
   const [resourceList, setResourceList] = useState([]);
@@ -65,6 +69,9 @@ const TutorWorkshopDetail = () => {
   const [certificates, setCertificates] = useState([]);
   const [certsGenerating, setCertsGenerating] = useState(false);
   const [certsSending, setCertsSending] = useState(false);
+  const [certPreviewOpen, setCertPreviewOpen] = useState(false);
+  const [certPreviewObjectUrl, setCertPreviewObjectUrl] = useState(null);
+  const [certPreviewLoading, setCertPreviewLoading] = useState(false);
   const [dashboardStats, setDashboardStats] = useState(null);
 
   const hasMeetingLink = workshop?.meetingLink && (workshop?.deliveryMode === 'LIVE' || workshop?.meetingLink);
@@ -657,28 +664,69 @@ const TutorWorkshopDetail = () => {
               <Trophy className="h-5 w-5" /> Quiz
             </h3>
             <div className="rounded-xl border border-brintelli-border bg-brintelli-baseAlt/20 p-4 sm:p-6 space-y-6">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-sm text-textMuted">Build quiz, poll, or review questions. Learners will see this same layout when they take it.</p>
-                <div className="flex flex-wrap items-center gap-2">
-                  {quiz && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={quizPublishing}
-                      onClick={() => handlePublishQuiz(!quiz.published)}
-                      className="text-textMuted hover:text-text"
-                    >
-                      {quiz.published ? 'Published' : 'Unpublished'} · click to toggle
-                    </Button>
-                  )}
-                  <Button size="sm" disabled={quizSaving} onClick={handleSaveQuiz}>
-                    {quizSaving ? 'Saving…' : quiz ? 'Update quiz' : 'Create quiz'}
-                  </Button>
-                </div>
+              <p className="text-sm text-textMuted">Build quiz, poll, or review questions. View and edit questions as cards; add or edit opens the question in a modal.</p>
+              <div>
+                <label htmlFor="quiz-title-input" className="text-sm font-medium text-textSoft mb-2 block">Quiz title</label>
+                <input
+                  id="quiz-title-input"
+                  type="text"
+                  value={quiz?.title ?? 'Workshop Quiz'}
+                  onChange={(e) => setQuiz({ ...(quiz || { questions: [] }), title: e.target.value })}
+                  className="w-full rounded-lg border border-brintelli-border px-3 py-2 text-sm bg-white"
+                  placeholder="Workshop Quiz"
+                />
               </div>
-              <QuizBuilder
-                quiz={quiz || { title: 'Workshop Quiz', questions: [] }}
-                onChange={(next) => setQuiz(next)}
+              <div className="flex flex-wrap items-center gap-2">
+                {quiz && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={quizPublishing}
+                    onClick={() => handlePublishQuiz(!quiz.published)}
+                    className="text-textMuted hover:text-text"
+                  >
+                    {quiz?.published ? 'Published' : 'Unpublished'} · click to toggle
+                  </Button>
+                )}
+                <Button size="sm" disabled={quizSaving} onClick={handleSaveQuiz}>
+                  {quizSaving ? 'Saving…' : quiz ? 'Update quiz' : 'Create quiz'}
+                </Button>
+              </div>
+              <QuizQuestionCards
+                questions={quiz?.questions ?? []}
+                onAddQuestion={() => {
+                  setQuizQuestionEditIndex(null);
+                  setQuizQuestionModalOpen(true);
+                }}
+                onEditQuestion={(index) => {
+                  setQuizQuestionEditIndex(index);
+                  setQuizQuestionModalOpen(true);
+                }}
+                onDeleteQuestion={(index) => {
+                  const base = quiz || { title: 'Workshop Quiz' };
+                  const next = (base.questions ?? []).filter((_, i) => i !== index);
+                  setQuiz({ ...base, questions: next });
+                }}
+              />
+              <QuestionEditModal
+                isOpen={quizQuestionModalOpen}
+                onClose={() => {
+                  setQuizQuestionModalOpen(false);
+                  setQuizQuestionEditIndex(null);
+                }}
+                question={quizQuestionEditIndex === null ? null : (quiz?.questions ?? [])[quizQuestionEditIndex]}
+                onSave={(questionData) => {
+                  const base = quiz || { title: 'Workshop Quiz', questions: [] };
+                  const questions = [...(base.questions ?? [])];
+                  if (quizQuestionEditIndex === null) {
+                    questions.push(questionData);
+                  } else {
+                    questions[quizQuestionEditIndex] = questionData;
+                  }
+                  setQuiz({ ...base, questions });
+                  setQuizQuestionModalOpen(false);
+                  setQuizQuestionEditIndex(null);
+                }}
                 onUploadFile={async (file, folder) => {
                   try {
                     const res = await uploadAPI.uploadFile(file, folder || 'workshop-quiz');
@@ -940,7 +988,28 @@ const TutorWorkshopDetail = () => {
           </div>
           <div className="rounded-lg border border-brintelli-border p-4 space-y-3">
             <h4 className="text-sm font-medium text-text">Certificates</h4>
+            <p className="text-sm text-textMuted">Preview how the certificate will look, then generate and send.</p>
             <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={certPreviewLoading}
+                onClick={async () => {
+                  setCertPreviewLoading(true);
+                  try {
+                    const blob = await workshopAPI.getCertificatePreview(workshopId, attendees[0]?.userId || null);
+                    if (certPreviewObjectUrl) URL.revokeObjectURL(certPreviewObjectUrl);
+                    setCertPreviewObjectUrl(URL.createObjectURL(blob));
+                    setCertPreviewOpen(true);
+                  } catch (e) {
+                    toast.error(e?.message || 'Failed to load preview');
+                  } finally {
+                    setCertPreviewLoading(false);
+                  }
+                }}
+              >
+                {certPreviewLoading ? 'Loading…' : 'Preview certificate'}
+              </Button>
               <Button
                 size="sm"
                 variant="secondary"
@@ -988,14 +1057,60 @@ const TutorWorkshopDetail = () => {
             ) : (
               <ul className="space-y-1">
                 {certificates.map((c) => (
-                  <li key={c.id || c.userId} className="flex justify-between text-sm py-1 border-b border-brintelli-border/40 last:border-0">
+                  <li key={c.id || c.userId} className="flex justify-between items-center gap-2 text-sm py-1 border-b border-brintelli-border/40 last:border-0">
                     <span>{c.userName || c.userEmail}</span>
                     <span className="text-textMuted font-mono text-xs">{c.certificateNumber}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="shrink-0"
+                      disabled={certPreviewLoading}
+                      onClick={async () => {
+                        setCertPreviewLoading(true);
+                        try {
+                          const blob = await workshopAPI.downloadCertificate(workshopId, c.id, true);
+                          if (certPreviewObjectUrl) URL.revokeObjectURL(certPreviewObjectUrl);
+                          setCertPreviewObjectUrl(URL.createObjectURL(blob));
+                          setCertPreviewOpen(true);
+                        } catch (e) {
+                          toast.error(e?.message || 'Failed to load preview');
+                        } finally {
+                          setCertPreviewLoading(false);
+                        }
+                      }}
+                    >
+                      Preview
+                    </Button>
                   </li>
                 ))}
               </ul>
             )}
           </div>
+
+          <Modal
+            isOpen={certPreviewOpen}
+            onClose={() => {
+              setCertPreviewOpen(false);
+              if (certPreviewObjectUrl) {
+                URL.revokeObjectURL(certPreviewObjectUrl);
+                setCertPreviewObjectUrl(null);
+              }
+            }}
+            title="Certificate preview"
+            size="xl"
+          >
+            <div className="min-h-[70vh] -m-6">
+              {certPreviewObjectUrl ? (
+                <iframe
+                  src={certPreviewObjectUrl}
+                  title="Certificate preview"
+                  className="w-full h-[75vh] rounded-b-2xl border-0"
+                />
+              ) : (
+                <p className="text-textMuted py-8 text-center">Loading…</p>
+              )}
+            </div>
+          </Modal>
         </div>
       )}
     </>

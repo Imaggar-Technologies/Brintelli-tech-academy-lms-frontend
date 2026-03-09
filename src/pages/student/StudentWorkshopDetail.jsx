@@ -194,15 +194,16 @@ const StudentWorkshopDetail = () => {
   const showClockInModal = !!(
     workshop?.attendanceOpen &&
     isRegistered &&
-    !workshop?.currentUserClockedIn
+    !workshop?.currentUserClockedIn &&
+    !workshop?.clockInDismissed
   );
 
   return (
     <>
       {showClockInModal && (
         <Modal
-          open={showClockInModal}
-          onClose={() => {}}
+          isOpen={showClockInModal}
+          onClose={() => setWorkshop((w) => (w ? { ...w, clockInDismissed: true } : null))}
           title="Mark your attendance"
         >
           <div className="p-4 space-y-4">
@@ -219,7 +220,9 @@ const StudentWorkshopDetail = () => {
                   try {
                     const res = await workshopAPI.clockIn(workshopId);
                     if (res?.success) {
-                      setWorkshop((w) => (w ? { ...w, currentUserClockedIn: true } : null));
+                      const updated = res.data?.workshop;
+                      if (updated) setWorkshop((w) => (w ? { ...w, ...updated, currentUserClockedIn: true } : null));
+                      else setWorkshop((w) => (w ? { ...w, currentUserClockedIn: true } : null));
                       toast.success(res?.message || 'You have clocked in.');
                     } else throw new Error(res?.error);
                   } catch (e) {

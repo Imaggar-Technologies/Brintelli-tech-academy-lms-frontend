@@ -177,16 +177,15 @@ const TutorWorkshopDetail = () => {
       />
 
       <div className="rounded-2xl border border-brintelli-border/60 bg-white shadow-sm overflow-hidden">
-        <div className="flex flex-wrap gap-1 p-2">
+        {/* Tab bar – same as learner: gradient banner + options */}
+        <div className="flex flex-wrap items-center gap-1 rounded-xl bg-gradient-to-r from-brintelli-primary/90 to-brintelli-primaryDark shadow-sm px-3 py-2 m-2">
           {optionsNavItems.map((opt) => (
             <button
               key={opt.id}
               type="button"
               onClick={() => setActiveOption(opt.id)}
               className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                activeOption === opt.id
-                  ? 'bg-brand-500 text-white'
-                  : 'text-textMuted hover:bg-brintelli-baseAlt/50 hover:text-text'
+                activeOption === opt.id ? 'bg-white/20 text-white' : 'text-white/90 hover:bg-white/10 hover:text-white'
               }`}
             >
               <opt.icon className="h-4 w-4" />

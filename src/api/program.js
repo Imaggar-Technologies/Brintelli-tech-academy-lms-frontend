@@ -29,6 +29,12 @@ export const programAPI = {
     });
   },
 
+  deleteProgram: async (programId) => {
+    return apiRequest(`/api/programs/${programId}`, {
+      method: 'DELETE',
+    });
+  },
+
   // Modules
   createModule: async (programId, moduleData) => {
     return apiRequest(`/api/programs/${programId}/modules`, {

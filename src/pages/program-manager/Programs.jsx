@@ -26,6 +26,7 @@ const Programs = () => {
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
   const [formData, setFormData] = useState({});
   const [tutors, setTutors] = useState([]);
+  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
     fetchPrograms();
@@ -401,6 +402,35 @@ const Programs = () => {
                             >
                               <Edit2 className="h-3 w-3" />
                               Edit
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={deletingId === programId}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (!programId) return;
+                                const programName = program.name || program.code || 'This program';
+                                if (!window.confirm(`Delete "${programName}"? This cannot be undone.`)) return;
+                                setDeletingId(programId);
+                                programAPI.deleteProgram(programId)
+                                  .then((res) => {
+                                    if (res?.success) {
+                                      toast.success('Program deleted');
+                                      fetchPrograms();
+                                    } else {
+                                      toast.error(res?.error || 'Failed to delete program');
+                                    }
+                                  })
+                                  .catch((err) => {
+                                    toast.error(err?.message || 'Failed to delete program');
+                                  })
+                                  .finally(() => setDeletingId(null));
+                              }}
+                              className="gap-1 px-2 py-1 text-[10px] text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                              {deletingId === programId ? 'Deleting…' : 'Delete'}
                             </Button>
                           </div>
                         </td>

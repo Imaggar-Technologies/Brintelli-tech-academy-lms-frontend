@@ -210,15 +210,17 @@ const StudentWorkshopDetail = () => {
         </div>
       </div>
 
-      {/* Tab bar – each tab is a page */}
-      <div className="flex flex-wrap items-center gap-1 rounded-xl bg-gradient-to-r from-brintelli-primary/90 to-brintelli-primaryDark shadow-sm px-3 py-2 mb-6">
+      {/* Tab bar – no banner, options only */}
+      <div className="flex flex-wrap items-center gap-1 mb-6">
         {optionsNavItems.map((item) => (
           <button
             key={item.id}
             type="button"
             onClick={() => handleOptionClick(item)}
             className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-              activeOption === item.id ? 'bg-white/20 text-white' : 'text-white/90 hover:bg-white/10 hover:text-white'
+              activeOption === item.id
+                ? 'bg-brand-500 text-white'
+                : 'text-textMuted hover:bg-brintelli-baseAlt/50 hover:text-text'
             }`}
           >
             <item.icon className="h-4 w-4" />

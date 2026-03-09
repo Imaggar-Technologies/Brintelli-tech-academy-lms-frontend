@@ -177,7 +177,7 @@ const TutorWorkshopDetail = () => {
       />
 
       <div className="rounded-2xl border border-brintelli-border/60 bg-white shadow-sm overflow-hidden">
-        <div className="flex flex-wrap gap-1 p-2 border-b border-brintelli-border/60 bg-brintelli-baseAlt/40">
+        <div className="flex flex-wrap gap-1 p-2">
           {optionsNavItems.map((opt) => (
             <button
               key={opt.id}
@@ -186,7 +186,7 @@ const TutorWorkshopDetail = () => {
               className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                 activeOption === opt.id
                   ? 'bg-brand-500 text-white'
-                  : 'text-textMuted hover:bg-brintelli-baseAlt hover:text-text'
+                  : 'text-textMuted hover:bg-brintelli-baseAlt/50 hover:text-text'
               }`}
             >
               <opt.icon className="h-4 w-4" />

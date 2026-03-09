@@ -3,7 +3,8 @@ import Button from "../Button";
 import { Plus, Trash2 } from "lucide-react";
 
 const QUESTION_TYPES = [
-  { value: "quiz", label: "Quiz (multiple choice, one correct)" },
+  { value: "quiz", label: "Single choice (one correct answer)" },
+  { value: "quiz-multi", label: "Multiple choice (multiple correct answers)" },
   { value: "poll", label: "Poll (multiple choice, no correct answer)" },
   { value: "review", label: "Review (rating 1–5 or free text)" },
 ];
@@ -15,6 +16,7 @@ const emptyQuestion = () => ({
   questionImage: "",
   options: [{ ...emptyOption() }, { ...emptyOption() }],
   correctIndex: 0,
+  correctIndices: [],
   reviewType: "scale",
 });
 
@@ -28,12 +30,18 @@ function normalizeQuestion(q) {
   let options = normalizeOptions(q);
   if (type === "review" && options.length === 0) options = [{ text: "1" }, { text: "2" }, { text: "3" }, { text: "4" }, { text: "5" }];
   if (options.length < 2 && type !== "review") options = [emptyOption(), emptyOption()];
+  const isMulti = type === "quiz-multi";
+  const correctIndices = isMulti && Array.isArray(q.correctIndices)
+    ? q.correctIndices.filter((idx) => Number.isInteger(idx) && idx >= 0 && idx < options.length)
+    : (isMulti && q.correctIndex != null ? [Math.max(0, Math.min(q.correctIndex, options.length - 1))] : []);
+  const correctIndex = !isMulti && q.correctIndex != null ? Math.max(0, Math.min(q.correctIndex, options.length - 1)) : 0;
   return {
     type,
     question: q.question || q.text || "",
     questionImage: q.questionImage || "",
     options,
-    correctIndex: q.correctIndex != null ? Math.max(0, Math.min(q.correctIndex, options.length - 1)) : 0,
+    correctIndex,
+    correctIndices,
     reviewType: q.reviewType || "scale",
   };
 }
@@ -59,9 +67,18 @@ export default function QuizBuilder({ quiz, onChange }) {
   const removeOption = (qIdx, oIdx) => {
     const q = questions[qIdx];
     const opts = (q.options || []).filter((_, i) => i !== oIdx);
-    let correctIndex = q.correctIndex;
-    if (correctIndex >= opts.length) correctIndex = Math.max(0, opts.length - 1);
-    updateQuestion(qIdx, { options: opts.length ? opts : [emptyOption()], correctIndex });
+    const isMulti = q.type === "quiz-multi";
+    if (isMulti) {
+      const correctIndices = (q.correctIndices || [])
+        .filter((i) => i !== oIdx)
+        .map((i) => (i > oIdx ? i - 1 : i));
+      updateQuestion(qIdx, { options: opts.length ? opts : [emptyOption()], correctIndices });
+    } else {
+      let correctIndex = q.correctIndex;
+      if (correctIndex === oIdx) correctIndex = opts.length ? 0 : 0;
+      else if (correctIndex > oIdx) correctIndex--;
+      updateQuestion(qIdx, { options: opts.length ? opts : [emptyOption()], correctIndex });
+    }
   };
   const updateOption = (qIdx, oIdx, field, value) => {
     const q = questions[qIdx];
@@ -111,7 +128,9 @@ export default function QuizBuilder({ quiz, onChange }) {
                       const type = e.target.value;
                       let opts = q.options;
                       if (type === "review") opts = [{ text: "1" }, { text: "2" }, { text: "3" }, { text: "4" }, { text: "5" }];
-                      updateQuestion(qIdx, { type, options: opts, correctIndex: type === "poll" ? undefined : q.correctIndex });
+                      if (type === "poll") updateQuestion(qIdx, { type, options: opts, correctIndex: undefined, correctIndices: [] });
+                      else if (type === "quiz-multi") updateQuestion(qIdx, { type, options: opts, correctIndices: q.correctIndex != null ? [q.correctIndex] : (q.correctIndices || []), correctIndex: undefined });
+                      else updateQuestion(qIdx, { type, options: opts, correctIndex: Array.isArray(q.correctIndices) && q.correctIndices.length ? q.correctIndices[0] : (q.correctIndex ?? 0), correctIndices: [] });
                     }}
                     className="w-full rounded-lg border border-brintelli-border px-3 py-2 text-sm"
                   >
@@ -164,6 +183,20 @@ export default function QuizBuilder({ quiz, onChange }) {
                               checked={q.correctIndex === oIdx}
                               onChange={() => updateQuestion(qIdx, { correctIndex: oIdx })}
                               className="rounded-full"
+                              aria-label={`Correct answer: option ${oIdx + 1}`}
+                            />
+                          )}
+                          {q.type === "quiz-multi" && (
+                            <input
+                              type="checkbox"
+                              checked={(q.correctIndices || []).includes(oIdx)}
+                              onChange={() => {
+                                const prev = q.correctIndices || [];
+                                const next = prev.includes(oIdx) ? prev.filter((i) => i !== oIdx) : [...prev, oIdx].sort((a, b) => a - b);
+                                updateQuestion(qIdx, { correctIndices: next });
+                              }}
+                              className="rounded"
+                              aria-label={`Correct answer: option ${oIdx + 1}`}
                             />
                           )}
                           <input

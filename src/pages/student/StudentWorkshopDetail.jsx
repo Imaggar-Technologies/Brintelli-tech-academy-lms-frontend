@@ -376,6 +376,35 @@ const StudentWorkshopDetail = () => {
                                 setQuizAnswers(next);
                               }}
                             />
+                          ) : type === 'quiz-multi' ? (
+                            <div className="space-y-2 mt-2">
+                              <p className="text-xs text-textMuted mb-1">Select all that apply.</p>
+                              {opts.map((opt, j) => {
+                                const text = typeof opt === 'object' && opt != null ? (opt.text || '') : String(opt);
+                                const img = typeof opt === 'object' && opt != null ? (opt.image || '') : '';
+                                const selected = Array.isArray(quizAnswers[i]) ? quizAnswers[i] : [];
+                                const checked = selected.includes(j);
+                                return (
+                                  <label key={j} className="flex items-start gap-3 cursor-pointer rounded-lg border border-brintelli-border/60 p-2 hover:bg-brintelli-baseAlt/30">
+                                    <input
+                                      type="checkbox"
+                                      checked={checked}
+                                      onChange={() => {
+                                        const next = [...quizAnswers];
+                                        const current = Array.isArray(next[i]) ? next[i] : [];
+                                        next[i] = current.includes(j) ? current.filter((k) => k !== j) : [...current, j].sort((a, b) => a - b);
+                                        setQuizAnswers(next);
+                                      }}
+                                      className="mt-1"
+                                    />
+                                    <span className="flex-1 flex items-center gap-2 flex-wrap">
+                                      {img && <img src={img} alt="" className="max-h-16 rounded object-contain" onError={(e) => e.target.style.display = 'none'} />}
+                                      <span className="text-sm">{text || `Option ${j + 1}`}</span>
+                                    </span>
+                                  </label>
+                                );
+                              })}
+                            </div>
                           ) : (
                             <div className="space-y-2 mt-2">
                               {opts.map((opt, j) => {
@@ -414,7 +443,7 @@ const StudentWorkshopDetail = () => {
                 ) : (
                   <>
                     <p className="text-textMuted mb-3">
-                      {(quiz.questions || []).some((q) => (q.type || 'quiz') === 'quiz')
+                      {(quiz.questions || []).some((q) => { const t = q.type || 'quiz'; return t === 'quiz' || t === 'quiz-multi'; })
                         ? 'You have submitted. Your score is added to your total points.'
                         : 'Thank you for your response.'}
                     </p>

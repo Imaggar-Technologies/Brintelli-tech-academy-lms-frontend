@@ -707,6 +707,46 @@ const TutorWorkshopDetail = () => {
                   const next = (base.questions ?? []).filter((_, i) => i !== index);
                   setQuiz({ ...base, questions: next });
                 }}
+                onPublishQuestion={(index) => {
+                  const base = quiz || { title: 'Workshop Quiz', questions: [] };
+                  const questions = (base.questions ?? []).map((q, i) =>
+                    i === index ? { ...q, published: true } : q
+                  );
+                  setQuiz({ ...base, questions });
+                }}
+                onUnpublishQuestion={(index) => {
+                  const base = quiz || { title: 'Workshop Quiz', questions: [] };
+                  const questions = (base.questions ?? []).map((q, i) =>
+                    i === index ? { ...q, published: false } : q
+                  );
+                  setQuiz({ ...base, questions });
+                }}
+                onPublishAll={() => {
+                  const base = quiz || { title: 'Workshop Quiz', questions: [] };
+                  const questions = (base.questions ?? []).map((q) => ({ ...q, published: true }));
+                  setQuiz({ ...base, questions });
+                }}
+                onUnpublishAll={() => {
+                  const base = quiz || { title: 'Workshop Quiz', questions: [] };
+                  const questions = (base.questions ?? []).map((q) => ({ ...q, published: false }));
+                  setQuiz({ ...base, questions });
+                }}
+                onPublishSelected={(indices) => {
+                  const base = quiz || { title: 'Workshop Quiz', questions: [] };
+                  const set = new Set(indices);
+                  const questions = (base.questions ?? []).map((q, i) =>
+                    set.has(i) ? { ...q, published: true } : q
+                  );
+                  setQuiz({ ...base, questions });
+                }}
+                onUnpublishSelected={(indices) => {
+                  const base = quiz || { title: 'Workshop Quiz', questions: [] };
+                  const set = new Set(indices);
+                  const questions = (base.questions ?? []).map((q, i) =>
+                    set.has(i) ? { ...q, published: false } : q
+                  );
+                  setQuiz({ ...base, questions });
+                }}
               />
               <QuestionEditModal
                 isOpen={quizQuestionModalOpen}

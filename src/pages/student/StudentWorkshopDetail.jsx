@@ -52,6 +52,8 @@ const StudentWorkshopDetail = () => {
   const [activeOption, setActiveOption] = useState('dashboard');
   const [myCertificate, setMyCertificate] = useState(null);
   const [quizResult, setQuizResult] = useState(null);
+  const [questionResults, setQuestionResults] = useState({});
+  const [submittingQuestionIndex, setSubmittingQuestionIndex] = useState(null);
   const [clockingIn, setClockingIn] = useState(false);
 
   const isRegistered = workshop?.participants?.some((p) => (p?.toString?.() || p) === userId);
@@ -102,8 +104,12 @@ const StudentWorkshopDetail = () => {
       if (qRes.success && qRes.data?.quiz) {
         try {
           const rr = await workshopAPI.getQuizResult(workshopId);
-          if (rr?.success && rr.data?.withAnswers) setQuizResult(rr.data);
-          else setQuizResult(null);
+          if (rr?.success && rr.data?.withAnswers) {
+            setQuizResult(rr.data);
+            setQuestionResults({});
+          } else {
+            setQuizResult(null);
+          }
         } catch {
           setQuizResult(null);
         }
@@ -131,6 +137,48 @@ const StudentWorkshopDetail = () => {
       toast.error(e.message || 'Failed to submit feedback');
     } finally {
       setSubmittingFeedback(false);
+    }
+  };
+
+  const handleSubmitOneQuestion = async (answerableIndex) => {
+    if (!quiz || !isRegistered) return;
+    const answer = quizAnswers[answerableIndex];
+    if (answer === undefined || answer === null) {
+      toast.error('Please select an answer first.');
+      return;
+    }
+    setSubmittingQuestionIndex(answerableIndex);
+    try {
+      const res = await workshopAPI.submitQuizAnswer(workshopId, { answerableIndex, answer });
+      if (res.success && res.data) {
+        const d = res.data;
+        setQuestionResults((prev) => ({ ...prev, [answerableIndex]: d }));
+        const total = d.totalQuestions ?? 0;
+        const scoreSoFar = d.scoreSoFar ?? 0;
+        const totalAnswered = d.totalAnswered ?? 0;
+        if (d.correct === true && (d.pointsEarned ?? 0) > 0) {
+          toast.success(`Correct! +${d.pointsEarned} point. Score: ${scoreSoFar}/${total}`, { duration: 4000 });
+        } else if (d.correct === false && total > 0) {
+          toast.error(`Incorrect. Correct: ${d.correctAnswerDisplay ?? '—'}. Score: ${scoreSoFar}/${total}`, { duration: 5000 });
+        } else {
+          toast.success(`Answer saved. Score: ${scoreSoFar}/${total}`);
+        }
+        const questionCount = (quiz.questions || []).length;
+        if (questionCount > 0 && totalAnswered >= questionCount) {
+          if (total > 0) {
+            const pct = Math.round((scoreSoFar / total) * 100);
+            toast.success(`All done! Final score: ${scoreSoFar}/${total} (${pct}% accuracy)`, { duration: 5000 });
+          } else {
+            toast.success('All answers submitted. Thank you!', { duration: 4000 });
+          }
+          setQuizSubmitted(true);
+          loadAll();
+        }
+      } else toast.error(res?.message || 'Failed to submit');
+    } catch (e) {
+      toast.error(e?.message || 'Failed to submit answer');
+    } finally {
+      setSubmittingQuestionIndex(null);
     }
   };
 
@@ -443,92 +491,133 @@ const StudentWorkshopDetail = () => {
                   (quiz.questions?.length ?? 0) === 0 ? (
                     <p className="text-sm text-textMuted">No questions in this quiz yet.</p>
                   ) : (
-                  <form onSubmit={handleSubmitQuiz} className="space-y-6">
+                  <div className="space-y-6">
+                    {Object.keys(questionResults).length > 0 && (() => {
+                      const last = Object.values(questionResults).slice(-1)[0];
+                      if (!last || last.totalQuestions == null) return null;
+                      return (
+                        <div className="rounded-xl border-2 border-brand-200 bg-brand-50/80 p-3 mb-4 flex items-center gap-3">
+                          <span className="text-lg font-bold text-brand-600">{last.scoreSoFar ?? 0}/{last.totalQuestions}</span>
+                          <span className="text-sm text-textMuted">Score so far</span>
+                        </div>
+                      );
+                    })()}
                     {(quiz.questions || []).map((q, i) => {
                       const type = q.type || 'quiz';
                       const opts = q.options || [];
                       const isReviewFreetext = type === 'review' && (q.reviewType === 'freetext' || opts.length <= 1);
+                      const result = questionResults[i];
+                      const submitted = !!result;
                       return (
-                        <div key={`q-${i}`} className="border-b border-gray-100 pb-4">
-                          <p className="font-medium text-sm mb-1">{i + 1}. {q.question || q.text}</p>
+                        <div key={`q-${i}`} className="border border-brintelli-border rounded-xl p-4 bg-white space-y-3">
+                          <p className="font-medium text-sm">{i + 1}. {q.question || q.text}</p>
                           {q.questionImage && (
                             <img src={q.questionImage} alt="" className="my-2 max-h-48 rounded-lg object-contain" onError={(e) => e.target.style.display = 'none'} />
                           )}
-                          {isReviewFreetext ? (
-                            <textarea
-                              className="w-full rounded-lg border border-brintelli-border px-3 py-2 text-sm min-h-[80px]"
-                              placeholder="Your feedback..."
-                              value={typeof quizAnswers[i] === 'string' ? quizAnswers[i] : ''}
-                              onChange={(e) => {
-                                const next = [...quizAnswers];
-                                next[i] = e.target.value;
-                                setQuizAnswers(next);
-                              }}
-                            />
-                          ) : type === 'quiz-multi' ? (
-                            <div className="space-y-2 mt-2">
-                              <p className="text-xs text-textMuted mb-1">Select all that apply.</p>
-                              {opts.map((opt, j) => {
-                                const text = typeof opt === 'object' && opt != null ? (opt.text || '') : String(opt);
-                                const img = typeof opt === 'object' && opt != null ? (opt.image || '') : '';
-                                const selected = Array.isArray(quizAnswers[i]) ? quizAnswers[i] : [];
-                                const checked = selected.includes(j);
-                                return (
-                                  <label key={j} className="flex items-start gap-3 cursor-pointer rounded-lg border border-brintelli-border/60 p-2 hover:bg-brintelli-baseAlt/30">
-                                    <input
-                                      type="checkbox"
-                                      checked={checked}
-                                      onChange={() => {
-                                        const next = [...quizAnswers];
-                                        const current = Array.isArray(next[i]) ? next[i] : [];
-                                        next[i] = current.includes(j) ? current.filter((k) => k !== j) : [...current, j].sort((a, b) => a - b);
-                                        setQuizAnswers(next);
-                                      }}
-                                      className="mt-1"
-                                    />
-                                    <span className="flex-1 flex items-center gap-2 flex-wrap">
-                                      {img && <img src={img} alt="" className="max-h-16 rounded object-contain" onError={(e) => e.target.style.display = 'none'} />}
-                                      <span className="text-sm">{text || `Option ${j + 1}`}</span>
-                                    </span>
-                                  </label>
-                                );
-                              })}
+                          {submitted ? (
+                            <div className="rounded-lg bg-brintelli-baseAlt/40 p-3 space-y-1.5 text-sm">
+                              <p className="text-textMuted">Your answer:</p>
+                              <p className={result.correct === true ? 'text-green-600 font-medium' : result.correct === false ? 'text-amber-600 font-medium' : 'text-text'}>
+                                {result.yourAnswerDisplay != null && result.yourAnswerDisplay !== '' ? result.yourAnswerDisplay : '—'}
+                              </p>
+                              {result.correct === false && result.correctAnswerDisplay && (
+                                <>
+                                  <p className="text-textMuted mt-1">Correct answer:</p>
+                                  <p className="text-green-600 font-medium">{result.correctAnswerDisplay}</p>
+                                </>
+                              )}
+                              {result.correct === true && (type === 'quiz' || type === 'quiz-multi') && (
+                                <span className="inline-block text-green-600 text-xs font-medium">Correct {result.pointsEarned ? `(+${result.pointsEarned} pt)` : ''}</span>
+                              )}
                             </div>
                           ) : (
-                            <div className="space-y-2 mt-2">
-                              {opts.map((opt, j) => {
-                                const text = typeof opt === 'object' && opt != null ? (opt.text || '') : String(opt);
-                                const img = typeof opt === 'object' && opt != null ? (opt.image || '') : '';
-                                const value = j;
-                                return (
-                                  <label key={j} className="flex items-start gap-3 cursor-pointer rounded-lg border border-brintelli-border/60 p-2 hover:bg-brintelli-baseAlt/30">
-                                    <input
-                                      type="radio"
-                                      name={`q${i}`}
-                                      checked={quizAnswers[i] === value}
-                                      onChange={() => {
-                                        const next = [...quizAnswers];
-                                        next[i] = value;
-                                        setQuizAnswers(next);
-                                      }}
-                                      className="mt-1"
-                                    />
-                                    <span className="flex-1 flex items-center gap-2 flex-wrap">
-                                      {img && <img src={img} alt="" className="max-h-16 rounded object-contain" onError={(e) => e.target.style.display = 'none'} />}
-                                      <span className="text-sm">{text || `Option ${j + 1}`}</span>
-                                    </span>
-                                  </label>
-                                );
-                              })}
-                            </div>
+                            <>
+                              {isReviewFreetext ? (
+                                <textarea
+                                  className="w-full rounded-lg border border-brintelli-border px-3 py-2 text-sm min-h-[80px]"
+                                  placeholder="Your feedback..."
+                                  value={typeof quizAnswers[i] === 'string' ? quizAnswers[i] : ''}
+                                  onChange={(e) => {
+                                    const next = [...quizAnswers];
+                                    next[i] = e.target.value;
+                                    setQuizAnswers(next);
+                                  }}
+                                />
+                              ) : type === 'quiz-multi' ? (
+                                <div className="space-y-2 mt-2">
+                                  <p className="text-xs text-textMuted mb-1">Select all that apply.</p>
+                                  {opts.map((opt, j) => {
+                                    const text = typeof opt === 'object' && opt != null ? (opt.text || '') : String(opt);
+                                    const img = typeof opt === 'object' && opt != null ? (opt.image || '') : '';
+                                    const selected = Array.isArray(quizAnswers[i]) ? quizAnswers[i] : [];
+                                    const checked = selected.includes(j);
+                                    return (
+                                      <label key={j} className="flex items-start gap-3 cursor-pointer rounded-lg border border-brintelli-border/60 p-2 hover:bg-brintelli-baseAlt/30">
+                                        <input
+                                          type="checkbox"
+                                          checked={checked}
+                                          onChange={() => {
+                                            const next = [...quizAnswers];
+                                            const current = Array.isArray(next[i]) ? next[i] : [];
+                                            next[i] = current.includes(j) ? current.filter((k) => k !== j) : [...current, j].sort((a, b) => a - b);
+                                            setQuizAnswers(next);
+                                          }}
+                                          className="mt-1"
+                                        />
+                                        <span className="flex-1 flex items-center gap-2 flex-wrap">
+                                          {img && <img src={img} alt="" className="max-h-16 rounded object-contain" onError={(e) => e.target.style.display = 'none'} />}
+                                          <span className="text-sm">{text || `Option ${j + 1}`}</span>
+                                        </span>
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <div className="space-y-2 mt-2">
+                                  {opts.map((opt, j) => {
+                                    const text = typeof opt === 'object' && opt != null ? (opt.text || '') : String(opt);
+                                    const img = typeof opt === 'object' && opt != null ? (opt.image || '') : '';
+                                    const value = j;
+                                    return (
+                                      <label key={j} className="flex items-start gap-3 cursor-pointer rounded-lg border border-brintelli-border/60 p-2 hover:bg-brintelli-baseAlt/30">
+                                        <input
+                                          type="radio"
+                                          name={`q${i}`}
+                                          checked={quizAnswers[i] === value}
+                                          onChange={() => {
+                                            const next = [...quizAnswers];
+                                            next[i] = value;
+                                            setQuizAnswers(next);
+                                          }}
+                                          className="mt-1"
+                                        />
+                                        <span className="flex-1 flex items-center gap-2 flex-wrap">
+                                          {img && <img src={img} alt="" className="max-h-16 rounded object-contain" onError={(e) => e.target.style.display = 'none'} />}
+                                          <span className="text-sm">{text || `Option ${j + 1}`}</span>
+                                        </span>
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={() => handleSubmitOneQuestion(i)}
+                                disabled={
+                                  submittingQuestionIndex === i ||
+                                  (type === 'quiz' && typeof quizAnswers[i] !== 'number') ||
+                                  (type === 'quiz-multi' && !Array.isArray(quizAnswers[i]))
+                                }
+                              >
+                                {submittingQuestionIndex === i ? 'Submitting...' : 'Submit this answer'}
+                              </Button>
+                            </>
                           )}
                         </div>
                       );
                     })}
-                    <Button type="submit" disabled={submittingQuiz || !quiz.questions?.length}>
-                      {submittingQuiz ? 'Submitting...' : 'Submit'}
-                    </Button>
-                  </form>
+                  </div>
                   )
                 ) : (
                   <>
@@ -556,7 +645,7 @@ const StudentWorkshopDetail = () => {
                       <div className="rounded-xl border border-brintelli-border bg-brintelli-baseAlt/30 p-4 space-y-4">
                         <h4 className="font-semibold text-text">Your answers</h4>
                         {quizResult.quiz.questions.map((qq, idx) => {
-                          const yourAnswerDisplay = qq.yourAnswer != null && qq.yourAnswer !== '' ? String(qq.yourAnswer) : '—';
+                          const yourAnswerDisplay = (qq.yourAnswer != null && String(qq.yourAnswer).trim() !== '') ? String(qq.yourAnswer) : '—';
                           return (
                             <div key={`qq-${idx}`} className="border border-brintelli-border rounded-lg p-3 bg-white space-y-2">
                               <p className="font-medium text-sm text-text">{idx + 1}. {qq.question || 'Question'}</p>

@@ -105,6 +105,7 @@ export const workshopAPI = {
   createOrUpdateQuiz: (id, data) => apiRequest(`/api/workshops/${id}/quiz`, { method: 'POST', body: JSON.stringify(data) }),
   publishQuiz: (id, published) => apiRequest(`/api/workshops/${id}/quiz/publish`, { method: 'PATCH', body: JSON.stringify({ published }) }),
   submitQuizAttempt: (id, data) => apiRequest(`/api/workshops/${id}/quiz/attempt`, { method: 'POST', body: JSON.stringify(data) }),
+  submitQuizAnswer: (id, data) => apiRequest(`/api/workshops/${id}/quiz/answer`, { method: 'POST', body: JSON.stringify(data) }),
   getLeaderboard: (id) => apiRequest(`/api/workshops/${id}/quiz/leaderboard`),
   getQuizResult: (id) => apiRequest(`/api/workshops/${id}/quiz/result`),
   getDoubts: (id) => apiRequest(`/api/workshops/${id}/doubts`),

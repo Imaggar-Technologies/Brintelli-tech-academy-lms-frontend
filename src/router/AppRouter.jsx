@@ -9,6 +9,7 @@ import PublicRoute from "../components/PublicRoute";
 import SignIn from "../pages/auth/SignIn";
 import SignUp from "../pages/auth/SignUp";
 import ForgotPassword from "../pages/auth/ForgotPassword";
+import ResetPassword from "../pages/auth/ResetPassword";
 import VerifyEmail from "../pages/auth/VerifyEmail";
 import CheckEmail from "../pages/auth/CheckEmail";
 import UpcomingWorkshops from "../pages/public/UpcomingWorkshops";
@@ -321,6 +322,7 @@ const AppRouter = () => {
           <Route path="register/student" element={<PublicRoute><RegisterStudent /></PublicRoute>} />
           <Route path="register/staff" element={<PublicRoute><RegisterStaff /></PublicRoute>} />
           <Route path="forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
+          <Route path="reset-password" element={<PublicRoute><ResetPassword /></PublicRoute>} />
           <Route path="verify-email" element={<PublicRoute><VerifyEmail /></PublicRoute>} />
           <Route path="check-email" element={<PublicRoute><CheckEmail /></PublicRoute>} />
           <Route path="offer/:offerId" element={<PublicRoute><OfferPage /></PublicRoute>} />

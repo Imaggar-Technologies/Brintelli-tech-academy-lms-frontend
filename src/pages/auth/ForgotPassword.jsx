@@ -1,27 +1,31 @@
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useState } from "react";
 import { Mail, CheckCircle } from "lucide-react";
+import { toast } from "react-hot-toast";
 import Button from "../../components/Button";
 import AuthImageCarousel from "../../components/AuthImageCarousel";
+import { authAPI } from "../../api/auth";
 
 const ForgotPassword = () => {
-  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    setError("");
     setIsLoading(true);
-    
-    // TODO: Replace with actual API call
-    // await authService.forgotPassword(email);
-    
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      await authAPI.forgotPassword(email.trim());
       setIsSubmitted(true);
-    }, 1000);
+    } catch (err) {
+      const message = err?.message || "Failed to send reset link.";
+      setError(message);
+      toast.error(message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (isSubmitted) {
@@ -114,6 +118,7 @@ const ForgotPassword = () => {
                     We'll send you a link to reset your password
                   </p>
                 </div>
+                {error && <p className="text-sm text-red-600">{error}</p>}
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? "Sending..." : "Send Reset Link"}
                 </Button>

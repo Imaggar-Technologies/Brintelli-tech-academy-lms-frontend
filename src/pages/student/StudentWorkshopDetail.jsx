@@ -763,7 +763,7 @@ const StudentWorkshopDetail = () => {
                         )}
                         <span className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-gray-300 flex items-center justify-center text-xs font-bold text-white">2</span>
                       </div>
-                      <span className="mt-2 text-sm font-semibold text-text truncate max-w-[80px] text-center">{leaderboard[1].userName}</span>
+                      <span className="mt-2 min-h-[2rem] flex items-center justify-center text-sm font-semibold text-text truncate max-w-[120px] text-center" title={leaderboard[1].userName}>{leaderboard[1].userName}</span>
                       <span className="text-xs text-brand-600 font-medium">{leaderboard[1].score} pts</span>
                     </div>
                     <div className="flex flex-col items-center flex-1 order-1">
@@ -775,7 +775,7 @@ const StudentWorkshopDetail = () => {
                         )}
                         <span className="absolute -top-1 -right-1 w-7 h-7 rounded-full bg-amber-500 flex items-center justify-center text-xs font-bold text-white">1</span>
                       </div>
-                      <span className="mt-2 text-sm font-semibold text-text truncate max-w-[90px] text-center">{leaderboard[0].userName}</span>
+                      <span className="mt-2 min-h-[2rem] flex items-center justify-center text-sm font-semibold text-text truncate max-w-[130px] text-center" title={leaderboard[0].userName}>{leaderboard[0].userName}</span>
                       <span className="text-sm text-brand-600 font-semibold">{leaderboard[0].score} pts</span>
                     </div>
                     <div className="flex flex-col items-center flex-1 order-3">
@@ -787,7 +787,7 @@ const StudentWorkshopDetail = () => {
                         )}
                         <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-amber-700 flex items-center justify-center text-[10px] font-bold text-white">3</span>
                       </div>
-                      <span className="mt-2 text-sm font-semibold text-text truncate max-w-[80px] text-center">{leaderboard[2].userName}</span>
+                      <span className="mt-2 min-h-[2rem] flex items-center justify-center text-sm font-semibold text-text truncate max-w-[120px] text-center" title={leaderboard[2].userName}>{leaderboard[2].userName}</span>
                       <span className="text-xs text-brand-600 font-medium">{leaderboard[2].score} pts</span>
                     </div>
                   </div>
@@ -804,7 +804,7 @@ const StudentWorkshopDetail = () => {
                         <div className="w-9 h-9 rounded-full border border-brintelli-border overflow-hidden bg-brintelli-baseAlt flex-shrink-0 flex items-center justify-center text-sm font-semibold text-textMuted">
                           {entry.profileImageUrl ? <img src={entry.profileImageUrl} alt="" className="w-full h-full object-cover" /> : `#${entry.rank}`}
                         </div>
-                        <span className="font-medium flex-1 min-w-0 truncate">
+                        <span className="font-medium flex-1 min-w-0 truncate" title={entry.userName}>
                           {entry.userName}
                           {entry.userId === userId && <span className="ml-2 text-xs text-brand-600">(You)</span>}
                         </span>

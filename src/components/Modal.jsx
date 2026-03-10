@@ -41,24 +41,24 @@ const Modal = ({ isOpen, onClose, title, children, size = "md" }) => {
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
+          {/* Backdrop – high z-index so modal always appears above sidebar, header, tabs */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm"
             onClick={onClose}
           />
 
           {/* Modal */}
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 pointer-events-none">
             <motion.div
               ref={modalRef}
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ duration: 0.2 }}
-              className={`w-full ${sizeClasses[size]} rounded-2xl border border-brintelli-border bg-white shadow-2xl`}
+              className={`w-full ${sizeClasses[size]} rounded-2xl border border-brintelli-border bg-white shadow-2xl pointer-events-auto`}
             >
               {/* Header */}
               {title && (

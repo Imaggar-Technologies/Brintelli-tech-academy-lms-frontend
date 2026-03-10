@@ -108,12 +108,16 @@ const handleSubmit = async (event) => {
         <div className="flex w-full flex-col lg:w-1/2">
           <div className="flex min-h-screen flex-col items-center justify-center px-6 py-12 lg:px-12">
             <div className="w-full max-w-md">
-              {/* Logo */}
+              {/* Logo - use existing public asset (mobile logo.png); fallback for logo.png if added later */}
               <div className="mb-8 flex items-center justify-center">
                 <img 
-                  src="/logo.png" 
+                  src="/mobile%20logo.png" 
                   alt="Brintelli Logo" 
                   className="h-20 w-auto object-contain"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = "/logo.png";
+                  }}
                 />
               </div>
 

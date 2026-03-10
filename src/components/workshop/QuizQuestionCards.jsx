@@ -1,6 +1,6 @@
 import React from "react";
 import Button from "../Button";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, EyeOff, StopCircle, PlayCircle } from "lucide-react";
 import { QUESTION_TYPES, normalizeQuestion } from "./quizUtils";
 
 const typeLabel = (value) => QUESTION_TYPES.find((t) => t.value === value)?.label || value;
@@ -34,6 +34,8 @@ export default function QuizQuestionCards({
   onAddQuestion,
   onEditQuestion,
   onDeleteQuestion,
+  onTogglePublish,
+  onToggleStop,
   listView = true,
 }) {
   const list = (questions || []).map((q, i) => ({ ...normalizeQuestion(q), index: i }));
@@ -51,7 +53,7 @@ export default function QuizQuestionCards({
         <p className="text-sm text-textMuted py-4">No questions yet. Add a question to build the quiz, poll, or review.</p>
       ) : listView ? (
         <ul className="space-y-2">
-          {list.map(({ index, type, question, options, correctIndex, correctIndices }) => {
+          {list.map(({ index, type, question, options, correctIndex, correctIndices, published, closed }) => {
             const correctLabel = correctAnswerLabel({ type, options, correctIndex, correctIndices });
             return (
               <li
@@ -65,6 +67,21 @@ export default function QuizQuestionCards({
                     <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-brintelli-baseAlt/60 text-textSoft">
                       {typeLabel(type)}
                     </span>
+                    {published ? (
+                      closed ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                          <StopCircle className="h-3 w-3" /> Stopped
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                          <Eye className="h-3 w-3" /> Published
+                        </span>
+                      )
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
+                        <EyeOff className="h-3 w-3" /> Draft
+                      </span>
+                    )}
                     {(type === "quiz" || type === "quiz-multi") && (
                       <span className="text-xs text-green-700 font-medium">
                         Correct: {correctLabel}
@@ -74,6 +91,28 @@ export default function QuizQuestionCards({
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
+                  {onTogglePublish && (
+                    <button
+                      type="button"
+                      onClick={() => onTogglePublish(index)}
+                      className={`p-1.5 rounded ${published ? "text-green-600 hover:bg-green-50" : "text-amber-600 hover:bg-amber-50"}`}
+                      aria-label={published ? "Unpublish question" : "Publish question"}
+                      title={published ? "Unpublish (hide from learners)" : "Publish (show to learners)"}
+                    >
+                      {published ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                    </button>
+                  )}
+                  {onToggleStop && published && (
+                    <button
+                      type="button"
+                      onClick={() => onToggleStop(index)}
+                      className={`p-1.5 rounded ${closed ? "text-red-600 hover:bg-red-50" : "text-gray-500 hover:bg-gray-100"}`}
+                      aria-label={closed ? "Reopen for answers" : "Stop (close for answers)"}
+                      title={closed ? "Reopen so learners can answer" : "Stop — learners cannot answer this question"}
+                    >
+                      {closed ? <PlayCircle className="h-4 w-4" /> : <StopCircle className="h-4 w-4" />}
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => onEditQuestion(index)}
@@ -97,7 +136,7 @@ export default function QuizQuestionCards({
         </ul>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {list.map(({ index, type, question, options }) => (
+          {list.map(({ index, type, question, options, published, closed }) => (
             <div
               key={index}
               className="rounded-xl border-2 border-brintelli-border bg-white p-4 transition-colors flex flex-col min-h-0"
@@ -105,6 +144,28 @@ export default function QuizQuestionCards({
               <div className="flex items-start justify-between gap-2 mb-2">
                 <span className="text-xs font-medium text-textMuted">Question {index + 1}</span>
                 <div className="flex items-center gap-1 shrink-0">
+                  {onTogglePublish && (
+                    <button
+                      type="button"
+                      onClick={() => onTogglePublish(index)}
+                      className={`p-1.5 rounded ${published ? "text-green-600 hover:bg-green-50" : "text-amber-600 hover:bg-amber-50"}`}
+                      aria-label={published ? "Unpublish question" : "Publish question"}
+                      title={published ? "Unpublish" : "Publish"}
+                    >
+                      {published ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                    </button>
+                  )}
+                  {onToggleStop && published && (
+                    <button
+                      type="button"
+                      onClick={() => onToggleStop(index)}
+                      className={`p-1.5 rounded ${closed ? "text-red-600 hover:bg-red-50" : "text-gray-500 hover:bg-gray-100"}`}
+                      aria-label={closed ? "Reopen for answers" : "Stop"}
+                      title={closed ? "Reopen" : "Stop (close for answers)"}
+                    >
+                      {closed ? <PlayCircle className="h-4 w-4" /> : <StopCircle className="h-4 w-4" />}
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => onEditQuestion(index)}
@@ -130,6 +191,15 @@ export default function QuizQuestionCards({
                 <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-brintelli-baseAlt/60 text-textSoft">
                   {typeLabel(type)}
                 </span>
+                {published ? (
+                  closed ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">Stopped</span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Published</span>
+                  )
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">Draft</span>
+                )}
                 <span className="text-xs text-textMuted">{Array.isArray(options) ? options.length : 0} options</span>
               </div>
             </div>

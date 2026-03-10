@@ -366,7 +366,11 @@ const WorkshopManage = () => {
   const handleSaveQuiz = async () => {
     setQuizSaving(true);
     try {
-      const questions = (quiz?.questions ?? []).map((q) => ({ ...q, published: true }));
+      const questions = (quiz?.questions ?? []).map((q) => ({
+        ...q,
+        published: q && Object.prototype.hasOwnProperty.call(q, 'published') ? q.published === true : true,
+        closed: q && Object.prototype.hasOwnProperty.call(q, 'closed') ? q.closed === true : false,
+      }));
       const res = await workshopAPI.createOrUpdateQuiz(workshopId, {
         title: quiz?.title || 'Workshop Quiz',
         questions,

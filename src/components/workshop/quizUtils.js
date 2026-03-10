@@ -16,6 +16,7 @@ export const emptyQuestion = () => ({
   correctIndices: [],
   reviewType: "scale",
   published: false,
+  closed: false,
 });
 
 export function normalizeOptions(q) {
@@ -48,6 +49,7 @@ export function normalizeQuestion(q) {
     correctIndex,
     correctIndices,
     reviewType: q.reviewType || "scale",
-    published: q.published === true,
+    published: q && Object.prototype.hasOwnProperty.call(q, "published") ? q.published === true : true,
+    closed: q && Object.prototype.hasOwnProperty.call(q, "closed") ? q.closed === true : false,
   };
 }

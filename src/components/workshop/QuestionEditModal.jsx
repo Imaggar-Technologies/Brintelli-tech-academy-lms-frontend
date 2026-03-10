@@ -282,7 +282,36 @@ export default function QuestionEditModal({ isOpen, onClose, question: initialQu
           </div>
         )}
 
-        <div className="flex justify-end gap-2 pt-2 border-t border-brintelli-border">
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-brintelli-border space-y-3">
+          <div className="flex flex-wrap items-center gap-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={q.published === true}
+                onChange={(e) => updateQ({ published: e.target.checked })}
+                className="rounded border-brintelli-border text-brand-500 focus:ring-brand-500"
+              />
+              <span className="text-sm font-medium text-text">Publish</span>
+            </label>
+            {q.published && (
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={q.closed === true}
+                  onChange={(e) => updateQ({ closed: e.target.checked })}
+                  className="rounded border-brintelli-border text-amber-500 focus:ring-amber-500"
+                />
+                <span className="text-sm font-medium text-text">Stop (close for answers)</span>
+              </label>
+            )}
+          </div>
+          <p className="text-xs text-textMuted">
+            {!q.published && "Draft — learners will not see this question until you publish it."}
+            {q.published && !q.closed && "Learners can see and answer this question."}
+            {q.published && q.closed && "Question is closed — learners cannot answer it."}
+          </p>
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="ghost" onClick={onClose}>
             Cancel
           </Button>

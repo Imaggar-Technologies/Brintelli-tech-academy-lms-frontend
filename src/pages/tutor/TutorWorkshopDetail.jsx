@@ -170,7 +170,11 @@ const TutorWorkshopDetail = () => {
   const handleSaveQuiz = async () => {
     setQuizSaving(true);
     try {
-      const questions = (quiz?.questions ?? []).map((q) => ({ ...q, published: true }));
+      const questions = (quiz?.questions ?? []).map((q) => ({
+        ...q,
+        published: q && Object.prototype.hasOwnProperty.call(q, 'published') ? q.published === true : true,
+        closed: q && Object.prototype.hasOwnProperty.call(q, 'closed') ? q.closed === true : false,
+      }));
       const res = await workshopAPI.createOrUpdateQuiz(workshopId, {
         title: quiz?.title || 'Workshop Quiz',
         questions,
@@ -718,6 +722,23 @@ const TutorWorkshopDetail = () => {
                   const base = quiz || { title: 'Workshop Quiz' };
                   const next = (base.questions ?? []).filter((_, i) => i !== index);
                   setQuiz({ ...base, questions: next });
+                }}
+                onTogglePublish={(index) => {
+                  const base = quiz || { title: 'Workshop Quiz', questions: [] };
+                  const questions = [...(base.questions ?? [])];
+                  const q = questions[index];
+                  if (!q) return;
+                  const nextPublished = !(q.published === true);
+                  questions[index] = { ...q, published: nextPublished, closed: nextPublished ? q.closed : false };
+                  setQuiz({ ...base, questions });
+                }}
+                onToggleStop={(index) => {
+                  const base = quiz || { title: 'Workshop Quiz', questions: [] };
+                  const questions = [...(base.questions ?? [])];
+                  const q = questions[index];
+                  if (!q) return;
+                  questions[index] = { ...q, closed: !(q.closed === true) };
+                  setQuiz({ ...base, questions });
                 }}
               />
               <QuestionEditModal

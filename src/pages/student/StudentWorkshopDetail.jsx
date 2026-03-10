@@ -141,14 +141,28 @@ const StudentWorkshopDetail = () => {
     try {
       const res = await workshopAPI.submitQuizAttempt(workshopId, { answers: quizAnswers });
       if (res.success) {
-        const hasQuiz = (quiz.questions || []).some((q) => (q.type || 'quiz') === 'quiz');
-        if (hasQuiz) toast.success(`Quiz submitted! Score: ${res.data?.attempt?.score ?? 0}/${res.data?.attempt?.totalQuestions ?? 0}`);
-        else toast.success('Response submitted. Thank you!');
+        const attempt = res.data?.attempt;
+        const score = attempt?.score ?? 0;
+        const total = attempt?.totalQuestions ?? 0;
+        const hasQuiz = (quiz.questions || []).some((q) => (q.type || 'quiz') === 'quiz' || (q.type || '') === 'quiz-multi');
+        if (hasQuiz && total > 0) {
+          const pct = Math.round((score / total) * 100);
+          toast.success(`Quiz submitted! Score: ${score}/${total} — ${pct}% correct`, { duration: 5000 });
+        } else {
+          toast.success('Response submitted. Thank you!');
+        }
         setQuizSubmitted(true);
         loadAll();
       } else toast.error(res.message || 'Failed to submit');
     } catch (e) {
-      toast.error(e.message || 'Failed to submit quiz');
+      const msg = e?.message || 'Failed to submit quiz';
+      if (msg.toLowerCase().includes('already submitted')) {
+        toast.error('You have already submitted this quiz. Your answers are saved below.');
+        setQuizSubmitted(true);
+        loadAll();
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setSubmittingQuiz(false);
     }
@@ -425,7 +439,7 @@ const StudentWorkshopDetail = () => {
             {quiz && quizPublished && isRegistered ? (
               <>
                 <h4 className="text-sm font-medium text-textSoft mb-3">{quiz.title}</h4>
-                {!quizSubmitted ? (
+                {!quizSubmitted && !quizResult?.withAnswers ? (
                   (quiz.questions?.length ?? 0) === 0 ? (
                     <p className="text-sm text-textMuted">No questions in this quiz yet.</p>
                   ) : (
@@ -518,14 +532,29 @@ const StudentWorkshopDetail = () => {
                   )
                 ) : (
                   <>
+                    {quizResult?.attempt && (quizResult.attempt.totalQuestions > 0) && (
+                      <div className="rounded-xl border-2 border-brand-200 bg-brand-50/80 p-4 mb-4 flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-full bg-brand-500 flex items-center justify-center text-white font-bold text-lg">
+                            {quizResult.attempt.score}/{quizResult.attempt.totalQuestions}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-text">Your quiz score</p>
+                            <p className="text-sm text-textMuted">
+                              {Math.round((quizResult.attempt.score / quizResult.attempt.totalQuestions) * 100)}% accuracy — added to your total points
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     <p className="text-textMuted mb-3">
                       {(quiz.questions || []).some((q) => { const t = q.type || 'quiz'; return t === 'quiz' || t === 'quiz-multi'; })
-                        ? 'You have submitted. Your score is added to your total points.'
+                        ? 'You have submitted. You cannot answer again. Your answers are saved below.'
                         : 'Thank you for your response.'}
                     </p>
                     {quizResult?.quiz?.questions?.length > 0 && (
                       <div className="rounded-xl border border-brintelli-border bg-brintelli-baseAlt/30 p-4 space-y-4">
-                        <h4 className="font-semibold text-text">Review your answers</h4>
+                        <h4 className="font-semibold text-text">Your answers</h4>
                         {quizResult.quiz.questions.map((qq, idx) => {
                           const yourAnswerDisplay = qq.yourAnswer != null && qq.yourAnswer !== '' ? String(qq.yourAnswer) : '—';
                           return (

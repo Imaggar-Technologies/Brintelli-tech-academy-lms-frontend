@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import Button from "../Button";
-import { Plus, Trash2, Upload } from "lucide-react";
+import { Plus, Trash2, Upload, Eye, EyeOff, StopCircle } from "lucide-react";
 import {
   QUESTION_TYPES,
   emptyOption,
@@ -112,6 +112,32 @@ export default function QuizBuilder({ quiz, onChange, onUploadFile }) {
                       <option key={t.value} value={t.value}>{t.label}</option>
                     ))}
                   </select>
+                  <label className="inline-flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={q.published === true}
+                      onChange={(e) => updateQuestion(qIdx, { published: e.target.checked, closed: e.target.checked ? q.closed : false })}
+                      className="rounded border-brintelli-border text-brand-500 focus:ring-brand-500"
+                    />
+                    <span className="text-xs font-medium text-textMuted flex items-center gap-1">
+                      {q.published === true ? <Eye className="h-3.5 w-3.5 text-green-600" /> : <EyeOff className="h-3.5 w-3.5 text-amber-600" />}
+                      {q.published === true ? "Published" : "Draft"}
+                    </span>
+                  </label>
+                  {q.published && (
+                    <label className="inline-flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={q.closed === true}
+                        onChange={(e) => updateQuestion(qIdx, { closed: e.target.checked })}
+                        className="rounded border-brintelli-border text-red-500 focus:ring-red-500"
+                      />
+                      <span className="text-xs font-medium text-textMuted flex items-center gap-1">
+                        {q.closed === true ? <StopCircle className="h-3.5 w-3.5 text-red-600" /> : null}
+                        {q.closed === true ? "Stopped" : "Stop"}
+                      </span>
+                    </label>
+                  )}
                 </div>
                 <button type="button" onClick={() => removeQuestion(qIdx)} className="text-textMuted hover:text-red-600 p-1 shrink-0" aria-label="Remove question">
                   <Trash2 className="h-4 w-4" />

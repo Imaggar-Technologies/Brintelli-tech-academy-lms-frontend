@@ -357,7 +357,7 @@ const AppRouter = () => {
         {/* Public careers - list jobs and apply (no login required) */}
         <Route path="/careers" element={<PublicRoute><Careers /></PublicRoute>} />
         <Route path="/careers/:jobId" element={<PublicRoute><CareerApply /></PublicRoute>} />
-        {/* Job Apply Portal - standalone layout, no app sidebar/topbar; anyone can apply */}
+        {/* Job Apply Portal - public & unprotected (no auth required); standalone layout; anyone can access */}
         <Route path="/applyjobs" element={<JobPortalLayout />}>
           <Route index element={<ApplyJobsList />} />
           <Route path=":jobId" element={<ApplyJobsApply />} />

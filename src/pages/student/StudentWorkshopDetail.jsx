@@ -539,6 +539,8 @@ const StudentWorkshopDetail = () => {
                   </>
                 )}
               </>
+            ) : quiz && !quizPublished ? (
+              <p className="text-sm text-textMuted">Quiz is not yet published. Your instructor will open it when ready.</p>
             ) : (
               <p className="text-sm text-textMuted">No quiz available yet.</p>
             )}

@@ -60,4 +60,17 @@ export const jobsAPI = {
     const sp = new URLSearchParams(params);
     return apiRequest(`/api/jobs/${jobId}/applications?${sp}`);
   },
+  getCandidates: (params = {}) => {
+    const sp = new URLSearchParams(params);
+    return apiRequest(`/api/jobs/candidates?${sp}`);
+  },
+  getShortlists: (params = {}) => {
+    const sp = new URLSearchParams(params);
+    return apiRequest(`/api/jobs/shortlists?${sp}`);
+  },
+  shortlistApplication: (applicationId, shortlisted = true) =>
+    apiRequest(`/api/jobs/applications/${applicationId}/shortlist`, {
+      method: 'PATCH',
+      body: JSON.stringify({ shortlisted }),
+    }),
 };

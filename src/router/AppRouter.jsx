@@ -313,6 +313,8 @@ import CreateCommunicationLog from "../pages/hr/CreateCommunicationLog";
 import InterviewsList from "../pages/hr/InterviewsList";
 import CreateInterview from "../pages/hr/CreateInterview";
 import InterviewDetail from "../pages/hr/InterviewDetail";
+import HrCandidatesList from "../pages/hr/HrCandidatesList";
+import HrShortlistsList from "../pages/hr/HrShortlistsList";
 
 const NotFound = () => (
   <div className="flex flex-1 items-center justify-center rounded-2xl border border-dashed border-brintelli-border bg-brintelli-card p-10 text-center">
@@ -757,6 +759,8 @@ const AppRouter = () => {
             <Route path="job-drives" element={<JobDrivesList />} />
             <Route path="job-drives/create" element={<CreateJobDrive />} />
             <Route path="job-drives/:driveId" element={<JobDriveDetail />} />
+            <Route path="candidates" element={<HrCandidatesList />} />
+            <Route path="shortlists" element={<HrShortlistsList />} />
             <Route path="interviews" element={<InterviewsList />} />
             <Route path="interviews/create" element={<CreateInterview />} />
             <Route path="interviews/:interviewId" element={<InterviewDetail />} />

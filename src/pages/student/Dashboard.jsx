@@ -15,12 +15,20 @@ import {
   X,
   Edit,
   Calendar,
-  Sparkles
+  Sparkles,
+  Award,
+  Linkedin,
+  Github,
+  Instagram,
+  ExternalLink,
 } from "lucide-react";
 import Button from '../../components/Button';
 import studentAPI from '../../api/student';
 import referralAPI from '../../api/referral';
+import apiRequest from '../../api/apiClient';
+import PointsEarnedModal from '../../components/PointsEarnedModal';
 import { useSelector } from 'react-redux';
+import { toast } from 'react-hot-toast';
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
@@ -33,12 +41,32 @@ const StudentDashboard = () => {
   const [enrollment, setEnrollment] = useState(null);
   const [showChallengesBanner, setShowChallengesBanner] = useState(true);
   const [referralPoints, setReferralPoints] = useState(0);
+  const [profileCompleted, setProfileCompleted] = useState(true);
+  const [socialSubmissions, setSocialSubmissions] = useState([]);
+  const [pointsEarnedOpen, setPointsEarnedOpen] = useState(false);
+  const [pointsEarnedData, setPointsEarnedData] = useState({ pointsEarned: 20, totalPoints: null });
+  const [socialSubmitting, setSocialSubmitting] = useState(null);
 
   useEffect(() => {
     fetchDashboardData();
     fetchEnrollment();
     fetchReferralPoints();
+    fetchProfileAndSocial();
   }, []);
+
+  const fetchProfileAndSocial = async () => {
+    try {
+      const [meRes, socialRes] = await Promise.all([
+        apiRequest('/api/users/me'),
+        studentAPI.getSocialFollowSubmissions().catch(() => ({ success: false, data: { submissions: [] } })),
+      ]);
+      const profileUser = meRes?.data?.user;
+      setProfileCompleted(profileUser?.profileCompleted !== false);
+      if (socialRes?.success && socialRes.data?.submissions) {
+        setSocialSubmissions(socialRes.data.submissions);
+      }
+    } catch (_) {}
+  };
 
   const fetchReferralPoints = async () => {
     try {
@@ -226,6 +254,22 @@ const StudentDashboard = () => {
           <span className="text-text font-medium">You have <strong>{referralPoints}</strong> referral points (100 per friend who joins).</span>
           <Button variant="secondary" size="sm" onClick={() => navigate('/student/invite-friend')}>
             Invite more
+          </Button>
+        </div>
+      )}
+
+      {/* Profile not completed */}
+      {!loading && !profileCompleted && (
+        <div className="rounded-2xl border-2 border-amber-400 bg-amber-50 p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="h-10 w-10 text-amber-600 flex-shrink-0" />
+            <div>
+              <p className="font-semibold text-amber-900">Your profile is not completed</p>
+              <p className="text-sm text-amber-800">Add your college, degree, department, year, area of interest, and goal so we can personalize your experience.</p>
+            </div>
+          </div>
+          <Button onClick={() => navigate('/student/profile')} className="bg-amber-600 hover:bg-amber-700">
+            Complete Profile
           </Button>
         </div>
       )}
@@ -618,8 +662,76 @@ const StudentDashboard = () => {
               </div>
             </div>
           </div>
+
+          {/* Follow Brintelli – earn 20 pts per platform */}
+          <div className="rounded-2xl border border-brintelli-border bg-brintelli-card shadow-soft p-6">
+            <h2 className="text-lg font-semibold text-text flex items-center gap-2 mb-2">
+              <Award className="h-5 w-5 text-amber-600" />
+              Follow Brintelli
+            </h2>
+            <p className="text-sm text-textMuted mb-4">Follow us, upload a screenshot, and earn 20 points per platform.</p>
+            <div className="space-y-3">
+              {[
+                { key: 'linkedin', label: 'LinkedIn', Icon: Linkedin, url: 'https://www.linkedin.com/company/brintellitechacademy' },
+                { key: 'instagram', label: 'Instagram', Icon: Instagram, url: 'https://www.instagram.com/brintellitechacademy' },
+                { key: 'github', label: 'GitHub', Icon: Github, url: 'https://github.com/BrintelliTechAcademy' },
+                { key: 'twitter', label: 'X (Twitter)', Icon: ExternalLink, url: 'https://twitter.com/BrintelliTech' },
+              ].map(({ key, label, Icon, url }) => {
+                const completed = socialSubmissions.some((s) => s.platform === key);
+                return (
+                  <div key={key} className="flex items-center justify-between gap-2 p-3 rounded-xl border border-brintelli-border bg-brintelli-baseAlt/50">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Icon className="h-4 w-4 text-brand-600 flex-shrink-0" />
+                      <span className="font-medium text-text truncate">{label}</span>
+                    </div>
+                    {completed ? (
+                      <span className="flex items-center gap-1 text-green-600 text-sm font-medium flex-shrink-0">
+                        <CheckCircle2 className="h-4 w-4" /> Done
+                      </span>
+                    ) : (
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-brand-600 hover:underline">Follow</a>
+                        <Button
+                          size="sm"
+                          disabled={socialSubmitting === key}
+                          onClick={async () => {
+                            setSocialSubmitting(key);
+                            try {
+                              const res = await studentAPI.submitSocialFollow(key);
+                              const data = res?.data;
+                              setPointsEarnedData({
+                                pointsEarned: data?.pointsEarned ?? 20,
+                                totalPoints: data?.totalPoints ?? null,
+                              });
+                              setPointsEarnedOpen(true);
+                              toast.success(`You earned 20 points for following on ${label}!`, { duration: 4000 });
+                              await fetchProfileAndSocial();
+                            } catch (err) {
+                              toast.error(err?.message || 'Failed to submit. You may have already completed this challenge.');
+                            } finally {
+                              setSocialSubmitting(null);
+                            }
+                          }}
+                        >
+                          {socialSubmitting === key ? 'Submitting…' : 'Submit & earn 20 pts'}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
+
+      <PointsEarnedModal
+        isOpen={pointsEarnedOpen}
+        onClose={() => setPointsEarnedOpen(false)}
+        pointsEarned={pointsEarnedData.pointsEarned}
+        totalPoints={pointsEarnedData.totalPoints}
+        reason="following Brintelli on social media"
+      />
 
       {/* Empty State */}
       {!loading && allSessions.length === 0 && pendingAssignments.length === 0 && (

@@ -88,6 +88,17 @@ export const studentAPI = {
   getMyVouchers: async () => {
     return apiRequest('/api/students/vouchers');
   },
+
+  // Social follow challenges: follow Brintelli on LinkedIn, Instagram, GitHub, etc.; earn 20 pts per platform
+  getSocialFollowSubmissions: async () => {
+    return apiRequest('/api/students/social-follow');
+  },
+  submitSocialFollow: async (platform, screenshotUrl) => {
+    return apiRequest('/api/students/social-follow', {
+      method: 'POST',
+      body: JSON.stringify({ platform, screenshotUrl: screenshotUrl || undefined }),
+    });
+  },
 };
 
 export default studentAPI;

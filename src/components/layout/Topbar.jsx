@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { Bell, Menu, Search, Sparkles, Flame, Coins, Award } from "lucide-react";
+import { Bell, Menu, Search, Sparkles, Flame, Coins, Award, Bug } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { selectCurrentUser } from "../../store/slices/authSlice";
 import NotificationsDropdown from "../NotificationsDropdown";
 import UserMenu from "../UserMenu";
+import ReportBugModal from "../ReportBugModal";
+import PointsEarnedModal from "../PointsEarnedModal";
 import notificationApi from "../../api/notification";
 import referralAPI from "../../api/referral";
 import toast from "react-hot-toast";
@@ -128,6 +130,9 @@ const Topbar = ({ onToggleMobileSidebar, role, roleLabelOverride, roleOptions, c
   const [streak, setStreak] = useState(0);
   const [brintelliPoints, setBrintelliPoints] = useState(null);
   const [superCoins, setSuperCoins] = useState(null);
+  const [reportBugOpen, setReportBugOpen] = useState(false);
+  const [pointsEarnedOpen, setPointsEarnedOpen] = useState(false);
+  const [pointsEarnedData, setPointsEarnedData] = useState({ pointsEarned: 20, totalPoints: null });
 
   const unreadCount = useMemo(() => notifications.filter((item) => !item.read).length, [notifications]);
   const isLearner = useMemo(() => {
@@ -241,6 +246,14 @@ const Topbar = ({ onToggleMobileSidebar, role, roleLabelOverride, roleOptions, c
   };
 
   // Format timestamp helper
+  const handleBugReportSuccess = (data) => {
+    const earned = data?.pointsEarned ?? 20;
+    setPointsEarnedData({ pointsEarned: earned, totalPoints: data?.totalPoints ?? null });
+    setPointsEarnedOpen(true);
+    if (brintelliPoints !== null && data?.totalPoints != null) setBrintelliPoints(data.totalPoints);
+    toast.success(`You've earned ${earned} points! Thank you for reporting the bug.`, { duration: 5000 });
+  };
+
   const formatTimestamp = (dateString) => {
     if (!dateString) return 'Just now';
     const date = new Date(dateString);
@@ -307,6 +320,17 @@ const Topbar = ({ onToggleMobileSidebar, role, roleLabelOverride, roleOptions, c
                 <Award className="h-4 w-4 text-amber-600" />
                 {brintelliPoints} pts
               </span>
+            )}
+            {isLearner && (
+              <button
+                type="button"
+                onClick={() => setReportBugOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-brintelli-border/60 bg-white px-3 py-2 text-sm font-medium text-textSoft shadow-sm transition-all hover:border-brand-500 hover:bg-brand-50 hover:text-brand-600"
+                title="Report a bug and earn 20 points"
+              >
+                <Bug className="h-4 w-4" />
+                Report a bug
+              </button>
             )}
             {isStaffForCoins && superCoins !== null && (
               <span
@@ -384,6 +408,18 @@ const Topbar = ({ onToggleMobileSidebar, role, roleLabelOverride, roleOptions, c
           </div>
         </div>
       </div>
+      <ReportBugModal
+        isOpen={reportBugOpen}
+        onClose={() => setReportBugOpen(false)}
+        onSuccess={handleBugReportSuccess}
+      />
+      <PointsEarnedModal
+        isOpen={pointsEarnedOpen}
+        onClose={() => setPointsEarnedOpen(false)}
+        pointsEarned={pointsEarnedData.pointsEarned}
+        totalPoints={pointsEarnedData.totalPoints}
+        reason="reporting a bug"
+      />
     </header>
   );
 };

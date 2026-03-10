@@ -56,7 +56,7 @@ export default function QuizQuestionCards({
             return (
               <li
                 key={index}
-                className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-brintelli-border bg-white p-3 sm:p-4"
+                className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-brintelli-border/80 bg-white p-3 sm:p-4 hover:border-brand-500/40 transition-colors"
               >
                 <span className="text-sm font-medium text-textMuted w-8 shrink-0">{index + 1}.</span>
                 <div className="flex-1 min-w-0">

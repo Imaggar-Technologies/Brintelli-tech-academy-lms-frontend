@@ -664,41 +664,45 @@ const TutorWorkshopDetail = () => {
             <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
               <Trophy className="h-5 w-5" /> Quiz
             </h3>
-            <div className="rounded-xl border border-brintelli-border bg-brintelli-baseAlt/20 p-4 sm:p-6 space-y-6">
-              <p className="text-sm text-textMuted">Build quiz, poll, or review questions. Edit a question to set the correct answer(s) for multiple choice.</p>
-              <div>
-                <label htmlFor="quiz-title-input" className="text-sm font-medium text-textSoft mb-2 block">Quiz title</label>
-                <input
-                  id="quiz-title-input"
-                  type="text"
-                  value={quiz?.title ?? 'Workshop Quiz'}
-                  onChange={(e) => setQuiz({ ...(quiz || { questions: [] }), title: e.target.value })}
-                  className="w-full rounded-lg border border-brintelli-border px-3 py-2 text-sm bg-white"
-                  placeholder="Workshop Quiz"
-                />
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {quiz && (
-                  <Button
-                    size="sm"
-                    disabled={quizPublishing}
-                    onClick={() => handlePublishQuiz(!quiz.published)}
-                    className={quiz.published ? 'bg-amber-600 hover:bg-amber-700 border-0' : 'bg-gradient-to-r from-brintelli-primary to-brintelli-primaryDark border-0'}
-                  >
-                    {quiz.published ? 'Close quiz' : 'Publish to learners'}
+            <div className="rounded-xl border border-brintelli-border bg-white shadow-sm p-4 sm:p-6 space-y-6">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="quiz-title-input" className="text-sm font-medium text-textSoft mb-1 block">Quiz title</label>
+                  <input
+                    id="quiz-title-input"
+                    type="text"
+                    value={quiz?.title ?? 'Workshop Quiz'}
+                    onChange={(e) => setQuiz({ ...(quiz || { questions: [] }), title: e.target.value })}
+                    className="w-full rounded-lg border border-brintelli-border px-3 py-2 text-sm bg-white"
+                    placeholder="Workshop Quiz"
+                  />
+                </div>
+                <div className="flex flex-wrap items-end gap-2">
+                  {quiz && (
+                    <Button
+                      size="sm"
+                      disabled={quizPublishing}
+                      onClick={() => handlePublishQuiz(!quiz.published)}
+                      className={quiz.published ? 'bg-amber-600 hover:bg-amber-700 border-0' : 'bg-gradient-to-r from-brintelli-primary to-brintelli-primaryDark border-0'}
+                    >
+                      {quiz.published ? 'Close quiz' : 'Publish to learners'}
+                    </Button>
+                  )}
+                  <Button variant="secondary" size="sm" disabled={quizSaving} onClick={handleSaveQuiz}>
+                    {quizSaving ? 'Saving…' : quiz ? 'Save' : 'Create quiz'}
                   </Button>
-                )}
-                <Button variant="secondary" size="sm" disabled={quizSaving} onClick={handleSaveQuiz}>
-                  {quizSaving ? 'Saving…' : quiz ? 'Save quiz' : 'Create quiz'}
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => loadAll()} className="gap-1.5">
-                  <RefreshCw className="h-4 w-4" /> Refresh
-                </Button>
+                  <button
+                    type="button"
+                    onClick={() => loadAll()}
+                    className="p-2 rounded-lg text-textMuted hover:bg-brintelli-baseAlt/50 hover:text-text"
+                    title="Refresh"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
-              <p className="text-xs text-textMuted">
-                {quiz?.published
-                  ? 'Quiz is open: learners see it and can answer. Click “Close quiz” to hide from learners.'
-                  : 'Quiz is closed. Click “Publish to learners” once to make it visible to students and allow answers.'}
+              <p className="text-xs text-textMuted border-b border-brintelli-border/60 pb-4">
+                {quiz?.published ? 'Learners can see and answer this quiz.' : 'Publish to learners when ready. Edit a question to set correct answer(s).'}
               </p>
               <QuizQuestionCards
                 questions={quiz?.questions ?? []}

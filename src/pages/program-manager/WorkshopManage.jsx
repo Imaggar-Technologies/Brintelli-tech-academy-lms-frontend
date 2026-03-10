@@ -793,9 +793,9 @@ const WorkshopManage = () => {
                     disabled={quizPublishing}
                     onClick={() => handlePublishQuiz(!quiz.published)}
                     className={quiz.published ? 'bg-amber-600 hover:bg-amber-700 border-0' : 'bg-gradient-to-r from-brintelli-primary to-brintelli-primaryDark border-0'}
-                  >
-                    {quiz.published ? 'Close quiz' : 'Publish quiz'}
-                  </Button>
+                >
+                  {quiz.published ? 'Close quiz' : 'Publish to learners'}
+                </Button>
                   <Button variant="secondary" size="sm" disabled={quizSaving} onClick={handleSaveQuiz}>
                     {quizSaving ? 'Saving…' : 'Save quiz'}
                   </Button>

@@ -181,7 +181,13 @@ export default function QuestionEditModal({ isOpen, onClose, question: initialQu
         {q.type !== "review" && (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-textMuted">Options</span>
+              <span className="text-xs font-medium text-textSoft">
+                {q.type === "quiz"
+                  ? "Options — select the correct answer (single choice)"
+                  : q.type === "quiz-multi"
+                    ? "Options — select all correct answers (multiple choice)"
+                    : "Options"}
+              </span>
               <Button type="button" variant="ghost" size="sm" onClick={addOption} className="h-7 text-xs">
                 + Option
               </Button>
@@ -200,6 +206,7 @@ export default function QuestionEditModal({ isOpen, onClose, question: initialQu
                       onChange={() => updateQ({ correctIndex: oIdx })}
                       className="mt-1 shrink-0"
                       aria-label={`Correct: option ${oIdx + 1}`}
+                      title="Select as correct answer"
                     />
                   )}
                   {q.type === "quiz-multi" && (
@@ -215,6 +222,7 @@ export default function QuestionEditModal({ isOpen, onClose, question: initialQu
                       }}
                       className="mt-1 shrink-0 rounded"
                       aria-label={`Correct: option ${oIdx + 1}`}
+                      title="Select as correct answer"
                     />
                   )}
                   <span className="flex-1 flex items-center gap-2 flex-wrap min-w-0">

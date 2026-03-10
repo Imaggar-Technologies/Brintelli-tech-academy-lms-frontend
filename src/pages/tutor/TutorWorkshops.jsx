@@ -642,7 +642,7 @@ const TutorWorkshops = () => {
                         onClick={() => handlePublishQuiz(!quizData.quiz?.published)}
                         className={quizData.quiz?.published ? "bg-amber-600 hover:bg-amber-700 border-0" : "bg-gradient-to-r from-brintelli-primary to-brintelli-primaryDark border-0"}
                       >
-                        {quizData.quiz?.published ? "Close quiz" : "Publish quiz"}
+                        {quizData.quiz?.published ? "Close quiz" : "Publish to learners"}
                       </Button>
                       <Button size="sm" variant="secondary" disabled={quizData.saving} onClick={handleSaveQuiz}>
                         {quizData.saving ? "Saving…" : "Save quiz"}

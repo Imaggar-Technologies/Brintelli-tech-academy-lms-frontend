@@ -1171,7 +1171,7 @@ const Workshops = () => {
                       }
                     }}
                   >
-                    {manageQuiz.published ? 'Close quiz' : 'Publish quiz'}
+                    {manageQuiz.published ? 'Close quiz' : 'Publish to learners'}
                   </Button>
                 </div>
               ) : (

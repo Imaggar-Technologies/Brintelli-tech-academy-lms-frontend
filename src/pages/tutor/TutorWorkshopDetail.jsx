@@ -665,7 +665,7 @@ const TutorWorkshopDetail = () => {
               <Trophy className="h-5 w-5" /> Quiz
             </h3>
             <div className="rounded-xl border border-brintelli-border bg-brintelli-baseAlt/20 p-4 sm:p-6 space-y-6">
-              <p className="text-sm text-textMuted">Build quiz, poll, or review questions. View and edit questions as cards; add or edit opens the question in a modal.</p>
+              <p className="text-sm text-textMuted">Build quiz, poll, or review questions. Edit a question to set the correct answer(s) for multiple choice.</p>
               <div>
                 <label htmlFor="quiz-title-input" className="text-sm font-medium text-textSoft mb-2 block">Quiz title</label>
                 <input
@@ -685,17 +685,20 @@ const TutorWorkshopDetail = () => {
                     onClick={() => handlePublishQuiz(!quiz.published)}
                     className={quiz.published ? 'bg-amber-600 hover:bg-amber-700 border-0' : 'bg-gradient-to-r from-brintelli-primary to-brintelli-primaryDark border-0'}
                   >
-                    {quiz.published ? 'Close quiz' : 'Publish quiz'}
+                    {quiz.published ? 'Close quiz' : 'Publish to learners'}
                   </Button>
                 )}
                 <Button variant="secondary" size="sm" disabled={quizSaving} onClick={handleSaveQuiz}>
                   {quizSaving ? 'Saving…' : quiz ? 'Save quiz' : 'Create quiz'}
                 </Button>
+                <Button variant="ghost" size="sm" onClick={() => loadAll()} className="gap-1.5">
+                  <RefreshCw className="h-4 w-4" /> Refresh
+                </Button>
               </div>
               <p className="text-xs text-textMuted">
                 {quiz?.published
-                  ? 'Quiz is open: learners see it and can answer. Click “Close quiz” to hide from learners and close for answers.'
-                  : 'Quiz is closed: visible only to you. Click “Publish quiz” to list it for learners and allow answers.'}
+                  ? 'Quiz is open: learners see it and can answer. Click “Close quiz” to hide from learners.'
+                  : 'Quiz is closed. Click “Publish to learners” once to make it visible to students and allow answers.'}
               </p>
               <QuizQuestionCards
                 questions={quiz?.questions ?? []}

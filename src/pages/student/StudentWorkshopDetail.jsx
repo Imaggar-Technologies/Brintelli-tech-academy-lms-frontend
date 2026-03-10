@@ -426,8 +426,11 @@ const StudentWorkshopDetail = () => {
               <>
                 <h4 className="text-sm font-medium text-textSoft mb-3">{quiz.title}</h4>
                 {!quizSubmitted ? (
+                  (quiz.questions?.length ?? 0) === 0 ? (
+                    <p className="text-sm text-textMuted">No questions in this quiz yet.</p>
+                  ) : (
                   <form onSubmit={handleSubmitQuiz} className="space-y-6">
-                    {quiz.questions?.map((q, i) => {
+                    {(quiz.questions || []).map((q, i) => {
                       const type = q.type || 'quiz';
                       const opts = q.options || [];
                       const isReviewFreetext = type === 'review' && (q.reviewType === 'freetext' || opts.length <= 1);
@@ -512,6 +515,7 @@ const StudentWorkshopDetail = () => {
                       {submittingQuiz ? 'Submitting...' : 'Submit'}
                     </Button>
                   </form>
+                  )
                 ) : (
                   <>
                     <p className="text-textMuted mb-3">
@@ -521,18 +525,35 @@ const StudentWorkshopDetail = () => {
                     </p>
                     {quizResult?.quiz?.questions?.length > 0 && (
                       <div className="rounded-xl border border-brintelli-border bg-brintelli-baseAlt/30 p-4 space-y-4">
-                        <h4 className="font-semibold text-text">Questions & answers</h4>
-                        {quizResult.quiz.questions.map((qq, idx) => (
-                          <div key={`qq-${idx}`} className="border-b border-brintelli-border pb-3 last:border-0">
-                            <p className="font-medium text-sm text-text mb-1">{idx + 1}. {qq.question}</p>
-                            <p className="text-xs text-textMuted">
-                              Your answer: <span className={qq.correct === true ? 'text-green-600 font-medium' : qq.correct === false ? 'text-amber-600' : 'text-text'}>{qq.yourAnswer ?? '—'}</span>
-                              {qq.correct === false && qq.correctAnswer != null && <span className="ml-2">Correct: <span className="text-green-600 font-medium">{qq.correctAnswer}</span></span>}
-                            </p>
-                          </div>
-                        ))}
+                        <h4 className="font-semibold text-text">Review your answers</h4>
+                        {quizResult.quiz.questions.map((qq, idx) => {
+                          const yourAnswerDisplay = qq.yourAnswer != null && qq.yourAnswer !== '' ? String(qq.yourAnswer) : '—';
+                          return (
+                            <div key={`qq-${idx}`} className="border border-brintelli-border rounded-lg p-3 bg-white space-y-2">
+                              <p className="font-medium text-sm text-text">{idx + 1}. {qq.question || 'Question'}</p>
+                              {qq.questionImage && (
+                                <img src={qq.questionImage} alt="" className="max-h-40 rounded object-contain" />
+                              )}
+                              <div className="text-sm">
+                                <p className="text-textMuted mb-0.5">Your answer:</p>
+                                <p className={qq.correct === true ? 'text-green-600 font-medium' : qq.correct === false ? 'text-amber-600 font-medium' : 'text-text'}>
+                                  {yourAnswerDisplay}
+                                </p>
+                                {qq.correct === false && (qq.correctAnswer != null && qq.correctAnswer !== '') && (
+                                  <>
+                                    <p className="text-textMuted mt-1 mb-0.5">Correct answer:</p>
+                                    <p className="text-green-600 font-medium">{String(qq.correctAnswer)}</p>
+                                  </>
+                                )}
+                                {qq.type !== 'poll' && qq.type !== 'review' && qq.correct === true && (
+                                  <span className="inline-block mt-1 text-green-600 text-xs font-medium">Correct</span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
                         {quizResult.attempt && (quizResult.attempt.totalQuestions > 0) && (
-                          <p className="text-sm text-brand-600 font-medium">Score: {quizResult.attempt.score} / {quizResult.attempt.totalQuestions}</p>
+                          <p className="text-sm text-brand-600 font-medium pt-2">Score: {quizResult.attempt.score} / {quizResult.attempt.totalQuestions}</p>
                         )}
                       </div>
                     )}

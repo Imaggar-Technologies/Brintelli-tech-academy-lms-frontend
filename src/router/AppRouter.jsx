@@ -15,6 +15,9 @@ import CheckEmail from "../pages/auth/CheckEmail";
 import UpcomingWorkshops from "../pages/public/UpcomingWorkshops";
 import Careers from "../pages/public/Careers";
 import CareerApply from "../pages/public/CareerApply";
+import JobPortalLayout from "../components/JobPortalLayout";
+import ApplyJobsList from "../pages/public/ApplyJobsList";
+import ApplyJobsApply from "../pages/public/ApplyJobsApply";
 import ChooseRole from "../pages/auth/ChooseRole";
 import Register from "../pages/auth/Register";
 import RegisterStudent from "../pages/auth/RegisterStudent";
@@ -354,6 +357,11 @@ const AppRouter = () => {
         {/* Public careers - list jobs and apply (no login required) */}
         <Route path="/careers" element={<PublicRoute><Careers /></PublicRoute>} />
         <Route path="/careers/:jobId" element={<PublicRoute><CareerApply /></PublicRoute>} />
+        {/* Job Apply Portal - standalone layout, no app sidebar/topbar; anyone can apply */}
+        <Route path="/applyjobs" element={<JobPortalLayout />}>
+          <Route index element={<ApplyJobsList />} />
+          <Route path=":jobId" element={<ApplyJobsApply />} />
+        </Route>
         {/* Public assessment route - accessible without enrollment */}
         <Route path="/assessment/:leadId" element={<PublicRoute><AssessmentPage /></PublicRoute>} />
         <Route path="/assessment/:leadId/test" element={<ProtectedRoute><AssessmentPage /></ProtectedRoute>} />

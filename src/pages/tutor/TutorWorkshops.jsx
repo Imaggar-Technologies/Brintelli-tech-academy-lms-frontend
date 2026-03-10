@@ -226,9 +226,10 @@ const TutorWorkshops = () => {
     setQuizData((q) => ({ ...q, saving: true }));
     try {
       const id = w.id || w._id;
+      const questions = (quizData.quiz?.questions ?? []).map((q) => ({ ...q, published: true }));
       const res = await workshopAPI.createOrUpdateQuiz(id, {
         title: quizData.quiz?.title || "Workshop Quiz",
-        questions: quizData.quiz?.questions || [],
+        questions,
       });
       if (res?.success) {
         toast.success("Quiz saved");
@@ -631,30 +632,32 @@ const TutorWorkshops = () => {
               ) : (
                 <>
                   <p className="text-sm text-textMuted">
-                    Add quiz questions (multiple choice), polls (no correct answer), or reviews (rating or free text). Use images on questions or options if needed.
+                    Add quiz questions (multiple choice), polls, or reviews. When published, learners see the quiz and can answer; when closed, it is visible only here and learners cannot answer.
                   </p>
+                  {quizData.quiz && (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        size="sm"
+                        disabled={quizData.publishing}
+                        onClick={() => handlePublishQuiz(!quizData.quiz?.published)}
+                        className={quizData.quiz?.published ? "bg-amber-600 hover:bg-amber-700 border-0" : "bg-gradient-to-r from-brintelli-primary to-brintelli-primaryDark border-0"}
+                      >
+                        {quizData.quiz?.published ? "Close quiz" : "Publish quiz"}
+                      </Button>
+                      <Button size="sm" variant="secondary" disabled={quizData.saving} onClick={handleSaveQuiz}>
+                        {quizData.saving ? "Saving…" : "Save quiz"}
+                      </Button>
+                    </div>
+                  )}
                   <QuizBuilder
                     quiz={quizData.quiz || { title: "Workshop Quiz", questions: [] }}
                     onChange={(next) => setQuizData((q) => ({ ...q, quiz: next }))}
                   />
-                  {quizData.quiz && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-text">Status:</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={quizData.publishing}
-                        onClick={() => handlePublishQuiz(!quizData.quiz?.published)}
-                      >
-                        {quizData.quiz?.published ? "Published" : "Unpublished"} – click to toggle
-                      </Button>
-                    </div>
-                  )}
-                  <div className="flex gap-2">
+                  {!quizData.quiz && (
                     <Button size="sm" disabled={quizData.saving} onClick={handleSaveQuiz}>
-                      {quizData.saving ? "Saving…" : quizData.quiz ? "Update quiz" : "Create quiz"}
+                      {quizData.saving ? "Saving…" : "Create quiz"}
                     </Button>
-                  </div>
+                  )}
                 </>
               )}
             </div>

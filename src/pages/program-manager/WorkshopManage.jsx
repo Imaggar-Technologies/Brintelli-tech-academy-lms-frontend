@@ -366,9 +366,10 @@ const WorkshopManage = () => {
   const handleSaveQuiz = async () => {
     setQuizSaving(true);
     try {
+      const questions = (quiz?.questions ?? []).map((q) => ({ ...q, published: true }));
       const res = await workshopAPI.createOrUpdateQuiz(workshopId, {
         title: quiz?.title || 'Workshop Quiz',
-        questions: quiz?.questions || [],
+        questions,
       });
       if (res?.success && res.data?.quiz) {
         setQuiz(res.data.quiz);
@@ -779,23 +780,32 @@ const WorkshopManage = () => {
           <section className="rounded-2xl border border-brintelli-border/60 bg-white p-6 shadow-sm max-w-2xl">
             <p className="text-sm text-textMuted mb-4">
               {quiz ? (
-                <>Quiz &quot;{quiz.title}&quot;. Attendees see it when published. Leaderboard lists participants; quiz points add to learners&apos; total.</>
+                <>Quiz &quot;{quiz.title}&quot;. When published, learners see it and can answer. When closed, it is visible only here and learners cannot answer.</>
               ) : (
-                'Create a quiz and publish it for participants.'
+                'Create a quiz and publish it when ready so learners can see and answer it.'
               )}
             </p>
-            {quiz && (
-              <div className="flex items-center gap-2 mb-4">
-                <span className="text-sm text-text">Status:</span>
-                <Button variant="ghost" size="sm" disabled={quizPublishing} onClick={() => handlePublishQuiz(!quiz.published)}>
-                  {quiz.published ? 'Published' : 'Unpublished'} – click to toggle
+            <div className="flex flex-wrap items-center gap-2">
+              {quiz && (
+                <>
+                  <Button
+                    size="sm"
+                    disabled={quizPublishing}
+                    onClick={() => handlePublishQuiz(!quiz.published)}
+                    className={quiz.published ? 'bg-amber-600 hover:bg-amber-700 border-0' : 'bg-gradient-to-r from-brintelli-primary to-brintelli-primaryDark border-0'}
+                  >
+                    {quiz.published ? 'Close quiz' : 'Publish quiz'}
+                  </Button>
+                  <Button variant="secondary" size="sm" disabled={quizSaving} onClick={handleSaveQuiz}>
+                    {quizSaving ? 'Saving…' : 'Save quiz'}
+                  </Button>
+                </>
+              )}
+              {!quiz && (
+                <Button size="sm" disabled={quizSaving} onClick={handleSaveQuiz}>
+                  {quizSaving ? 'Saving…' : 'Create quiz'}
                 </Button>
-              </div>
-            )}
-            <div className="flex gap-2">
-              <Button size="sm" disabled={quizSaving} onClick={handleSaveQuiz}>
-                {quizSaving ? 'Saving…' : quiz ? 'Update quiz' : 'Create quiz'}
-              </Button>
+              )}
             </div>
           </section>
         </div>

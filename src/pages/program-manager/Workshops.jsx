@@ -1150,18 +1150,20 @@ const Workshops = () => {
               </h3>
               {manageQuiz ? (
                 <div className="space-y-2">
-                  <p className="text-sm text-textMuted">Quiz &quot;{manageQuiz.title}&quot;. Students can attempt only when published.</p>
+                  <p className="text-sm text-textMuted">
+                    Quiz &quot;{manageQuiz.title}&quot;. When published, learners see it and can answer; when closed, they cannot.
+                  </p>
                   <Button
                     type="button"
-                    variant="secondary"
                     size="sm"
                     disabled={quizPublishing}
+                    className={manageQuiz.published ? 'bg-amber-600 hover:bg-amber-700 border-0' : 'bg-gradient-to-r from-brintelli-primary to-brintelli-primaryDark border-0'}
                     onClick={async () => {
                       setQuizPublishing(true);
                       try {
                         const res = await workshopAPI.publishQuiz(manageWorkshop.id || manageWorkshop._id, !manageQuiz.published);
                         if (res?.success && res?.data?.quiz) setManageQuiz(res.data.quiz);
-                        toast.success(res?.message || (manageQuiz.published ? 'Quiz unpublished' : 'Quiz published'));
+                        toast.success(res?.message || (manageQuiz.published ? 'Quiz closed' : 'Quiz published'));
                       } catch (e) {
                         toast.error(e.message || 'Failed');
                       } finally {
@@ -1169,7 +1171,7 @@ const Workshops = () => {
                       }
                     }}
                   >
-                    {manageQuiz.published ? 'Unpublish quiz' : 'Publish quiz'}
+                    {manageQuiz.published ? 'Close quiz' : 'Publish quiz'}
                   </Button>
                 </div>
               ) : (

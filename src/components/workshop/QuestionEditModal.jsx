@@ -95,15 +95,6 @@ export default function QuestionEditModal({ isOpen, onClose, question: initialQu
     >
       <div className="space-y-4">
         <div className="flex flex-wrap items-center gap-3">
-          <label className="flex items-center gap-1.5 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={q.published}
-              onChange={(e) => updateQ({ published: e.target.checked })}
-              className="rounded border-brintelli-border"
-            />
-            <span className="text-xs text-textSoft">Published</span>
-          </label>
           <select
             value={q.type}
             onChange={(e) => setType(e.target.value)}

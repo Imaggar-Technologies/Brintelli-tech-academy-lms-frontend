@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import Button from "../Button";
-import { Plus, Trash2, Upload, CheckSquare, Square } from "lucide-react";
+import { Plus, Trash2, Upload } from "lucide-react";
 import {
   QUESTION_TYPES,
   emptyOption,
@@ -11,27 +11,10 @@ import {
 export default function QuizBuilder({ quiz, onChange, onUploadFile }) {
   const questions = Array.isArray(quiz?.questions) ? quiz.questions.map(normalizeQuestion) : [];
   const title = quiz?.title ?? "Workshop Quiz";
-  const [selectedIds, setSelectedIds] = useState(new Set());
   const [uploadingFor, setUploadingFor] = useState(null); // { qIdx, kind: 'question' | 'option', oIdx }
 
   const setTitle = (t) => onChange({ ...quiz, title: t });
   const setQuestions = (qList) => onChange({ ...quiz, questions: qList });
-
-  const toggleSelect = (qIdx) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(qIdx)) next.delete(qIdx);
-      else next.add(qIdx);
-      return next;
-    });
-  };
-  const selectAll = () => setSelectedIds(new Set(questions.map((_, i) => i)));
-  const clearSelection = () => setSelectedIds(new Set());
-  const publishSelected = (published) => {
-    const next = questions.map((q, i) => (selectedIds.has(i) ? { ...q, published } : q));
-    setQuestions(next);
-    setSelectedIds(new Set());
-  };
 
   const addQuestion = () => setQuestions([...questions, emptyQuestion()]);
   const removeQuestion = (idx) => setQuestions(questions.filter((_, i) => i !== idx));
@@ -101,28 +84,6 @@ export default function QuizBuilder({ quiz, onChange, onUploadFile }) {
         </Button>
       </div>
 
-      {questions.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 py-2 border-b border-brintelli-border/60 mb-4">
-          <button type="button" onClick={selectAll} className="text-xs text-brand-600 hover:underline flex items-center gap-1">
-            <CheckSquare className="h-3.5 w-3.5" /> Select all
-          </button>
-          <button type="button" onClick={clearSelection} className="text-xs text-textMuted hover:underline flex items-center gap-1">
-            <Square className="h-3.5 w-3.5" /> Clear
-          </button>
-          {selectedIds.size > 0 && (
-            <>
-              <span className="text-xs text-textMuted">({selectedIds.size} selected)</span>
-              <Button type="button" size="sm" variant="secondary" className="h-7 text-xs" onClick={() => publishSelected(true)}>
-                Publish selected
-              </Button>
-              <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={() => publishSelected(false)}>
-                Unpublish selected
-              </Button>
-            </>
-          )}
-        </div>
-      )}
-
       {questions.length === 0 ? (
         <p className="text-sm text-textMuted py-4">No questions yet. Add a question to build the quiz, poll, or review.</p>
       ) : (
@@ -130,28 +91,11 @@ export default function QuizBuilder({ quiz, onChange, onUploadFile }) {
           {questions.map((q, qIdx) => (
             <div
               key={qIdx}
-              className={`rounded-xl border-2 p-4 transition-colors ${q.published ? "border-brand-500/50 bg-brand-50/30" : "border-brintelli-border bg-white"}`}
+              className="rounded-xl border-2 border-brintelli-border bg-white p-4 transition-colors"
             >
               <div className="flex items-start justify-between gap-2 mb-3">
                 <div className="flex items-center gap-2 flex-wrap min-w-0">
-                  <button
-                    type="button"
-                    onClick={() => toggleSelect(qIdx)}
-                    className="shrink-0 p-1 rounded text-textMuted hover:bg-brintelli-baseAlt/50"
-                    aria-label={selectedIds.has(qIdx) ? "Deselect" : "Select"}
-                  >
-                    {selectedIds.has(qIdx) ? <CheckSquare className="h-5 w-5 text-brand-600" /> : <Square className="h-5 w-5" />}
-                  </button>
                   <span className="text-xs font-medium text-textMuted">Question {qIdx + 1}</span>
-                  <label className="flex items-center gap-1.5 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={q.published}
-                      onChange={(e) => updateQuestion(qIdx, { published: e.target.checked })}
-                      className="rounded border-brintelli-border"
-                    />
-                    <span className="text-xs text-textSoft">Published</span>
-                  </label>
                   <select
                     value={q.type}
                     onChange={(e) => {

@@ -170,9 +170,10 @@ const TutorWorkshopDetail = () => {
   const handleSaveQuiz = async () => {
     setQuizSaving(true);
     try {
+      const questions = (quiz?.questions ?? []).map((q) => ({ ...q, published: true }));
       const res = await workshopAPI.createOrUpdateQuiz(workshopId, {
         title: quiz?.title || 'Workshop Quiz',
-        questions: quiz?.questions || [],
+        questions,
       });
       if (res?.success) {
         setQuiz(res.data?.quiz || quiz);
@@ -679,19 +680,23 @@ const TutorWorkshopDetail = () => {
               <div className="flex flex-wrap items-center gap-2">
                 {quiz && (
                   <Button
-                    variant="ghost"
                     size="sm"
                     disabled={quizPublishing}
                     onClick={() => handlePublishQuiz(!quiz.published)}
-                    className="text-textMuted hover:text-text"
+                    className={quiz.published ? 'bg-amber-600 hover:bg-amber-700 border-0' : 'bg-gradient-to-r from-brintelli-primary to-brintelli-primaryDark border-0'}
                   >
-                    {quiz?.published ? 'Published' : 'Unpublished'} · click to toggle
+                    {quiz.published ? 'Close quiz' : 'Publish quiz'}
                   </Button>
                 )}
-                <Button size="sm" disabled={quizSaving} onClick={handleSaveQuiz}>
-                  {quizSaving ? 'Saving…' : quiz ? 'Update quiz' : 'Create quiz'}
+                <Button variant="secondary" size="sm" disabled={quizSaving} onClick={handleSaveQuiz}>
+                  {quizSaving ? 'Saving…' : quiz ? 'Save quiz' : 'Create quiz'}
                 </Button>
               </div>
+              <p className="text-xs text-textMuted">
+                {quiz?.published
+                  ? 'Quiz is open: learners see it and can answer. Click “Close quiz” to hide from learners and close for answers.'
+                  : 'Quiz is closed: visible only to you. Click “Publish quiz” to list it for learners and allow answers.'}
+              </p>
               <QuizQuestionCards
                 questions={quiz?.questions ?? []}
                 onAddQuestion={() => {
@@ -706,46 +711,6 @@ const TutorWorkshopDetail = () => {
                   const base = quiz || { title: 'Workshop Quiz' };
                   const next = (base.questions ?? []).filter((_, i) => i !== index);
                   setQuiz({ ...base, questions: next });
-                }}
-                onPublishQuestion={(index) => {
-                  const base = quiz || { title: 'Workshop Quiz', questions: [] };
-                  const questions = (base.questions ?? []).map((q, i) =>
-                    i === index ? { ...q, published: true } : q
-                  );
-                  setQuiz({ ...base, questions });
-                }}
-                onUnpublishQuestion={(index) => {
-                  const base = quiz || { title: 'Workshop Quiz', questions: [] };
-                  const questions = (base.questions ?? []).map((q, i) =>
-                    i === index ? { ...q, published: false } : q
-                  );
-                  setQuiz({ ...base, questions });
-                }}
-                onPublishAll={() => {
-                  const base = quiz || { title: 'Workshop Quiz', questions: [] };
-                  const questions = (base.questions ?? []).map((q) => ({ ...q, published: true }));
-                  setQuiz({ ...base, questions });
-                }}
-                onUnpublishAll={() => {
-                  const base = quiz || { title: 'Workshop Quiz', questions: [] };
-                  const questions = (base.questions ?? []).map((q) => ({ ...q, published: false }));
-                  setQuiz({ ...base, questions });
-                }}
-                onPublishSelected={(indices) => {
-                  const base = quiz || { title: 'Workshop Quiz', questions: [] };
-                  const set = new Set(indices);
-                  const questions = (base.questions ?? []).map((q, i) =>
-                    set.has(i) ? { ...q, published: true } : q
-                  );
-                  setQuiz({ ...base, questions });
-                }}
-                onUnpublishSelected={(indices) => {
-                  const base = quiz || { title: 'Workshop Quiz', questions: [] };
-                  const set = new Set(indices);
-                  const questions = (base.questions ?? []).map((q, i) =>
-                    set.has(i) ? { ...q, published: false } : q
-                  );
-                  setQuiz({ ...base, questions });
                 }}
               />
               <QuestionEditModal

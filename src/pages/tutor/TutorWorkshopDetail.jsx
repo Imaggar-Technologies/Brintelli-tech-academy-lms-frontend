@@ -167,10 +167,11 @@ const TutorWorkshopDetail = () => {
     }
   };
 
-  const handleSaveQuiz = async () => {
+  /** Save quiz to backend (used by Save button and by publish/stop toggles for instant learner updates) */
+  const saveQuizWithQuestions = async (questionsToSave, { toastMessage = 'Quiz saved', silent = false } = {}) => {
     setQuizSaving(true);
     try {
-      const questions = (quiz?.questions ?? []).map((q) => ({
+      const questions = (questionsToSave ?? quiz?.questions ?? []).map((q) => ({
         ...q,
         published: q && Object.prototype.hasOwnProperty.call(q, 'published') ? q.published === true : true,
         closed: q && Object.prototype.hasOwnProperty.call(q, 'closed') ? q.closed === true : false,
@@ -181,13 +182,17 @@ const TutorWorkshopDetail = () => {
       });
       if (res?.success) {
         setQuiz(res.data?.quiz || quiz);
-        toast.success('Quiz saved');
+        if (!silent) toast.success(toastMessage);
       } else throw new Error(res?.error);
     } catch (e) {
-      toast.error(e.message || 'Failed to save quiz');
+      if (!silent) toast.error(e.message || 'Failed to save quiz');
     } finally {
       setQuizSaving(false);
     }
+  };
+
+  const handleSaveQuiz = async () => {
+    await saveQuizWithQuestions(quiz?.questions ?? []);
   };
 
   const handlePublishQuiz = async (published) => {
@@ -731,6 +736,10 @@ const TutorWorkshopDetail = () => {
                   const nextPublished = !(q.published === true);
                   questions[index] = { ...q, published: nextPublished, closed: nextPublished ? q.closed : false };
                   setQuiz({ ...base, questions });
+                  saveQuizWithQuestions(questions, {
+                    toastMessage: nextPublished ? 'Question published — learners will see it shortly' : 'Question unpublished',
+                    silent: false,
+                  });
                 }}
                 onToggleStop={(index) => {
                   const base = quiz || { title: 'Workshop Quiz', questions: [] };
@@ -739,6 +748,10 @@ const TutorWorkshopDetail = () => {
                   if (!q) return;
                   questions[index] = { ...q, closed: !(q.closed === true) };
                   setQuiz({ ...base, questions });
+                  saveQuizWithQuestions(questions, {
+                    toastMessage: q.closed ? 'Question opened for answers' : 'Question closed for answers',
+                    silent: false,
+                  });
                 }}
               />
               <QuestionEditModal

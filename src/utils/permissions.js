@@ -93,6 +93,12 @@ export const PERMISSIONS = {
   HR_READ: 'hr:read',
   HR_UPDATE: 'hr:update',
   HR_CREATE: 'hr:create',
+  // Jobs (careers) - HR manages
+  JOBS_CREATE: 'jobs:create',
+  JOBS_READ: 'jobs:read',
+  JOBS_UPDATE: 'jobs:update',
+  JOBS_DELETE: 'jobs:delete',
+  JOBS_READ_APPLICATIONS: 'jobs:read_applications',
   // Role-specific HR permissions
   HR_AGENT_VIEW: 'hr:agent:view',
   HR_LEAD_VIEW: 'hr:lead:view',
@@ -249,6 +255,7 @@ export const ROLE_PERMISSIONS = {
   // HR roles with hierarchy
   hr: [
     PERMISSIONS.HR_READ, PERMISSIONS.HR_UPDATE, PERMISSIONS.HR_CREATE,
+    PERMISSIONS.JOBS_CREATE, PERMISSIONS.JOBS_READ, PERMISSIONS.JOBS_UPDATE, PERMISSIONS.JOBS_DELETE, PERMISSIONS.JOBS_READ_APPLICATIONS,
     PERMISSIONS.STUDENTS_READ,
     PERMISSIONS.HR_AGENT_VIEW, // Default HR role gets agent view
   ],

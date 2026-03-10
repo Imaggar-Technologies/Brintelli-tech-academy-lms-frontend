@@ -8,6 +8,7 @@ import programManagerNav from "./programManagerNav";
 import marketingNav from "./marketingNav";
 import placementNav from "./placementNav";
 import externalHrNav from "./externalHrNav";
+import { hrNav } from "./base/hr.nav";
 import mentorNav from "./mentorNav";
 import { adminNav } from "../adminNav";
 
@@ -150,6 +151,12 @@ export const roleNavigationConfig = {
     title: "Brintelli LMS",
     subtitle: "Placement Officer",
     nav: placementNav,
+    pinned: [],
+  },
+  hr: {
+    title: "Brintelli HR",
+    subtitle: "Careers & Jobs",
+    nav: hrNav,
     pinned: [],
   },
   externalHR: {
@@ -321,6 +328,7 @@ export const getRoleNavigation = (role, user = null, pathname = "") => {
   const roleMap = {
     student: "learner",
     "program-manager": "programManager",
+    hr: "hr",
     "external-hr": "externalHR",
   };
   const mappedRole = roleMap[role] || role;

@@ -13,6 +13,8 @@ import ResetPassword from "../pages/auth/ResetPassword";
 import VerifyEmail from "../pages/auth/VerifyEmail";
 import CheckEmail from "../pages/auth/CheckEmail";
 import UpcomingWorkshops from "../pages/public/UpcomingWorkshops";
+import Careers from "../pages/public/Careers";
+import CareerApply from "../pages/public/CareerApply";
 import ChooseRole from "../pages/auth/ChooseRole";
 import Register from "../pages/auth/Register";
 import RegisterStudent from "../pages/auth/RegisterStudent";
@@ -296,6 +298,10 @@ import ExternalHrConversion from "../pages/externalHr/Conversion";
 import ExternalHrSuccessScore from "../pages/externalHr/SuccessScore";
 import ExternalHrReports from "../pages/externalHr/Reports";
 import ExternalHrProfile from "../pages/externalHr/Profile";
+import HrDashboard from "../pages/hr/Dashboard";
+import HrJobsList from "../pages/hr/JobsList";
+import HrCreateJob from "../pages/hr/CreateJob";
+import HrJobDetail from "../pages/hr/JobDetail";
 
 const NotFound = () => (
   <div className="flex flex-1 items-center justify-center rounded-2xl border border-dashed border-brintelli-border bg-brintelli-card p-10 text-center">
@@ -332,6 +338,9 @@ const AppRouter = () => {
         
         {/* Public upcoming workshops - no login required to view; login/signup to register */}
         <Route path="/upcoming-workshops" element={<PublicRoute><UpcomingWorkshops /></PublicRoute>} />
+        {/* Public careers - list jobs and apply (no login required) */}
+        <Route path="/careers" element={<PublicRoute><Careers /></PublicRoute>} />
+        <Route path="/careers/:jobId" element={<PublicRoute><CareerApply /></PublicRoute>} />
         {/* Public assessment route - accessible without enrollment */}
         <Route path="/assessment/:leadId" element={<PublicRoute><AssessmentPage /></PublicRoute>} />
         <Route path="/assessment/:leadId/test" element={<ProtectedRoute><AssessmentPage /></ProtectedRoute>} />
@@ -721,6 +730,15 @@ const AppRouter = () => {
             <Route path="profile" element={<MarketingProfile />} />
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="*" element={<MarketingDashboard />} />
+          </Route>
+
+          {/* HR routes (internal HR - jobs/careers) */}
+          <Route path="hr">
+            <Route path="dashboard" element={<HrDashboard />} />
+            <Route path="jobs" element={<HrJobsList />} />
+            <Route path="jobs/create" element={<HrCreateJob />} />
+            <Route path="jobs/:jobId" element={<HrJobDetail />} />
+            <Route index element={<Navigate to="/hr/dashboard" replace />} />
           </Route>
 
           {/* External HR routes */}

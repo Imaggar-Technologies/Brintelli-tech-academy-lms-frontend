@@ -54,6 +54,8 @@ const StudentWorkshopDetail = () => {
   const [quizResult, setQuizResult] = useState(null);
   const [questionResults, setQuestionResults] = useState({});
   const [submittingQuestionIndex, setSubmittingQuestionIndex] = useState(null);
+  const [unansweredAnswers, setUnansweredAnswers] = useState({});
+  const [submittingUnansweredKey, setSubmittingUnansweredKey] = useState(null);
   const [clockingIn, setClockingIn] = useState(false);
 
   const isRegistered = workshop?.participants?.some((p) => (p?.toString?.() || p) === userId);
@@ -80,6 +82,20 @@ const StudentWorkshopDetail = () => {
     const interval = setInterval(touch, 60 * 1000);
     return () => clearInterval(interval);
   }, [workshopId]);
+
+  // Poll quiz while Quiz tab is active so learners see newly published questions without refreshing
+  useEffect(() => {
+    if (!workshopId || activeOption !== 'quiz') return;
+    const poll = async () => {
+      try {
+        const qRes = await workshopAPI.getQuiz(workshopId);
+        if (qRes?.success && qRes.data?.quiz) setQuiz(qRes.data.quiz);
+      } catch (_) {}
+    };
+    const interval = setInterval(poll, 5000);
+    poll();
+    return () => clearInterval(interval);
+  }, [workshopId, activeOption]);
 
   const loadAll = async () => {
     setLoading(true);
@@ -179,6 +195,35 @@ const StudentWorkshopDetail = () => {
       toast.error(e?.message || 'Failed to submit answer');
     } finally {
       setSubmittingQuestionIndex(null);
+    }
+  };
+
+  /** Submit a single answer for an unanswered question (after quiz already submitted) */
+  const handleSubmitUnanswered = async (answerableIndex, answer) => {
+    if (answer === undefined || answer === null) {
+      toast.error('Please select an answer first.');
+      return;
+    }
+    const key = String(answerableIndex);
+    setSubmittingUnansweredKey(key);
+    try {
+      const res = await workshopAPI.submitQuizAnswer(workshopId, { answerableIndex, answer });
+      if (res?.success && res?.data) {
+        const d = res.data;
+        if (d.correct === true && (d.pointsEarned ?? 0) > 0) {
+          toast.success(`Correct! +${d.pointsEarned} point. Score: ${d.scoreSoFar ?? 0}/${d.totalQuestions ?? 0}`, { duration: 4000 });
+        } else if (d.correct === false) {
+          toast.error(`Incorrect. Correct: ${d.correctAnswerDisplay ?? '—'}`, { duration: 5000 });
+        } else {
+          toast.success('Answer saved.');
+        }
+        setUnansweredAnswers((prev) => ({ ...prev, [key]: undefined }));
+        loadAll();
+      } else toast.error(res?.message || 'Failed to submit');
+    } catch (e) {
+      toast.error(e?.message || 'Failed to submit answer');
+    } finally {
+      setSubmittingUnansweredKey(null);
     }
   };
 
@@ -638,43 +683,134 @@ const StudentWorkshopDetail = () => {
                     )}
                     <p className="text-textMuted mb-3">
                       {(quiz.questions || []).some((q) => { const t = q.type || 'quiz'; return t === 'quiz' || t === 'quiz-multi'; })
-                        ? 'You have submitted. You cannot answer again. Your answers are saved below.'
+                        ? 'Your answers are saved below. You can still answer any question you left blank.'
                         : 'Thank you for your response.'}
                     </p>
-                    {quizResult?.quiz?.questions?.length > 0 && (
-                      <div className="rounded-xl border border-brintelli-border bg-brintelli-baseAlt/30 p-4 space-y-4">
-                        <h4 className="font-semibold text-text">Your answers</h4>
-                        {quizResult.quiz.questions.map((qq, idx) => {
-                          const yourAnswerDisplay = (qq.yourAnswer != null && String(qq.yourAnswer).trim() !== '') ? String(qq.yourAnswer) : '—';
-                          return (
-                            <div key={`qq-${idx}`} className="border border-brintelli-border rounded-lg p-3 bg-white space-y-2">
-                              <p className="font-medium text-sm text-text">{idx + 1}. {qq.question || 'Question'}</p>
-                              {qq.questionImage && (
-                                <img src={qq.questionImage} alt="" className="max-h-40 rounded object-contain" />
-                              )}
-                              <div className="text-sm">
-                                <p className="text-textMuted mb-0.5">Your answer:</p>
-                                <p className={qq.correct === true ? 'text-green-600 font-medium' : qq.correct === false ? 'text-amber-600 font-medium' : 'text-text'}>
-                                  {yourAnswerDisplay}
-                                </p>
-                                {qq.correct === false && (qq.correctAnswer != null && qq.correctAnswer !== '') && (
-                                  <>
-                                    <p className="text-textMuted mt-1 mb-0.5">Correct answer:</p>
-                                    <p className="text-green-600 font-medium">{String(qq.correctAnswer)}</p>
-                                  </>
+                    {quizResult?.quiz?.questions?.length > 0 && (() => {
+                      const publishedList = (quiz?.questions || []).map((q, i) => ({ q, i })).filter(({ q }) => q.published !== false);
+                      const answerableList = (quiz?.questions || []).map((q, i) => ({ q, i })).filter(({ q }) => q.published !== false && q.closed !== true);
+                      return (
+                        <div className="rounded-xl border border-brintelli-border bg-brintelli-baseAlt/30 p-4 space-y-4">
+                          <h4 className="font-semibold text-text">Your answers</h4>
+                          {quizResult.quiz.questions.map((qq, idx) => {
+                            const yourAnswerDisplay = (qq.yourAnswer != null && String(qq.yourAnswer).trim() !== '') ? String(qq.yourAnswer) : '—';
+                            const yourAnswerEmpty = !qq.yourAnswer || String(qq.yourAnswer).trim() === '' || qq.yourAnswer === '—';
+                            const fullIndex = publishedList[idx]?.i;
+                            const answerableIndex = fullIndex != null ? answerableList.findIndex((x) => x.i === fullIndex) : -1;
+                            const canAnswer = yourAnswerEmpty && answerableIndex >= 0;
+                            const opts = qq.options || [];
+                            const type = qq.type || 'quiz';
+                            const key = String(answerableIndex);
+                            const selectedAnswer = unansweredAnswers[key];
+                            const isSubmitting = submittingUnansweredKey === key;
+
+                            return (
+                              <div key={`qq-${idx}`} className="border border-brintelli-border rounded-lg p-3 bg-white space-y-2">
+                                <p className="font-medium text-sm text-text">{idx + 1}. {qq.question || 'Question'}</p>
+                                {qq.questionImage && (
+                                  <img src={qq.questionImage} alt="" className="max-h-40 rounded object-contain" />
                                 )}
-                                {qq.type !== 'poll' && qq.type !== 'review' && qq.correct === true && (
-                                  <span className="inline-block mt-1 text-green-600 text-xs font-medium">Correct</span>
+                                {canAnswer ? (
+                                  <div className="text-sm space-y-2">
+                                    <p className="text-textMuted font-medium">You didn&apos;t answer this — answer now:</p>
+                                    {type === 'quiz-multi' ? (
+                                      <div className="space-y-2">
+                                        {opts.map((opt, j) => {
+                                          const text = typeof opt === 'object' && opt != null ? (opt.text || '') : String(opt);
+                                          const img = typeof opt === 'object' && opt != null ? (opt.image || '') : '';
+                                          const selected = Array.isArray(selectedAnswer) ? selectedAnswer : [];
+                                          const checked = selected.includes(j);
+                                          return (
+                                            <label key={j} className="flex items-start gap-3 cursor-pointer rounded-lg border border-brintelli-border/60 p-2 hover:bg-brintelli-baseAlt/30">
+                                              <input
+                                                type="checkbox"
+                                                checked={checked}
+                                                onChange={() => {
+                                                  const current = Array.isArray(selectedAnswer) ? selectedAnswer : [];
+                                                  const next = current.includes(j) ? current.filter((k) => k !== j) : [...current, j].sort((a, b) => a - b);
+                                                  setUnansweredAnswers((prev) => ({ ...prev, [key]: next }));
+                                                }}
+                                                className="mt-1"
+                                              />
+                                              <span className="flex-1 flex items-center gap-2 flex-wrap">
+                                                {img && <img src={img} alt="" className="max-h-16 rounded object-contain" onError={(e) => { e.target.style.display = 'none'; }} />}
+                                                <span className="text-sm">{text || `Option ${j + 1}`}</span>
+                                              </span>
+                                            </label>
+                                          );
+                                        })}
+                                      </div>
+                                    ) : type === 'review' && (opts.length <= 1 || qq.reviewType === 'freetext') ? (
+                                      <textarea
+                                        className="w-full rounded-lg border border-brintelli-border px-3 py-2 text-sm min-h-[80px]"
+                                        placeholder="Your feedback..."
+                                        value={typeof selectedAnswer === 'string' ? selectedAnswer : ''}
+                                        onChange={(e) => setUnansweredAnswers((prev) => ({ ...prev, [key]: e.target.value }))}
+                                      />
+                                    ) : (
+                                      <div className="space-y-2">
+                                        {opts.map((opt, j) => {
+                                          const text = typeof opt === 'object' && opt != null ? (opt.text || '') : String(opt);
+                                          const img = typeof opt === 'object' && opt != null ? (opt.image || '') : '';
+                                          return (
+                                            <label key={j} className="flex items-start gap-3 cursor-pointer rounded-lg border border-brintelli-border/60 p-2 hover:bg-brintelli-baseAlt/30">
+                                              <input
+                                                type="radio"
+                                                name={`unanswered-${key}`}
+                                                checked={selectedAnswer === j}
+                                                onChange={() => setUnansweredAnswers((prev) => ({ ...prev, [key]: j }))}
+                                                className="mt-1"
+                                              />
+                                              <span className="flex-1 flex items-center gap-2 flex-wrap">
+                                                {img && <img src={img} alt="" className="max-h-16 rounded object-contain" onError={(e) => { e.target.style.display = 'none'; }} />}
+                                                <span className="text-sm">{text || `Option ${j + 1}`}</span>
+                                              </span>
+                                            </label>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      onClick={() => handleSubmitUnanswered(answerableIndex, selectedAnswer)}
+                                      disabled={
+                                        isSubmitting ||
+                                        (type === 'quiz' && typeof selectedAnswer !== 'number') ||
+                                        (type === 'quiz-multi' && (!Array.isArray(selectedAnswer) || selectedAnswer.length === 0)) ||
+                                        (type === 'poll' && selectedAnswer == null) ||
+                                        (type === 'review' && qq.reviewType !== 'freetext' && selectedAnswer == null)
+                                      }
+                                    >
+                                      {isSubmitting ? 'Submitting…' : 'Submit this answer'}
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <div className="text-sm">
+                                    <p className="text-textMuted mb-0.5">Your answer:</p>
+                                    <p className={qq.correct === true ? 'text-green-600 font-medium' : qq.correct === false ? 'text-amber-600 font-medium' : 'text-text'}>
+                                      {yourAnswerDisplay}
+                                    </p>
+                                    {qq.correct === false && (qq.correctAnswer != null && qq.correctAnswer !== '') && (
+                                      <>
+                                        <p className="text-textMuted mt-1 mb-0.5">Correct answer:</p>
+                                        <p className="text-green-600 font-medium">{String(qq.correctAnswer)}</p>
+                                      </>
+                                    )}
+                                    {qq.type !== 'poll' && qq.type !== 'review' && qq.correct === true && (
+                                      <span className="inline-block mt-1 text-green-600 text-xs font-medium">Correct</span>
+                                    )}
+                                  </div>
                                 )}
                               </div>
-                            </div>
-                          );
-                        })}
-                        {quizResult.attempt && (quizResult.attempt.totalQuestions > 0) && (
-                          <p className="text-sm text-brand-600 font-medium pt-2">Score: {quizResult.attempt.score} / {quizResult.attempt.totalQuestions}</p>
-                        )}
-                      </div>
-                    )}
+                            );
+                          })}
+                          {quizResult.attempt && (quizResult.attempt.totalQuestions > 0) && (
+                            <p className="text-sm text-brand-600 font-medium pt-2">Score: {quizResult.attempt.score} / {quizResult.attempt.totalQuestions}</p>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </>
                 )}
               </>

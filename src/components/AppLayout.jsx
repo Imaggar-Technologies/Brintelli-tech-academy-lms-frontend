@@ -25,6 +25,7 @@ const getRoleFromPath = (pathname) => {
     "finance",
     "sales",
     "marketing",
+    "hr",
     "external-hr",
   ];
   if (validRoles.includes(firstSegment)) {

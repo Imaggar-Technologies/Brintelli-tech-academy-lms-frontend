@@ -25,21 +25,24 @@ const StatusBadge = ({ status }) => {
   );
 };
 
-const HrJobsList = () => {
+const HrJobsList = ({ employmentTypeFilter }) => {
   const navigate = useNavigate();
   const [jobs, setJobs] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
 
+  const isInternships = employmentTypeFilter === 'INTERNSHIP';
+  const createPath = isInternships ? '/hr/jobs/create?employmentType=INTERNSHIP' : '/hr/jobs/create';
+
   useEffect(() => {
     loadJobs();
-  }, [statusFilter]);
+  }, [statusFilter, employmentTypeFilter]);
 
   const loadJobs = async () => {
     try {
       setLoading(true);
-      const params = statusFilter ? { status: statusFilter } : {};
+      const params = { ...(statusFilter && { status: statusFilter }), ...(employmentTypeFilter && { employmentType: employmentTypeFilter }) };
       const res = await jobsAPI.list(params);
       if (res.success && res.data?.jobs) {
         setJobs(res.data.jobs);
@@ -58,10 +61,12 @@ const HrJobsList = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-text">Job postings</h1>
-        <Button variant="primary" onClick={() => navigate('/hr/jobs/create')}>
+        <h1 className="text-2xl font-bold text-text">
+          {isInternships ? 'Internship opportunities' : 'Job postings'}
+        </h1>
+        <Button variant="primary" onClick={() => navigate(createPath)}>
           <Plus className="h-4 w-4 mr-2" />
-          Create job
+          {isInternships ? 'Create internship' : 'Create job'}
         </Button>
       </div>
 
@@ -103,9 +108,9 @@ const HrJobsList = () => {
       ) : jobs.length === 0 ? (
         <div className="rounded-2xl border border-brintelli-border bg-brintelli-card p-12 text-center">
           <Briefcase className="h-12 w-12 text-textMuted mx-auto mb-4" />
-          <p className="text-textMuted mb-4">No jobs yet.</p>
-          <Button variant="primary" onClick={() => navigate('/hr/jobs/create')}>
-            Create first job
+          <p className="text-textMuted mb-4">{isInternships ? 'No internships yet.' : 'No jobs yet.'}</p>
+          <Button variant="primary" onClick={() => navigate(createPath)}>
+            {isInternships ? 'Create first internship' : 'Create first job'}
           </Button>
         </div>
       ) : (
@@ -115,6 +120,7 @@ const HrJobsList = () => {
               key={job.id}
               className="rounded-xl border border-brintelli-border bg-brintelli-card p-4 flex flex-wrap items-center justify-between gap-4 hover:border-brand-500/30 transition-colors cursor-pointer"
               onClick={() => navigate(`/hr/jobs/${job.id}`)}
+              role="button"
             >
               <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2 mb-1">

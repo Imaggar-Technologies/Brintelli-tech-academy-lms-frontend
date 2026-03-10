@@ -94,6 +94,14 @@ export const hrNav = [
         pageId: "hr-jobs",
         permissions: ["hr:agent:view", "hr:lead:view", "hr:head:view"],
       },
+      {
+        id: "job-drives",
+        label: "Job Drives",
+        icon: CalendarClock,
+        path: "/hr/job-drives",
+        pageId: "hr-job-drives",
+        permissions: ["hr:agent:view", "hr:lead:view", "hr:head:view"],
+      },
     ],
   },
   {

@@ -1,18 +1,20 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { jobsAPI } from '../../api/jobs';
 import { toast } from 'react-hot-toast';
 import Button from '../../components/Button';
 
 const CreateJob = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const employmentTypeFromQuery = searchParams.get('employmentType');
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     title: '',
     description: '',
     department: '',
     location: '',
-    employmentType: 'FULL_TIME',
+    employmentType: employmentTypeFromQuery === 'INTERNSHIP' ? 'INTERNSHIP' : 'FULL_TIME',
     status: 'OPEN',
   });
 
@@ -31,8 +33,8 @@ const CreateJob = () => {
     try {
       const res = await jobsAPI.create(form);
       if (res.success && res.data?.job?.id) {
-        toast.success('Job created');
-        navigate(`/hr/jobs/${res.data.job.id}`);
+        toast.success(form.employmentType === 'INTERNSHIP' ? 'Internship created' : 'Job created');
+        navigate(form.employmentType === 'INTERNSHIP' ? '/hr/internships' : `/hr/jobs/${res.data.job.id}`);
       } else {
         toast.error(res.error || 'Failed to create job');
       }
@@ -43,9 +45,13 @@ const CreateJob = () => {
     }
   };
 
+  const isInternship = form.employmentType === 'INTERNSHIP';
+
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold text-text mb-6">Create job posting</h1>
+      <h1 className="text-2xl font-bold text-text mb-6">
+        {isInternship ? 'Create internship opportunity' : 'Create job posting'}
+      </h1>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-text mb-1">Title *</label>
@@ -121,9 +127,9 @@ const CreateJob = () => {
         </div>
         <div className="flex gap-3 pt-4">
           <Button type="submit" variant="primary" disabled={saving}>
-            {saving ? 'Creating...' : 'Create job'}
+            {saving ? 'Creating...' : isInternship ? 'Create internship' : 'Create job'}
           </Button>
-          <Button type="button" variant="ghost" onClick={() => navigate('/hr/jobs')}>
+          <Button type="button" variant="ghost" onClick={() => navigate(isInternship ? '/hr/internships' : '/hr/jobs')}>
             Cancel
           </Button>
         </div>

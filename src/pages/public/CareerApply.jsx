@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Briefcase, ArrowLeft } from 'lucide-react';
 import { getPublicJobById, submitJobApplication } from '../../api/jobs';
+import { getPublicColleges } from '../../api/partners';
 import { toast } from 'react-hot-toast';
 import Button from '../../components/Button';
 
@@ -26,10 +27,18 @@ const CareerApply = () => {
     resumeUrl: '',
   });
   const [resumeFile, setResumeFile] = useState(null);
+  const [colleges, setColleges] = useState([]);
+  const [otherCollege, setOtherCollege] = useState('');
 
   useEffect(() => {
     if (jobId) loadJob();
   }, [jobId]);
+
+  useEffect(() => {
+    getPublicColleges({ limit: 500 })
+      .then((r) => r.success && r.data?.colleges && setColleges(r.data.colleges))
+      .catch(() => {});
+  }, []);
 
   const loadJob = async () => {
     try {
@@ -67,7 +76,8 @@ const CareerApply = () => {
         fd.append('name', form.name.trim());
         fd.append('email', form.email.trim().toLowerCase());
         if (form.whatsappNumber?.trim()) fd.append('whatsappNumber', form.whatsappNumber.trim());
-        if (form.collegeName?.trim()) fd.append('collegeName', form.collegeName.trim());
+        const collegeVal = form.collegeName === '_other_' ? otherCollege?.trim() : form.collegeName?.trim();
+        if (collegeVal) fd.append('collegeName', collegeVal);
         fd.append('resume', resumeFile);
         await submitJobApplication(jobId, fd);
       } else {
@@ -75,7 +85,7 @@ const CareerApply = () => {
           name: form.name.trim(),
           email: form.email.trim().toLowerCase(),
           whatsappNumber: form.whatsappNumber?.trim() || undefined,
-          collegeName: form.collegeName?.trim() || undefined,
+          collegeName: (form.collegeName === '_other_' ? otherCollege?.trim() : form.collegeName?.trim()) || undefined,
           resumeUrl: form.resumeUrl?.trim() || undefined,
         };
         await submitJobApplication(jobId, payload);
@@ -172,14 +182,27 @@ const CareerApply = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-text mb-1">College name</label>
-              <input
-                type="text"
+              <select
                 name="collegeName"
                 value={form.collegeName}
                 onChange={handleChange}
                 className="w-full rounded-lg border border-brintelli-border bg-brintelli-baseAlt px-3 py-2 text-text"
-                placeholder="Your college or institution"
-              />
+              >
+                <option value="">Select your college</option>
+                {colleges.map((c) => (
+                  <option key={c.id} value={c.name}>{c.name}</option>
+                ))}
+                <option value="_other_">Other (type below)</option>
+              </select>
+              {form.collegeName === '_other_' && (
+                <input
+                  type="text"
+                  value={otherCollege}
+                  onChange={(e) => setOtherCollege(e.target.value)}
+                  placeholder="Enter your college name"
+                  className="w-full mt-2 rounded-lg border border-brintelli-border bg-brintelli-baseAlt px-3 py-2 text-text text-sm"
+                />
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-text mb-1">Resume (PDF or Word)</label>

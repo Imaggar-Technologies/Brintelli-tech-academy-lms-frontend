@@ -302,6 +302,17 @@ import HrDashboard from "../pages/hr/Dashboard";
 import HrJobsList from "../pages/hr/JobsList";
 import HrCreateJob from "../pages/hr/CreateJob";
 import HrJobDetail from "../pages/hr/JobDetail";
+import PartnersList from "../pages/hr/PartnersList";
+import CreatePartner from "../pages/hr/CreatePartner";
+import PartnerDetail from "../pages/hr/PartnerDetail";
+import JobDrivesList from "../pages/hr/JobDrivesList";
+import CreateJobDrive from "../pages/hr/CreateJobDrive";
+import JobDriveDetail from "../pages/hr/JobDriveDetail";
+import CommunicationLogsList from "../pages/hr/CommunicationLogsList";
+import CreateCommunicationLog from "../pages/hr/CreateCommunicationLog";
+import InterviewsList from "../pages/hr/InterviewsList";
+import CreateInterview from "../pages/hr/CreateInterview";
+import InterviewDetail from "../pages/hr/InterviewDetail";
 
 const NotFound = () => (
   <div className="flex flex-1 items-center justify-center rounded-2xl border border-dashed border-brintelli-border bg-brintelli-card p-10 text-center">
@@ -732,12 +743,25 @@ const AppRouter = () => {
             <Route path="*" element={<MarketingDashboard />} />
           </Route>
 
-          {/* HR routes (internal HR - jobs/careers) */}
+          {/* HR routes (internal HR - jobs, partners, interviews, job drives, communications) */}
           <Route path="hr">
             <Route path="dashboard" element={<HrDashboard />} />
+            <Route path="partners" element={<PartnersList />} />
+            <Route path="partners/create" element={<CreatePartner />} />
+            <Route path="partners/:partnerId" element={<PartnerDetail />} />
+            <Route path="contacts" element={<PartnersList />} />
             <Route path="jobs" element={<HrJobsList />} />
             <Route path="jobs/create" element={<HrCreateJob />} />
             <Route path="jobs/:jobId" element={<HrJobDetail />} />
+            <Route path="internships" element={<HrJobsList employmentTypeFilter="INTERNSHIP" />} />
+            <Route path="job-drives" element={<JobDrivesList />} />
+            <Route path="job-drives/create" element={<CreateJobDrive />} />
+            <Route path="job-drives/:driveId" element={<JobDriveDetail />} />
+            <Route path="interviews" element={<InterviewsList />} />
+            <Route path="interviews/create" element={<CreateInterview />} />
+            <Route path="interviews/:interviewId" element={<InterviewDetail />} />
+            <Route path="communications" element={<CommunicationLogsList />} />
+            <Route path="communications/create" element={<CreateCommunicationLog />} />
             <Route index element={<Navigate to="/hr/dashboard" replace />} />
           </Route>
 

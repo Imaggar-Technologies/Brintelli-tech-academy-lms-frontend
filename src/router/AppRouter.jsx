@@ -18,6 +18,7 @@ import CareerApply from "../pages/public/CareerApply";
 import JobPortalLayout from "../components/JobPortalLayout";
 import ApplyJobsList from "../pages/public/ApplyJobsList";
 import ApplyJobsApply from "../pages/public/ApplyJobsApply";
+import JobListing from "../pages/public/JobListing";
 import ChooseRole from "../pages/auth/ChooseRole";
 import Register from "../pages/auth/Register";
 import RegisterStudent from "../pages/auth/RegisterStudent";
@@ -360,6 +361,7 @@ const AppRouter = () => {
         {/* Job Apply Portal - public & unprotected (no auth required); standalone layout; anyone can access */}
         <Route path="/applyjobs" element={<JobPortalLayout />}>
           <Route index element={<ApplyJobsList />} />
+          <Route path="joblisting" element={<JobListing />} />
           <Route path=":jobId" element={<ApplyJobsApply />} />
         </Route>
         {/* Public assessment route - accessible without enrollment */}

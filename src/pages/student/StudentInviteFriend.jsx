@@ -300,7 +300,7 @@ const StudentInviteFriend = () => {
           </div>
           <div>
             <h3 className="text-lg font-semibold text-text">My vouchers</h3>
-            <p className="text-sm text-textSoft">Vouchers sent to you by tutors, admins, or Brintelli. You can use these at checkout or copy a code to send to a friend. Expired vouchers are listed first.</p>
+            <p className="text-sm text-textSoft">Vouchers sent to you by tutors, admins, or Brintelli. You can use them at checkout or share the code with a friend. Only staff can create and send new vouchers. Expired vouchers are listed first.</p>
           </div>
         </div>
         <div className="p-4">
@@ -334,10 +334,10 @@ const StudentInviteFriend = () => {
                       size="sm"
                       className="shrink-0 gap-1"
                       onClick={() => copyToClipboard(v.code, 'Voucher code')}
-                      title="Copy code to send to a friend"
+                      title="Copy code to share with a friend"
                     >
                       <Copy className="h-3.5 w-3.5" />
-                      Copy & send to friend
+                      Copy code
                     </Button>
                     {v.expiresAt && (
                       <span className={`text-xs ${v.isExpired ? 'text-amber-700 font-medium' : 'text-textMuted'}`}>

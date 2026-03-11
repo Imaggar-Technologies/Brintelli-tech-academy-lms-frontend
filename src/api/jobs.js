@@ -25,7 +25,7 @@ export const submitJobApplication = async (jobId, formData) => {
   if (token) headers.Authorization = `Bearer ${token}`;
   const res = await fetch(`${API_BASE_URL}/api/public/jobs/${jobId}/apply`, {
     method: 'POST',
-    headers: formData instanceof FormData ? {} : { 'Content-Type': 'application/json', ...headers },
+    headers: formData instanceof FormData ? headers : { 'Content-Type': 'application/json', ...headers },
     body: formData instanceof FormData ? formData : JSON.stringify(formData),
   });
   const data = await res.json();

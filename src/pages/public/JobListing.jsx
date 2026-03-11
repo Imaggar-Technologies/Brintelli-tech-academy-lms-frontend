@@ -1,19 +1,25 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { selectCurrentUser, selectIsAuthenticated } from '../../store/slices/authSlice';
 import { getPublicJobs } from '../../api/jobs';
 import apiRequest from '../../api/apiClient';
 import JobListingLayout from '../../components/JobListingLayout';
-import PageHeader from '../../components/PageHeader';
 import { toast } from 'react-hot-toast';
 
-const Jobs = () => {
+const JobListing = () => {
+  const [searchParams] = useSearchParams();
+  const queryFromUrl = searchParams.get('q') || '';
   const authUser = useSelector(selectCurrentUser);
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(queryFromUrl);
   const [currentUser, setCurrentUser] = useState(null);
+
+  useEffect(() => {
+    setSearchQuery(queryFromUrl);
+  }, [queryFromUrl]);
 
   useEffect(() => {
     const load = async () => {
@@ -39,11 +45,7 @@ const Jobs = () => {
   }, [isAuthenticated, authUser?.jobReady]);
 
   return (
-    <div className="space-y-4 pb-8">
-      <PageHeader
-        title="Job Opportunities"
-        description="Browse openings and apply when you're job ready"
-      />
+    <div className="max-w-[1600px] mx-auto">
       <JobListingLayout
         jobs={jobs}
         loading={loading}
@@ -52,10 +54,11 @@ const Jobs = () => {
         currentUser={currentUser}
         isLoggedIn={isAuthenticated}
         applyPathPrefix="/applyjobs/"
-        profileResumeLink="/student/profile"
+        profileResumeLink={isAuthenticated ? '/student/profile' : undefined}
+        signInLink="/auth/signin"
       />
     </div>
   );
 };
 
-export default Jobs;
+export default JobListing;

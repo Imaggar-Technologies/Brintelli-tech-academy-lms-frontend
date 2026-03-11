@@ -224,49 +224,180 @@ const StudentProfile = () => {
         </div>
       )}
 
-      {!loading && profile && (
-        <div className="mb-4 rounded-xl border-2 border-amber-400 bg-amber-50 px-4 py-4">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
-            <div className="flex-1 min-w-0">
-              <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                <p className="font-semibold text-amber-900">
-                  {profileProgress.percent === 100
-                    ? 'Profile complete'
-                    : 'Complete your profile to earn more points'}
-                </p>
-                <span className="text-sm font-medium text-amber-800">
-                  {profileProgress.filled} of {profileProgress.total} fields
-                </span>
-              </div>
-              <div className="h-2.5 w-full rounded-full bg-amber-200/80 overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-amber-500 transition-all duration-500"
-                  style={{ width: `${profileProgress.percent}%` }}
-                />
-              </div>
-              <p className="text-sm text-amber-800 mt-2">
-                {profileProgress.pointsRemaining > 0 ? (
-                  <>
-                    <span className="font-medium">Earn up to {profileProgress.pointsRemaining} more points</span>
-                    {' '}by filling in name, phone, college, degree, department, year, area of interest, goal, bio, address, and social links.
-                  </>
-                ) : (
-                  <>All set! You’ve earned all profile points.</>
-                )}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <div className="text-textMuted">Loading profile...</div>
         </div>
       ) : (
         <div className="space-y-6">
-          {/* Banner + Avatar + Name + Stats (MatDash style) */}
+          {/* Red area: progress bar + stats (Points, Streak, Programs) + Edit Profile */}
+          {profile && (
+            <div
+              className="rounded-2xl border-2 border-amber-200/80 bg-amber-50/50 sm:bg-gradient-to-br sm:from-amber-50/70 sm:to-orange-50/50 p-4 sm:p-5 shadow-soft"
+              style={{ borderColor: 'rgba(251, 191, 36, 0.5)' }}
+            >
+              {/* Profile completion progress bar */}
+              <div className="flex items-start gap-3 mb-4">
+                <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                    <p className="font-semibold text-amber-900">
+                      {profileProgress.percent === 100
+                        ? 'Profile complete'
+                        : 'Complete your profile to earn more points'}
+                    </p>
+                    <span className="text-sm font-medium text-amber-800">
+                      {profileProgress.filled} of {profileProgress.total} fields
+                    </span>
+                  </div>
+                  <div className="h-2.5 w-full rounded-full bg-amber-200/80 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-amber-500 transition-all duration-500"
+                      style={{ width: `${profileProgress.percent}%` }}
+                    />
+                  </div>
+                  <p className="text-sm text-amber-800 mt-2">
+                    {profileProgress.pointsRemaining > 0 ? (
+                      <>
+                        <span className="font-medium">Earn up to {profileProgress.pointsRemaining} more points</span>
+                        {' '}by filling in name, phone, college, degree, department, year, area of interest, goal, bio, address, and social links.
+                      </>
+                    ) : (
+                      <>All set! You’ve earned all profile points.</>
+                    )}
+                  </p>
+                </div>
+              </div>
+              {/* Stats row + Edit Profile */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-amber-200/60">
+                <div className="flex flex-wrap items-center gap-3">
+                  <Tooltip
+                    placement="bottom"
+                    content={
+                      <>
+                        <p className="font-semibold text-text mb-1">Brintelli points</p>
+                        <p className="text-textMuted text-xs mb-1">
+                          Earned from profile completion, quizzes, workshops, reporting bugs, and engagement.
+                        </p>
+                        <p className="text-textSoft text-xs font-medium">Benefits: Unlock rewards, climb leaderboards, and get recognized for your progress.</p>
+                      </>
+                    }
+                  >
+                    <div className="flex items-center gap-2 rounded-xl border border-amber-200/80 bg-white/90 px-4 py-2 cursor-help shadow-sm">
+                      <Coins className="h-5 w-5 text-amber-500" />
+                      <span className="font-semibold text-text">{brintelliPoints}</span>
+                      <span className="text-sm text-textMuted">Points</span>
+                    </div>
+                  </Tooltip>
+                  <Tooltip
+                    placement="bottom"
+                    content={
+                      <>
+                        <p className="font-semibold text-text mb-1">Login streak</p>
+                        <p className="text-textMuted text-xs mb-1">
+                          Consecutive days you’ve logged in. Log in every day to keep your streak going.
+                        </p>
+                        <p className="text-textSoft text-xs font-medium">Benefits: Stay on track, build a learning habit, and get recognized for consistency.</p>
+                      </>
+                    }
+                  >
+                    <div className="flex items-center gap-2 rounded-xl border border-sky-200/80 bg-white/90 px-4 py-2 cursor-help shadow-sm">
+                      <Flame className="h-5 w-5 text-orange-500" />
+                      <span className="font-semibold text-text">{streak}</span>
+                      <span className="text-sm text-textMuted">Day Streak</span>
+                    </div>
+                  </Tooltip>
+                  <Tooltip
+                    placement="bottom"
+                    content={
+                      <>
+                        <p className="font-semibold text-text mb-1">Programs</p>
+                        <p className="text-textMuted text-xs mb-1">
+                          Number of programs you’re enrolled in.
+                        </p>
+                        <p className="text-textSoft text-xs font-medium">Benefits: Access live sessions, mentors, and content for your enrolled programs.</p>
+                      </>
+                    }
+                  >
+                    <div className="flex items-center gap-2 rounded-xl border border-brand-200/80 bg-white/90 px-4 py-2 cursor-help shadow-sm">
+                      <BookOpen className="h-5 w-5 text-brand-500" />
+                      <span className="font-semibold text-text">—</span>
+                      <span className="text-sm text-textMuted">Programs</span>
+                    </div>
+                  </Tooltip>
+                </div>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => (isEditing ? handleSave() : setIsEditing(true))}
+                  disabled={loading || saving}
+                  className="gap-2"
+                >
+                  <Edit2 className="h-4 w-4" />
+                  {isEditing ? (saving ? 'Saving...' : 'Save Changes') : 'Edit Profile'}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Job ready status (learners only) */}
+          {profile && (
+            <div className="rounded-2xl border border-sky-200/80 bg-sky-50/50 p-4 shadow-soft">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <Briefcase className="h-5 w-5 text-sky-600 flex-shrink-0" />
+                  <div>
+                    <p className="font-semibold text-sky-900">Job ready</p>
+                    <p className="text-sm text-sky-700">
+                      {profile.jobReady
+                        ? 'You can apply to jobs from the Jobs page.'
+                        : 'Turn on to allow applying to jobs. You can still browse all listings.'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={!!profile.jobReady}
+                  disabled={saving}
+                  onClick={async () => {
+                    const next = !profile.jobReady;
+                    setSaving(true);
+                    setError('');
+                    try {
+                      const res = await apiRequest('/api/users/me', {
+                        method: 'PUT',
+                        body: JSON.stringify({ jobReady: next }),
+                      });
+                      const user = res?.data?.user || null;
+                      if (user) {
+                        setProfile(user);
+                        dispatch(updateUserInStore({ jobReady: user.jobReady }));
+                        toast.success(next ? 'You are now job ready. You can apply to jobs.' : 'Job ready turned off.');
+                      }
+                    } catch (e) {
+                      setError(e?.message || 'Failed to update');
+                      toast.error(e?.message || 'Failed to update');
+                    } finally {
+                      setSaving(false);
+                    }
+                  }}
+                  className={`relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${
+                    profile.jobReady ? 'bg-sky-600' : 'bg-sky-200'
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition-transform ${
+                      profile.jobReady ? 'translate-x-4' : 'translate-x-0.5'
+                    }`}
+                    style={{ marginTop: 2 }}
+                  />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Banner + Avatar + Name (MatDash style) */}
           <div className="rounded-2xl border border-brintelli-border bg-brintelli-card overflow-hidden shadow-soft">
             <div
               className="h-32 sm:h-40 relative"
@@ -293,72 +424,6 @@ const StudentProfile = () => {
                     <h1 className="text-xl font-bold text-text">{displayName}</h1>
                     <p className="text-sm text-textMuted">Learner</p>
                   </div>
-                </div>
-                <div className="flex flex-wrap items-center justify-center sm:justify-end gap-3">
-                  <Tooltip
-                    placement="bottom"
-                    content={
-                      <>
-                        <p className="font-semibold text-text mb-1">Brintelli points</p>
-                        <p className="text-textMuted text-xs mb-1">
-                          Earned from profile completion, quizzes, workshops, reporting bugs, and engagement.
-                        </p>
-                        <p className="text-textSoft text-xs font-medium">Benefits: Unlock rewards, climb leaderboards, and get recognized for your progress.</p>
-                      </>
-                    }
-                  >
-                    <div className="flex items-center gap-2 rounded-xl border border-brintelli-border bg-brintelli-baseAlt px-4 py-2 cursor-help">
-                      <Coins className="h-5 w-5 text-amber-500" />
-                      <span className="font-semibold text-text">{brintelliPoints}</span>
-                      <span className="text-sm text-textMuted">Points</span>
-                    </div>
-                  </Tooltip>
-                  <Tooltip
-                    placement="bottom"
-                    content={
-                      <>
-                        <p className="font-semibold text-text mb-1">Login streak</p>
-                        <p className="text-textMuted text-xs mb-1">
-                          Consecutive days you’ve logged in. Log in every day to keep your streak going.
-                        </p>
-                        <p className="text-textSoft text-xs font-medium">Benefits: Stay on track, build a learning habit, and get recognized for consistency.</p>
-                      </>
-                    }
-                  >
-                    <div className="flex items-center gap-2 rounded-xl border border-brintelli-border bg-brintelli-baseAlt px-4 py-2 cursor-help">
-                      <Flame className="h-5 w-5 text-orange-500" />
-                      <span className="font-semibold text-text">{streak}</span>
-                      <span className="text-sm text-textMuted">Day Streak</span>
-                    </div>
-                  </Tooltip>
-                  <Tooltip
-                    placement="bottom"
-                    content={
-                      <>
-                        <p className="font-semibold text-text mb-1">Programs</p>
-                        <p className="text-textMuted text-xs mb-1">
-                          Number of programs you’re enrolled in.
-                        </p>
-                        <p className="text-textSoft text-xs font-medium">Benefits: Access live sessions, mentors, and content for your enrolled programs.</p>
-                      </>
-                    }
-                  >
-                    <div className="flex items-center gap-2 rounded-xl border border-brintelli-border bg-brintelli-baseAlt px-4 py-2 cursor-help">
-                      <BookOpen className="h-5 w-5 text-brand-500" />
-                      <span className="font-semibold text-text">—</span>
-                      <span className="text-sm text-textMuted">Programs</span>
-                    </div>
-                  </Tooltip>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => (isEditing ? handleSave() : setIsEditing(true))}
-                    disabled={loading || saving}
-                    className="gap-2"
-                  >
-                    <Edit2 className="h-4 w-4" />
-                    {isEditing ? (saving ? 'Saving...' : 'Save Changes') : 'Edit Profile'}
-                  </Button>
                 </div>
               </div>
             </div>

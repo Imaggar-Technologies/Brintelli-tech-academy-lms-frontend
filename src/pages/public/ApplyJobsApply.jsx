@@ -102,7 +102,7 @@ const ApplyJobsApply = () => {
   if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-cyan-500 border-t-transparent" />
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
       </div>
     );
   }
@@ -110,11 +110,11 @@ const ApplyJobsApply = () => {
   if (!job) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-        <p className="text-slate-400 mb-6">Job not found or no longer open.</p>
+        <p className="text-brintelli-textMuted mb-6">Job not found or no longer open.</p>
         <button
           type="button"
           onClick={() => navigate("/applyjobs")}
-          className="text-cyan-400 hover:text-cyan-300 font-medium"
+          className="text-brand-600 hover:text-brand-500 font-medium"
         >
           ← Back to openings
         </button>
@@ -127,37 +127,37 @@ const ApplyJobsApply = () => {
       <button
         type="button"
         onClick={() => navigate("/applyjobs")}
-        className="inline-flex items-center gap-2 text-slate-400 hover:text-white mb-8 transition-colors"
+        className="inline-flex items-center gap-2 text-brintelli-textMuted hover:text-brand-600 mb-8 transition-colors font-medium"
       >
         <ArrowLeft className="h-4 w-4" />
         All openings
       </button>
 
-      <div className="rounded-2xl border border-slate-700 bg-slate-800/50 p-6 sm:p-8 mb-8">
-        <h1 className="text-2xl font-bold text-white mb-2">{job.title}</h1>
+      <div className="rounded-2xl border border-pink-100 bg-white p-6 sm:p-8 mb-8 shadow-soft">
+        <h1 className="text-2xl font-bold text-brintelli-text mb-2">{job.title}</h1>
         {job.department && (
-          <p className="text-sm text-slate-400 mb-1">{job.department}</p>
+          <p className="text-sm text-brintelli-textMuted mb-1">{job.department}</p>
         )}
         {job.location && (
-          <p className="text-sm text-slate-400 mb-2">{job.location}</p>
+          <p className="text-sm text-brintelli-textMuted mb-2">{job.location}</p>
         )}
-        <p className="text-sm text-cyan-400">
+        <p className="text-sm text-brand-600 font-medium">
           {EmploymentTypeLabel[job.employmentType] || job.employmentType}
         </p>
         {job.description && (
-          <div className="mt-4 text-sm text-slate-400 whitespace-pre-wrap">
+          <div className="mt-4 text-sm text-brintelli-textSoft whitespace-pre-wrap">
             {job.description}
           </div>
         )}
       </div>
 
-      <div className="rounded-2xl border border-slate-700 bg-slate-800/50 p-6 sm:p-8">
-        <h2 className="text-lg font-semibold text-white mb-6">
+      <div className="rounded-2xl border border-pink-100 bg-white p-6 sm:p-8 shadow-soft">
+        <h2 className="text-lg font-semibold text-brintelli-text mb-6">
           Apply for this position
         </h2>
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">
+            <label className="block text-sm font-medium text-brintelli-text mb-1.5">
               Name *
             </label>
             <input
@@ -165,13 +165,13 @@ const ApplyJobsApply = () => {
               name="name"
               value={form.name}
               onChange={handleChange}
-              className="w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500"
+              className="w-full rounded-xl border border-pink-200/80 bg-brintelli-baseAlt/50 px-3 py-2.5 text-brintelli-text placeholder:text-brintelli-textMuted focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500"
               placeholder="Your full name"
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">
+            <label className="block text-sm font-medium text-brintelli-text mb-1.5">
               Email *
             </label>
             <input
@@ -179,13 +179,13 @@ const ApplyJobsApply = () => {
               name="email"
               value={form.email}
               onChange={handleChange}
-              className="w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500"
+              className="w-full rounded-xl border border-pink-200/80 bg-brintelli-baseAlt/50 px-3 py-2.5 text-brintelli-text placeholder:text-brintelli-textMuted focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500"
               placeholder="your@email.com"
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">
+            <label className="block text-sm font-medium text-brintelli-text mb-1.5">
               WhatsApp number
             </label>
             <input
@@ -193,19 +193,19 @@ const ApplyJobsApply = () => {
               name="whatsappNumber"
               value={form.whatsappNumber}
               onChange={handleChange}
-              className="w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500"
+              className="w-full rounded-xl border border-pink-200/80 bg-brintelli-baseAlt/50 px-3 py-2.5 text-brintelli-text placeholder:text-brintelli-textMuted focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500"
               placeholder="+91 98765 43210"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">
+            <label className="block text-sm font-medium text-brintelli-text mb-1.5">
               College name
             </label>
             <select
               name="collegeName"
               value={form.collegeName}
               onChange={handleChange}
-              className="w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500"
+              className="w-full rounded-xl border border-pink-200/80 bg-brintelli-baseAlt/50 px-3 py-2.5 text-brintelli-text focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500"
             >
               <option value="">Select your college</option>
               {colleges.map((c) => (
@@ -221,26 +221,26 @@ const ApplyJobsApply = () => {
                 value={otherCollege}
                 onChange={(e) => setOtherCollege(e.target.value)}
                 placeholder="Enter your college name"
-                className="w-full mt-2 rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                className="w-full mt-2 rounded-xl border border-pink-200/80 bg-brintelli-baseAlt/50 px-3 py-2 text-brintelli-text text-sm placeholder:text-brintelli-textMuted focus:outline-none focus:ring-2 focus:ring-brand-500/30"
               />
             )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">
+            <label className="block text-sm font-medium text-brintelli-text mb-1.5">
               Resume (PDF or Word)
             </label>
             <input
               type="file"
               accept=".pdf,.doc,.docx"
               onChange={(e) => setResumeFile(e.target.files?.[0] || null)}
-              className="w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-slate-300 text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-sm file:bg-cyan-600 file:text-white file:cursor-pointer"
+              className="w-full rounded-xl border border-pink-200/80 bg-brintelli-baseAlt/50 px-3 py-2 text-brintelli-text text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-sm file:bg-brand-500 file:text-white file:cursor-pointer"
             />
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-brintelli-textMuted mt-1">
               Optional: or paste a resume link below
             </p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">
+            <label className="block text-sm font-medium text-brintelli-text mb-1.5">
               Resume URL (optional)
             </label>
             <input
@@ -248,7 +248,7 @@ const ApplyJobsApply = () => {
               name="resumeUrl"
               value={form.resumeUrl}
               onChange={handleChange}
-              className="w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500"
+              className="w-full rounded-xl border border-pink-200/80 bg-brintelli-baseAlt/50 px-3 py-2.5 text-brintelli-text placeholder:text-brintelli-textMuted focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500"
               placeholder="https://..."
             />
           </div>
@@ -256,7 +256,7 @@ const ApplyJobsApply = () => {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium py-3 px-4 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full rounded-xl bg-brintelli-text hover:opacity-90 text-white font-medium py-3 px-4 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {submitting ? "Submitting..." : "Submit Application"}
             </button>

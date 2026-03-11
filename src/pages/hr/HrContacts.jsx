@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { UsersRound, Mail, Phone, Building2 } from "lucide-react";
-import { partnersAPI } from "../../api/partners";
+import { partnersAPI, collegesAPI } from "../../api/partners";
 import { toast } from "react-hot-toast";
 import Breadcrumb from "../../components/Breadcrumb";
 
@@ -17,34 +17,63 @@ const HrContacts = () => {
   const loadContacts = async () => {
     try {
       setLoading(true);
-      const res = await partnersAPI.list({ limit: 500 });
-      if (!res.success || !res.data?.partners) {
-        setContacts([]);
-        return;
-      }
+      const [partnersRes, collegesRes] = await Promise.all([
+        partnersAPI.list({ limit: 500, type: "COMPANY" }),
+        collegesAPI.list({ limit: 500 }),
+      ]);
       const list = [];
-      res.data.partners.forEach((p) => {
+      (partnersRes.data?.partners || []).forEach((p) => {
         const hasContactPerson = p.contactPersonName || p.contactPersonEmail || p.contactPersonPhone;
         if (hasContactPerson) {
           list.push({
-            id: `${p.id}-cp`,
+            id: `p-${p.id}-cp`,
             partnerId: p.id,
+            collegeId: null,
             partnerName: p.name,
-            partnerType: p.type,
+            partnerType: "COMPANY",
             name: p.contactPersonName || "—",
             email: p.contactPersonEmail || p.email || null,
             phone: p.contactPersonPhone || p.phone || null,
           });
         } else if (p.email || p.phone) {
           list.push({
-            id: p.id,
+            id: `p-${p.id}`,
             partnerId: p.id,
+            collegeId: null,
             partnerName: p.name,
-            partnerType: p.type,
+            partnerType: "COMPANY",
             name: p.name,
             email: p.email || null,
             phone: p.phone || null,
           });
+        }
+      });
+      (collegesRes.data?.colleges || []).forEach((c) => {
+        const emails = [c.placementCellEmail, c.officeEmail].filter(Boolean);
+        const phones = [c.placementCellPhone, c.phone].filter(Boolean);
+        if (emails.length > 0 || phones.length > 0) {
+          list.push({
+            id: `c-${c.id}`,
+            partnerId: null,
+            collegeId: c.id,
+            partnerName: c.name,
+            partnerType: "COLLEGE",
+            name: c.name,
+            email: emails[0] || null,
+            phone: phones[0] || null,
+          });
+          if (emails.length > 1) {
+            list.push({
+              id: `c-${c.id}-office`,
+              partnerId: null,
+              collegeId: c.id,
+              partnerName: c.name,
+              partnerType: "COLLEGE",
+              name: `${c.name} (office)`,
+              email: emails[1] || null,
+              phone: phones[1] || phones[0] || null,
+            });
+          }
         }
       });
       setContacts(list);
@@ -132,7 +161,7 @@ const HrContacts = () => {
                     <td className="px-4 py-3">
                       <button
                         type="button"
-                        onClick={() => navigate(`/hr/partners/${c.partnerId}`)}
+                        onClick={() => c.collegeId ? navigate(`/hr/colleges/${c.collegeId}`) : navigate(`/hr/partners/${c.partnerId}`)}
                         className="inline-flex items-center gap-1 text-brand-500 hover:underline"
                       >
                         <Building2 className="h-4 w-4" />

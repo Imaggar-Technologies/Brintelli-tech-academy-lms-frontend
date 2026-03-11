@@ -1,13 +1,58 @@
 import { apiRequest } from './apiClient';
 import { API_BASE_URL } from './constant';
 
-/** Public (no auth) - list colleges for dropdowns e.g. career apply */
+/** Public (no auth) - list colleges for dropdowns e.g. career apply (uses College model) */
 export const getPublicColleges = async (params = {}) => {
   const sp = new URLSearchParams(params);
   const res = await fetch(`${API_BASE_URL}/api/public/colleges?${sp}`);
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Failed to load colleges');
   return data;
+};
+
+/** HR - colleges (College model: name, address, district, location, area, tierCity, logoUrl, departments, domains, phone, placementCellEmail, officeEmail, placementCellPhone) */
+export const collegesAPI = {
+  list: (params = {}) => {
+    const sp = new URLSearchParams(params);
+    return apiRequest(`/api/colleges?${sp}`);
+  },
+  getById: (collegeId) => apiRequest(`/api/colleges/${collegeId}`),
+  create: (formData) => {
+    const token = localStorage.getItem('token');
+    return fetch(`${API_BASE_URL}/api/colleges`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    }).then((res) => res.json()).then((data) => {
+      if (!data.success) throw new Error(data.error || 'Failed to create college');
+      return data;
+    });
+  },
+  update: (collegeId, formData) => {
+    const token = localStorage.getItem('token');
+    return fetch(`${API_BASE_URL}/api/colleges/${collegeId}`, {
+      method: 'PUT',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    }).then((res) => res.json()).then((data) => {
+      if (!data.success) throw new Error(data.error || 'Failed to update college');
+      return data;
+    });
+  },
+  delete: (collegeId) => apiRequest(`/api/colleges/${collegeId}`, { method: 'DELETE' }),
+  uploadLogo: (file) => {
+    const token = localStorage.getItem('token');
+    const fd = new FormData();
+    fd.append('logo', file);
+    return fetch(`${API_BASE_URL}/api/colleges/upload-logo`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: fd,
+    }).then((res) => res.json()).then((data) => {
+      if (!data.success) throw new Error(data.error || 'Failed to upload logo');
+      return data;
+    });
+  },
 };
 
 export const partnersAPI = {

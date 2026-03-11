@@ -25,9 +25,14 @@ import {
   Settings,
   Medal,
   Mic,
+  Eye,
+  EyeOff,
+  StopCircle,
+  PlayCircle,
 } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
+import QuizQuestionCards from '../../components/workshop/QuizQuestionCards';
 import workshopAPI from '../../api/workshop';
 import { apiRequest } from '../../api/apiClient';
 
@@ -398,6 +403,28 @@ const WorkshopManage = () => {
       toast.error(e?.message || 'Failed to update');
     } finally {
       setQuizPublishing(false);
+    }
+  };
+
+  const saveQuizWithQuestions = async (questions, { toastMessage } = {}) => {
+    setQuizSaving(true);
+    try {
+      const res = await workshopAPI.createOrUpdateQuiz(workshopId, {
+        title: quiz?.title || 'Workshop Quiz',
+        questions: (questions || quiz?.questions ?? []).map((q) => ({
+          ...q,
+          published: q && Object.prototype.hasOwnProperty.call(q, 'published') ? q.published === true : true,
+          closed: q && Object.prototype.hasOwnProperty.call(q, 'closed') ? q.closed === true : false,
+        })),
+      });
+      if (res?.success && res.data?.quiz) {
+        setQuiz(res.data.quiz);
+        if (toastMessage) toast.success(toastMessage);
+      } else toast.error(res?.message || 'Failed to save');
+    } catch (e) {
+      toast.error(e?.message || 'Failed to save quiz');
+    } finally {
+      setQuizSaving(false);
     }
   };
 
@@ -784,12 +811,12 @@ const WorkshopManage = () => {
           <section className="rounded-2xl border border-brintelli-border/60 bg-white p-6 shadow-sm max-w-2xl">
             <p className="text-sm text-textMuted mb-4">
               {quiz ? (
-                <>Quiz &quot;{quiz.title}&quot;. When published, learners see it and can answer. When closed, it is visible only here and learners cannot answer.</>
+                <>Quiz &quot;{quiz.title}&quot;. Publish each question so learners can see and answer it. Use &quot;Publish&quot; per question below.</>
               ) : (
                 'Create a quiz and publish it when ready so learners can see and answer it.'
               )}
             </p>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 mb-6">
               {quiz && (
                 <>
                   <Button
@@ -797,9 +824,9 @@ const WorkshopManage = () => {
                     disabled={quizPublishing}
                     onClick={() => handlePublishQuiz(!quiz.published)}
                     className={quiz.published ? 'bg-amber-600 hover:bg-amber-700 border-0' : 'bg-gradient-to-r from-brintelli-primary to-brintelli-primaryDark border-0'}
-                >
-                  {quiz.published ? 'Close quiz' : 'Publish to learners'}
-                </Button>
+                  >
+                    {quiz.published ? 'Close quiz' : 'Publish to learners'}
+                  </Button>
                   <Button variant="secondary" size="sm" disabled={quizSaving} onClick={handleSaveQuiz}>
                     {quizSaving ? 'Saving…' : 'Save quiz'}
                   </Button>
@@ -811,6 +838,38 @@ const WorkshopManage = () => {
                 </Button>
               )}
             </div>
+            {quiz && (quiz.questions?.length > 0) && (
+              <QuizQuestionCards
+                questions={quiz.questions}
+                onAddQuestion={() => {}}
+                onEditQuestion={() => {}}
+                onDeleteQuestion={() => {}}
+                onTogglePublish={(index) => {
+                  const base = quiz || { title: 'Workshop Quiz', questions: [] };
+                  const questions = [...(base.questions ?? [])];
+                  const q = questions[index];
+                  if (!q) return;
+                  const nextPublished = !(q.published === true);
+                  questions[index] = { ...q, published: nextPublished, closed: nextPublished ? q.closed : false };
+                  setQuiz({ ...base, questions });
+                  saveQuizWithQuestions(questions, {
+                    toastMessage: nextPublished ? 'Question published — learners will see it' : 'Question unpublished',
+                  });
+                }}
+                onToggleStop={(index) => {
+                  const base = quiz || { title: 'Workshop Quiz', questions: [] };
+                  const questions = [...(base.questions ?? [])];
+                  const q = questions[index];
+                  if (!q) return;
+                  questions[index] = { ...q, closed: !(q.closed === true) };
+                  setQuiz({ ...base, questions });
+                  saveQuizWithQuestions(questions, {
+                    toastMessage: q.closed ? 'Question opened for answers' : 'Question closed for answers',
+                  });
+                }}
+                listView={true}
+              />
+            )}
           </section>
         </div>
       )}

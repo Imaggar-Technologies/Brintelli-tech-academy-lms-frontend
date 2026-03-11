@@ -308,6 +308,7 @@ import HrCreateJob from "../pages/hr/CreateJob";
 import HrJobDetail from "../pages/hr/JobDetail";
 import PartnersList from "../pages/hr/PartnersList";
 import PartnerDetail from "../pages/hr/PartnerDetail";
+import CollegeDetail from "../pages/hr/CollegeDetail";
 import HrContacts from "../pages/hr/HrContacts";
 import JobDrivesList from "../pages/hr/JobDrivesList";
 import CreateJobDrive from "../pages/hr/CreateJobDrive";
@@ -761,6 +762,7 @@ const AppRouter = () => {
             <Route path="partners" element={<PartnersList />} />
             <Route path="partners/create" element={<Navigate to="/hr/partners" replace />} />
             <Route path="partners/:partnerId" element={<PartnerDetail />} />
+            <Route path="colleges/:collegeId" element={<CollegeDetail />} />
             <Route path="contacts" element={<HrContacts />} />
             <Route path="jobs" element={<HrJobsList />} />
             <Route path="jobs/create" element={<HrCreateJob />} />

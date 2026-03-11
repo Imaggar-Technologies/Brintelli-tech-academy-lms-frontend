@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import { Upload, Download, GraduationCap, FileSpreadsheet, Award, Users, UserCheck } from 'lucide-react';
+import { Upload, Download, GraduationCap, FileSpreadsheet, Award, Users, UserCheck, History, ChevronDown, X } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
 import marketingAPI from '../../api/marketing';
@@ -33,6 +33,16 @@ function formatDate(d) {
   }
 }
 
+function formatDateTime(d) {
+  if (!d) return '—';
+  try {
+    const date = new Date(d);
+    return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return '—';
+  }
+}
+
 const Assets = () => {
   const [activeTab, setActiveTab] = useState(TAB_HIGH_VALUE);
   const [highValueFile, setHighValueFile] = useState(null);
@@ -45,8 +55,29 @@ const Assets = () => {
   const [leadsResult, setLeadsResult] = useState(null);
   const [leadsList, setLeadsList] = useState([]);
   const [leadsLoading, setLeadsLoading] = useState(false);
+  const [uploadHistory, setUploadHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const highValueInputRef = useRef(null);
   const leadsInputRef = useRef(null);
+
+  const fetchUploadHistory = async () => {
+    setHistoryLoading(true);
+    try {
+      const res = await marketingAPI.getUploadHistory({ limit: 100 });
+      setUploadHistory(res?.data?.list ?? []);
+    } catch {
+      setUploadHistory([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUploadHistory();
+  }, []);
+
+  const lastUpload = uploadHistory[0] || null;
 
   const fetchHighValueList = async () => {
     setHighValueLoading(true);
@@ -106,10 +137,12 @@ const Assets = () => {
       const res = await marketingAPI.uploadHighValueContacts(highValueFile);
       const data = res?.data || res;
       setHighValueResult(data);
-      toast.success(data?.message || `Uploaded ${data?.count ?? 0} contact(s). You earned ${data?.pointsAwarded ?? 0} points.`);
+      const newCount = data?.newLeadsAdded ?? data?.count ?? 0;
+      const dupCount = data?.duplicatesSkipped ?? 0;
+      toast.success(data?.message || `${newCount} new lead(s) added, ${dupCount} duplicate(s) skipped. You earned ${data?.pointsAwarded ?? 0} points.`);
       setHighValueFile(null);
       if (highValueInputRef.current) highValueInputRef.current.value = '';
-      await fetchHighValueList();
+      await Promise.all([fetchHighValueList(), fetchUploadHistory()]);
     } catch (err) {
       toast.error(err?.message || 'Upload failed');
     } finally {
@@ -128,10 +161,12 @@ const Assets = () => {
       const res = await marketingAPI.uploadStudentLeads(leadsFile);
       const data = res?.data || res;
       setLeadsResult(data);
-      toast.success(data?.message || `Uploaded ${data?.count ?? 0} lead(s).`);
+      const newCount = data?.newLeadsAdded ?? data?.count ?? 0;
+      const dupCount = data?.duplicatesSkipped ?? 0;
+      toast.success(data?.message || `${newCount} new lead(s) added, ${dupCount} duplicate(s) skipped.`);
       setLeadsFile(null);
       if (leadsInputRef.current) leadsInputRef.current.value = '';
-      await fetchLeadsList();
+      await Promise.all([fetchLeadsList(), fetchUploadHistory()]);
     } catch (err) {
       toast.error(err?.message || 'Upload failed');
     } finally {
@@ -143,10 +178,77 @@ const Assets = () => {
     <div className="space-y-6 pb-12">
       <PageHeader
         title="Asset Library"
-        description="Upload High Value Individual contacts and Student / Leads database via Excel. Each high-value contact added earns you points."
+        description="Upload High Value Individual contacts and Student / Leads database via Excel. All uploads are added as leads; duplicates are skipped. Each new high-value contact earns you points."
       />
 
-      {/* Secondary topbar: toggle between High Value Individuals and Leads */}
+      {/* Top bar: upload stats + history */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brintelli-border bg-white px-4 py-3 shadow-sm">
+        <p className="text-sm text-textMuted">
+          All uploads are treated as <strong className="text-text">leads</strong>. Duplicates (same contact/email) are not added again.
+        </p>
+        <div className="flex items-center gap-3">
+          {lastUpload && (
+            <span className="text-sm text-text">
+              Last upload: <strong className="text-green-600">{lastUpload.newLeadsAdded}</strong> new, <strong className="text-amber-600">{lastUpload.duplicatesSkipped}</strong> duplicates
+            </span>
+          )}
+          <div className="relative">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setHistoryOpen((o) => !o)}
+              className="gap-2"
+            >
+              <History className="h-4 w-4" />
+              Upload history
+              <ChevronDown className={`h-4 w-4 transition-transform ${historyOpen ? 'rotate-180' : ''}`} />
+            </Button>
+            {historyOpen && (
+              <>
+                <div className="fixed inset-0 z-10" aria-hidden onClick={() => setHistoryOpen(false)} />
+                <div className="absolute right-0 top-full z-20 mt-1 w-[420px] max-h-[70vh] overflow-hidden rounded-xl border border-brintelli-border bg-white shadow-lg">
+                  <div className="flex items-center justify-between border-b border-brintelli-border px-4 py-3 bg-brintelli-baseAlt/40">
+                    <h3 className="font-semibold text-text">Upload history</h3>
+                    <button type="button" onClick={() => setHistoryOpen(false)} className="p-1 rounded hover:bg-brintelli-border text-textMuted" aria-label="Close">
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+                  <div className="overflow-y-auto max-h-[60vh]">
+                    {historyLoading ? (
+                      <div className="py-8 text-center text-sm text-textMuted">Loading…</div>
+                    ) : uploadHistory.length === 0 ? (
+                      <div className="py-8 text-center text-sm text-textMuted">No uploads yet.</div>
+                    ) : (
+                      <table className="w-full text-sm">
+                        <thead className="bg-brintelli-baseAlt/60 sticky top-0">
+                          <tr>
+                            <th className="text-left py-2 px-3 font-semibold text-text">Date</th>
+                            <th className="text-left py-2 px-3 font-semibold text-text">Type</th>
+                            <th className="text-left py-2 px-3 font-semibold text-text">New</th>
+                            <th className="text-left py-2 px-3 font-semibold text-text">Duplicates</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-brintelli-border">
+                          {uploadHistory.map((h) => (
+                            <tr key={h.id} className="hover:bg-brintelli-baseAlt/30">
+                              <td className="py-2 px-3 text-textMuted whitespace-nowrap">{formatDateTime(h.createdAt)}</td>
+                              <td className="py-2 px-3 text-text">{h.type === 'high_value' ? 'High value' : 'Leads'}</td>
+                              <td className="py-2 px-3 text-green-600 font-medium">{h.newLeadsAdded ?? 0}</td>
+                              <td className="py-2 px-3 text-amber-600 font-medium">{h.duplicatesSkipped ?? 0}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs: High Value Individuals and Leads */}
       <div className="flex border-b border-brintelli-border bg-white rounded-t-2xl overflow-hidden shadow-sm">
         <button
           type="button"
@@ -221,7 +323,7 @@ const Assets = () => {
                   </div>
                   {highValueResult && (
                     <div className="mt-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-                      <strong>Done:</strong> {highValueResult.count} contact(s) added. You earned <strong>{highValueResult.pointsAwarded ?? 0} points</strong>.
+                      <strong>Done:</strong> {highValueResult.totalRows ?? highValueResult.count} row(s) — <strong>{highValueResult.newLeadsAdded ?? highValueResult.count}</strong> new lead(s) added, <strong>{highValueResult.duplicatesSkipped ?? 0}</strong> duplicate(s) skipped. You earned <strong>{highValueResult.pointsAwarded ?? 0} points</strong>.
                     </div>
                   )}
                 </div>
@@ -311,7 +413,7 @@ const Assets = () => {
                   </div>
                   {leadsResult && (
                     <div className="mt-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-                      <strong>Done:</strong> {leadsResult.count} lead(s) added to the student database.
+                      <strong>Done:</strong> {leadsResult.totalRows ?? leadsResult.count} row(s) — <strong>{leadsResult.newLeadsAdded ?? leadsResult.count}</strong> new lead(s) added, <strong>{leadsResult.duplicatesSkipped ?? 0}</strong> duplicate(s) skipped.
                     </div>
                   )}
                 </div>

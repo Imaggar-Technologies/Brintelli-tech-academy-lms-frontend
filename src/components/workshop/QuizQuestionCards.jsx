@@ -90,16 +90,17 @@ export default function QuizQuestionCards({
                     <span className="text-xs text-textMuted">{Array.isArray(options) ? options.length : 0} options</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="flex items-center gap-2 shrink-0 flex-wrap">
                   {onTogglePublish && (
                     <button
                       type="button"
                       onClick={() => onTogglePublish(index)}
-                      className={`p-1.5 rounded ${published ? "text-green-600 hover:bg-green-50" : "text-amber-600 hover:bg-amber-50"}`}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium transition-colors ${published ? "text-green-700 bg-green-50 hover:bg-green-100" : "text-amber-700 bg-amber-50 hover:bg-amber-100"}`}
                       aria-label={published ? "Unpublish question" : "Publish question"}
                       title={published ? "Unpublish (hide from learners)" : "Publish (show to learners)"}
                     >
                       {published ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                      <span>{published ? "Published" : "Publish"}</span>
                     </button>
                   )}
                   {onToggleStop && published && (
@@ -143,16 +144,17 @@ export default function QuizQuestionCards({
             >
               <div className="flex items-start justify-between gap-2 mb-2">
                 <span className="text-xs font-medium text-textMuted">Question {index + 1}</span>
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="flex items-center gap-2 shrink-0 flex-wrap">
                   {onTogglePublish && (
                     <button
                       type="button"
                       onClick={() => onTogglePublish(index)}
-                      className={`p-1.5 rounded ${published ? "text-green-600 hover:bg-green-50" : "text-amber-600 hover:bg-amber-50"}`}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium transition-colors ${published ? "text-green-700 bg-green-50 hover:bg-green-100" : "text-amber-700 bg-amber-50 hover:bg-amber-100"}`}
                       aria-label={published ? "Unpublish question" : "Publish question"}
-                      title={published ? "Unpublish" : "Publish"}
+                      title={published ? "Unpublish" : "Publish (show to learners)"}
                     >
                       {published ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                      <span>{published ? "Published" : "Publish"}</span>
                     </button>
                   )}
                   {onToggleStop && published && (

@@ -4,6 +4,8 @@ import { Building2, Plus, MapPin, ChevronLeft, ChevronRight } from 'lucide-react
 import { partnersAPI } from '../../api/partners';
 import { toast } from 'react-hot-toast';
 import Button from '../../components/Button';
+import Breadcrumb from '../../components/Breadcrumb';
+import CreatePartnerModal from './CreatePartnerModal';
 
 const PAGE_SIZE = 12;
 
@@ -14,6 +16,7 @@ const PartnersList = ({ typeFilter: initialType }) => {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState(initialType || '');
+  const [createModalOpen, setCreateModalOpen] = useState(false);
 
   useEffect(() => {
     loadPartners();
@@ -43,13 +46,20 @@ const PartnersList = ({ typeFilter: initialType }) => {
 
   return (
     <div className="space-y-6">
+      <Breadcrumb items={[{ label: 'HR', path: '/hr/dashboard' }, { label: 'Partner Directory' }]} />
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-text">Partner companies & colleges</h1>
-        <Button variant="primary" onClick={() => navigate('/hr/partners/create')}>
+        <Button variant="primary" onClick={() => setCreateModalOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Add partner
         </Button>
       </div>
+      {createModalOpen && (
+        <CreatePartnerModal
+          onClose={() => setCreateModalOpen(false)}
+          onSuccess={() => { loadPartners(); setCreateModalOpen(false); }}
+        />
+      )}
 
       <div className="flex gap-2">
         {['', 'COMPANY', 'COLLEGE'].map((t) => (

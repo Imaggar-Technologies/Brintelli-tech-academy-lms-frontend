@@ -4,6 +4,7 @@ import { Calendar, Plus, MapPin, Building2, ChevronRight } from 'lucide-react';
 import { jobDrivesAPI } from '../../api/jobDrives';
 import { toast } from 'react-hot-toast';
 import Button from '../../components/Button';
+import Breadcrumb from '../../components/Breadcrumb';
 
 const JobDrivesList = () => {
   const navigate = useNavigate();
@@ -28,6 +29,7 @@ const JobDrivesList = () => {
 
   return (
     <div className="space-y-6">
+      <Breadcrumb items={[{ label: 'HR', path: '/hr/dashboard' }, { label: 'Job Drives' }]} />
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-text">Job drives</h1>
         <Button variant="primary" onClick={() => navigate('/hr/job-drives/create')}>

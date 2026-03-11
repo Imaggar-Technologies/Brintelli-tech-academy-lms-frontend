@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Mail, Phone, FileText, Building2, ExternalLink, Star } from 'lucide-react';
+import { User, Mail, Phone, FileText, Building2, ExternalLink, Star } from 'lucide-react';
 import { jobsAPI } from '../../api/jobs';
 import { toast } from 'react-hot-toast';
 import Button from '../../components/Button';
+import Breadcrumb from '../../components/Breadcrumb';
 
 const HrJobDetail = () => {
   const { jobId } = useParams();
@@ -76,10 +77,7 @@ const HrJobDetail = () => {
 
   return (
     <div className="space-y-6">
-      <Button variant="ghost" className="mb-2" onClick={() => navigate('/hr/jobs')}>
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Back to jobs
-      </Button>
+      <Breadcrumb items={[{ label: 'HR', path: '/hr/dashboard' }, { label: 'Job Opportunities', path: '/hr/jobs' }, { label: job.title }]} />
 
       <div className="rounded-xl border border-brintelli-border bg-brintelli-card p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">

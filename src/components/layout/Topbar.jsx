@@ -7,6 +7,7 @@ import NotificationsDropdown from "../NotificationsDropdown";
 import UserMenu from "../UserMenu";
 import ReportBugModal from "../ReportBugModal";
 import PointsEarnedModal from "../PointsEarnedModal";
+import Tooltip from "../Tooltip";
 import notificationApi from "../../api/notification";
 import referralAPI from "../../api/referral";
 import toast from "react-hot-toast";
@@ -304,22 +305,42 @@ const Topbar = ({ onToggleMobileSidebar, role, roleLabelOverride, roleOptions, c
 
           <div className="flex items-center justify-end gap-2.5 sm:gap-3">
             {isLearner && streak > 0 && (
-              <span
-                className="inline-flex items-center gap-1.5 rounded-xl border border-sky-200/60 bg-sky-50/90 px-3 py-2 text-sm font-semibold text-sky-700"
-                title="Login streak (consecutive days)"
+              <Tooltip
+                placement="bottom"
+                content={
+                  <>
+                    <p className="font-semibold text-text mb-1">Login streak</p>
+                    <p className="text-textMuted text-xs mb-1">
+                      Consecutive days you’ve logged in. Log in every day to keep your streak going.
+                    </p>
+                    <p className="text-textSoft text-xs font-medium">Benefits: Stay on track, build a learning habit, and get recognized for consistency.</p>
+                  </>
+                }
               >
-                <Flame className="h-4 w-4 text-sky-500" />
-                {streak} day{streak !== 1 ? 's' : ''}
-              </span>
+                <span className="inline-flex items-center gap-1.5 rounded-xl border border-sky-200/60 bg-sky-50/90 px-3 py-2 text-sm font-semibold text-sky-700 cursor-help">
+                  <Flame className="h-4 w-4 text-sky-500" />
+                  {streak} day{streak !== 1 ? 's' : ''}
+                </span>
+              </Tooltip>
             )}
             {isLearner && brintelliPoints !== null && (
-              <span
-                className="inline-flex items-center gap-1.5 rounded-xl border border-amber-200/60 bg-amber-50/90 px-3 py-2 text-sm font-semibold text-amber-800"
-                title="Brintelli points (earned from quizzes, workshops, engagement)"
+              <Tooltip
+                placement="bottom"
+                content={
+                  <>
+                    <p className="font-semibold text-text mb-1">Brintelli points</p>
+                    <p className="text-textMuted text-xs mb-1">
+                      Earned from profile completion, quizzes, workshops, reporting bugs, and engagement.
+                    </p>
+                    <p className="text-textSoft text-xs font-medium">Benefits: Unlock rewards, climb leaderboards, and get recognized for your progress.</p>
+                  </>
+                }
               >
-                <Award className="h-4 w-4 text-amber-600" />
-                {brintelliPoints} pts
-              </span>
+                <span className="inline-flex items-center gap-1.5 rounded-xl border border-amber-200/60 bg-amber-50/90 px-3 py-2 text-sm font-semibold text-amber-800 cursor-help">
+                  <Award className="h-4 w-4 text-amber-600" />
+                  {brintelliPoints} pts
+                </span>
+              </Tooltip>
             )}
             {isLearner && (
               <button
@@ -333,23 +354,43 @@ const Topbar = ({ onToggleMobileSidebar, role, roleLabelOverride, roleOptions, c
               </button>
             )}
             {isStaffForCoins && superCoins !== null && (
-              <span
-                className="inline-flex items-center gap-1.5 rounded-xl border border-violet-200/60 bg-violet-50/90 px-3 py-2 text-sm font-semibold text-violet-800"
-                title="Super coins (earned from enrollments, referrals, workshops, conversions)"
+              <Tooltip
+                placement="bottom"
+                content={
+                  <>
+                    <p className="font-semibold text-text mb-1">Super coins</p>
+                    <p className="text-textMuted text-xs mb-1">
+                      Earned from enrollments, referrals, workshops, and conversions.
+                    </p>
+                    <p className="text-textSoft text-xs font-medium">Benefits: Redeem for incentives and get recognized for your impact.</p>
+                  </>
+                }
               >
-                <Coins className="h-4 w-4 text-violet-600" />
-                {superCoins} coins
-              </span>
+                <span className="inline-flex items-center gap-1.5 rounded-xl border border-violet-200/60 bg-violet-50/90 px-3 py-2 text-sm font-semibold text-violet-800 cursor-help">
+                  <Coins className="h-4 w-4 text-violet-600" />
+                  {superCoins} coins
+                </span>
+              </Tooltip>
             )}
             {referralPoints > 0 && (
-              <a
-                href="/student/invite-friend"
-                className="inline-flex items-center gap-1.5 rounded-xl border border-brand-200/60 bg-brand-50/80 px-3 py-2 text-sm font-semibold text-brand-700 shadow-sm hover:bg-brand-100/80"
-                title="Referral points – 100 per friend who joins"
+              <Tooltip
+                placement="bottom"
+                content={
+                  <>
+                    <p className="font-semibold text-text mb-1">Referral points</p>
+                    <p className="text-textMuted text-xs mb-1">Earn 100 points for each friend who joins using your invite.</p>
+                    <p className="text-textSoft text-xs font-medium">Benefits: Grow your points and help others discover Brintelli.</p>
+                  </>
+                }
               >
-                <Sparkles className="h-4 w-4" />
-                <span>{referralPoints} pts</span>
-              </a>
+                <a
+                  href="/student/invite-friend"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-brand-200/60 bg-brand-50/80 px-3 py-2 text-sm font-semibold text-brand-700 shadow-sm hover:bg-brand-100/80"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  <span>{referralPoints} pts</span>
+                </a>
+              </Tooltip>
             )}
             {roleOptions && onRoleChange && (
               <div className="hidden items-center gap-2 rounded-xl border border-brintelli-border/60 bg-white/90 px-3 py-1.5 text-xs font-medium text-textSoft shadow-sm backdrop-blur sm:inline-flex">

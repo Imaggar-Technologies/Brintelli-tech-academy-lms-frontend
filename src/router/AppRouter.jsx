@@ -306,8 +306,8 @@ import HrJobsList from "../pages/hr/JobsList";
 import HrCreateJob from "../pages/hr/CreateJob";
 import HrJobDetail from "../pages/hr/JobDetail";
 import PartnersList from "../pages/hr/PartnersList";
-import CreatePartner from "../pages/hr/CreatePartner";
 import PartnerDetail from "../pages/hr/PartnerDetail";
+import HrContacts from "../pages/hr/HrContacts";
 import JobDrivesList from "../pages/hr/JobDrivesList";
 import CreateJobDrive from "../pages/hr/CreateJobDrive";
 import JobDriveDetail from "../pages/hr/JobDriveDetail";
@@ -757,9 +757,9 @@ const AppRouter = () => {
           <Route path="hr">
             <Route path="dashboard" element={<HrDashboard />} />
             <Route path="partners" element={<PartnersList />} />
-            <Route path="partners/create" element={<CreatePartner />} />
+            <Route path="partners/create" element={<Navigate to="/hr/partners" replace />} />
             <Route path="partners/:partnerId" element={<PartnerDetail />} />
-            <Route path="contacts" element={<PartnersList />} />
+            <Route path="contacts" element={<HrContacts />} />
             <Route path="jobs" element={<HrJobsList />} />
             <Route path="jobs/create" element={<HrCreateJob />} />
             <Route path="jobs/:jobId" element={<HrJobDetail />} />

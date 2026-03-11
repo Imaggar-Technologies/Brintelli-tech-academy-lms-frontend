@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Building2, MapPin, Phone, Mail, Globe, Upload } from 'lucide-react';
+import { Building2, MapPin, Phone, Mail, Globe, Upload } from 'lucide-react';
 import { partnersAPI } from '../../api/partners';
 import { toast } from 'react-hot-toast';
 import Button from '../../components/Button';
+import Breadcrumb from '../../components/Breadcrumb';
 
 const PartnerDetail = () => {
   const { partnerId } = useParams();
@@ -49,13 +50,11 @@ const PartnerDetail = () => {
   };
 
   if (loading) return <div className="flex justify-center py-16"><div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" /></div>;
-  if (!partner) return <div><p className="text-textMuted mb-4">Partner not found.</p><Button onClick={() => navigate('/hr/partners')}>Back to partners</Button></div>;
+  if (!partner) return <div><Breadcrumb items={[{ label: 'HR', path: '/hr/dashboard' }, { label: 'Partner Directory', path: '/hr/partners' }]} /><p className="text-textMuted mb-4">Partner not found.</p><Button onClick={() => navigate('/hr/partners')}>Back to partners</Button></div>;
 
   return (
     <div className="space-y-6">
-      <Button variant="ghost" className="mb-2" onClick={() => navigate('/hr/partners')}>
-        <ArrowLeft className="h-4 w-4 mr-2" /> Back to partners
-      </Button>
+      <Breadcrumb items={[{ label: 'HR', path: '/hr/dashboard' }, { label: 'Partner Directory', path: '/hr/partners' }, { label: partner.name }]} />
       <div className="rounded-xl border border-brintelli-border bg-brintelli-card p-6 flex flex-wrap gap-6">
         <div className="relative">
           {partner.logoUrl ? (

@@ -4,6 +4,7 @@ import { User, Mail, Phone, Building2, FileText, ExternalLink, Star, ChevronLeft
 import { jobsAPI } from '../../api/jobs';
 import { toast } from 'react-hot-toast';
 import Button from '../../components/Button';
+import Breadcrumb from '../../components/Breadcrumb';
 
 const PAGE_SIZE = 20;
 
@@ -50,6 +51,7 @@ const HrShortlistsList = () => {
 
   return (
     <div className="space-y-6">
+      <Breadcrumb items={[{ label: 'HR', path: '/hr/dashboard' }, { label: 'Candidate Shortlists' }]} />
       <div>
         <h1 className="text-2xl font-bold text-text">Candidate Shortlists</h1>
         <p className="text-textMuted mt-1 text-sm">

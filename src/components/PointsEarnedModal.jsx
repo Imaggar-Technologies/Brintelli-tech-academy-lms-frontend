@@ -1,6 +1,8 @@
+import { useEffect } from "react";
 import Modal from "./Modal";
 import Button from "./Button";
 import { Award, Share2 } from "lucide-react";
+import { confettiBurst } from "../utils/confetti";
 
 const LINKEDIN_SHARE_BASE = "https://www.linkedin.com/sharing/share-offsite/";
 
@@ -16,6 +18,13 @@ function buildLinkedInShareUrl({ pointsEarned, reason = "reporting a bug" }) {
 
 export default function PointsEarnedModal({ isOpen, onClose, pointsEarned = 20, totalPoints, reason = "reporting a bug" }) {
   const shareUrl = buildLinkedInShareUrl({ pointsEarned, reason });
+
+  useEffect(() => {
+    if (isOpen) {
+      const t = setTimeout(() => confettiBurst(), 100);
+      return () => clearTimeout(t);
+    }
+  }, [isOpen]);
 
   const handleShareLinkedIn = () => {
     window.open(shareUrl, "_blank", "noopener,noreferrer,width=600,height=600");

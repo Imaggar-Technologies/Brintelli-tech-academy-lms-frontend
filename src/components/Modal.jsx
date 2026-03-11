@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
-import Button from "./Button";
 
 const Modal = ({ isOpen, onClose, title, children, size = "md" }) => {
   const modalRef = useRef(null);
@@ -37,21 +37,25 @@ const Modal = ({ isOpen, onClose, title, children, size = "md" }) => {
     xl: "max-w-6xl",
   };
 
-  return (
+  const modalContent = (
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop – high z-index so modal always appears above sidebar, header, tabs */}
+          {/* Backdrop – full viewport */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm"
+            style={{ left: 0, top: 0, right: 0, bottom: 0 }}
             onClick={onClose}
           />
 
-          {/* Modal */}
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 pointer-events-none">
+          {/* Modal – centered in viewport via portal */}
+          <div
+            className="fixed z-[100] flex items-center justify-center p-4 pointer-events-none"
+            style={{ left: 0, top: 0, right: 0, bottom: 0 }}
+          >
             <motion.div
               ref={modalRef}
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -63,7 +67,7 @@ const Modal = ({ isOpen, onClose, title, children, size = "md" }) => {
               {/* Header */}
               {title && (
                 <div className="flex items-center justify-between border-b border-brintelli-border px-6 py-4">
-                  {typeof title === 'string' ? (
+                  {typeof title === "string" ? (
                     <h2 className="text-xl font-semibold text-text">{title}</h2>
                   ) : (
                     title
@@ -85,6 +89,8 @@ const Modal = ({ isOpen, onClose, title, children, size = "md" }) => {
       )}
     </AnimatePresence>
   );
+
+  return createPortal(modalContent, document.body);
 };
 
 export default Modal;

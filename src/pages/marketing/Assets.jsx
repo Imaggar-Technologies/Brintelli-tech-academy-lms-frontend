@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { Upload, Download, GraduationCap, FileSpreadsheet, Award, Users, UserCheck, History, ChevronDown, X } from 'lucide-react';
+import { Upload, Download, GraduationCap, FileSpreadsheet, Award, Users, UserCheck, History, ChevronDown, X, ChevronRight } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
 import marketingAPI from '../../api/marketing';
@@ -44,6 +45,7 @@ function formatDateTime(d) {
 }
 
 const Assets = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(TAB_HIGH_VALUE);
   const [highValueFile, setHighValueFile] = useState(null);
   const [highValueUploading, setHighValueUploading] = useState(false);
@@ -226,6 +228,7 @@ const Assets = () => {
                             <th className="text-left py-2 px-3 font-semibold text-text">Type</th>
                             <th className="text-left py-2 px-3 font-semibold text-text">New</th>
                             <th className="text-left py-2 px-3 font-semibold text-text">Duplicates</th>
+                            <th className="text-left py-2 px-3 font-semibold text-text">Missing</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-brintelli-border">
@@ -235,6 +238,7 @@ const Assets = () => {
                               <td className="py-2 px-3 text-text">{h.type === 'high_value' ? 'High value' : 'Leads'}</td>
                               <td className="py-2 px-3 text-green-600 font-medium">{h.newLeadsAdded ?? 0}</td>
                               <td className="py-2 px-3 text-amber-600 font-medium">{h.duplicatesSkipped ?? 0}</td>
+                              <td className="py-2 px-3 text-rose-600 font-medium">{h.invalidCount ?? 0}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -413,59 +417,54 @@ const Assets = () => {
                   </div>
                   {leadsResult && (
                     <div className="mt-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-                      <strong>Done:</strong> {leadsResult.totalRows ?? leadsResult.count} row(s) — <strong>{leadsResult.newLeadsAdded ?? leadsResult.count}</strong> new lead(s) added, <strong>{leadsResult.duplicatesSkipped ?? 0}</strong> duplicate(s) skipped.
+                      <strong>Done:</strong> {leadsResult.totalRows ?? leadsResult.count} row(s) — <strong>{leadsResult.newLeadsAdded ?? leadsResult.count}</strong> new lead(s) added, <strong>{leadsResult.duplicatesSkipped ?? 0}</strong> duplicate(s) skipped, <strong>{leadsResult.invalidCount ?? 0}</strong> missing data.
                     </div>
                   )}
                 </div>
               </div>
             </div>
-            {/* Leads: table */}
+            {/* Leads: upload history cards (rows) */}
             <div className="p-4">
               <h3 className="text-sm font-semibold text-text mb-3">All Leads</h3>
-              {leadsLoading ? (
+              {historyLoading ? (
                 <div className="py-8 text-center text-textMuted text-sm">Loading…</div>
-              ) : leadsList.length === 0 ? (
-                <div className="py-8 text-center text-textMuted text-sm">No leads yet. Upload an Excel file above to add student/leads data.</div>
-              ) : (
-                <div className="overflow-x-auto rounded-lg border border-brintelli-border">
-                  <table className="w-full text-sm">
-                    <thead className="bg-brintelli-baseAlt/60">
-                      <tr>
-                        <th className="text-left py-3 px-4 font-semibold text-text">Name</th>
-                        <th className="text-left py-3 px-4 font-semibold text-text">Clg name</th>
-                        <th className="text-left py-3 px-4 font-semibold text-text">Department</th>
-                        <th className="text-left py-3 px-4 font-semibold text-text">Year of pass out</th>
-                        <th className="text-left py-3 px-4 font-semibold text-text">Contact</th>
-                        <th className="text-left py-3 px-4 font-semibold text-text">Email</th>
-                        <th className="text-left py-3 px-4 font-semibold text-text">Resume</th>
-                        <th className="text-left py-3 px-4 font-semibold text-text">Added</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-brintelli-border">
-                      {leadsList.map((row) => (
-                        <tr key={row.id} className="hover:bg-brintelli-baseAlt/30">
-                          <td className="py-2 px-4 font-medium text-text">{row.name || '—'}</td>
-                          <td className="py-2 px-4 text-text">{row.clgName || '—'}</td>
-                          <td className="py-2 px-4 text-text">{row.department || '—'}</td>
-                          <td className="py-2 px-4 text-text">{row.yearOfPassOut || '—'}</td>
-                          <td className="py-2 px-4 text-text">{row.contact || '—'}</td>
-                          <td className="py-2 px-4 text-text">{row.email || '—'}</td>
-                          <td className="py-2 px-4 text-text">
-                            {row.resumeDriveLink ? (
-                              <a href={row.resumeDriveLink} target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:underline truncate max-w-[120px] inline-block">
-                                Link
-                              </a>
-                            ) : (
-                              '—'
-                            )}
-                          </td>
-                          <td className="py-2 px-4 text-textMuted">{formatDate(row.createdAt)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+              ) : (() => {
+                const leadsHistory = uploadHistory.filter((h) => h.type === 'student_leads');
+                if (leadsHistory.length === 0) {
+                  return (
+                    <div className="py-8 text-center text-textMuted text-sm">
+                      No leads yet. Upload an Excel file above to add student/leads data.
+                    </div>
+                  );
+                }
+                return (
+                  <div className="space-y-2">
+                    {leadsHistory.map((h) => (
+                      <button
+                        key={h.id}
+                        type="button"
+                        onClick={() => navigate(`/marketing/assets/upload/${h.id}`)}
+                        className="w-full flex items-center justify-between gap-4 rounded-xl border border-brintelli-border bg-white px-4 py-3 text-left shadow-sm hover:border-brand-400 hover:bg-brintelli-baseAlt/40 transition-colors"
+                      >
+                        <div className="flex flex-wrap items-center gap-4 min-w-0">
+                          <span className="text-sm font-medium text-text shrink-0">
+                            {formatDateTime(h.createdAt)}
+                          </span>
+                          {h.fileName && (
+                            <span className="text-sm text-textMuted truncate max-w-[200px]" title={h.fileName}>
+                              {h.fileName}
+                            </span>
+                          )}
+                          <span className="text-sm text-green-600 font-medium">{h.newLeadsAdded ?? 0} new</span>
+                          <span className="text-sm text-amber-600 font-medium">{h.duplicatesSkipped ?? 0} duplicates</span>
+                          <span className="text-sm text-rose-600 font-medium">{h.invalidCount ?? 0} missing data</span>
+                        </div>
+                        <ChevronRight className="h-5 w-5 text-textMuted shrink-0" />
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           </>
         )}

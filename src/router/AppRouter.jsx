@@ -274,6 +274,7 @@ import MarketingFunnels from "../pages/marketing/Funnels";
 import MarketingConversions from "../pages/marketing/Conversions";
 import MarketingABTesting from "../pages/marketing/ABTesting";
 import MarketingAssets from "../pages/marketing/Assets";
+import AssetUploadDetail from "../pages/marketing/AssetUploadDetail";
 import MarketingTemplates from "../pages/marketing/Templates";
 import MarketingBrand from "../pages/marketing/Brand";
 import MarketingAnalytics from "../pages/marketing/MarketingAnalytics";
@@ -746,6 +747,7 @@ const AppRouter = () => {
             <Route path="conversions" element={<MarketingConversions />} />
             <Route path="ab-testing" element={<MarketingABTesting />} />
             <Route path="assets" element={<MarketingAssets />} />
+            <Route path="assets/upload/:batchId" element={<AssetUploadDetail />} />
             <Route path="templates" element={<MarketingTemplates />} />
             <Route path="brand" element={<MarketingBrand />} />
             <Route path="analytics" element={<MarketingAnalytics />} />

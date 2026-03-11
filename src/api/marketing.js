@@ -13,6 +13,9 @@ const marketingAPI = {
   /** List upload history (all uploads as leads, with new vs duplicate counts). */
   getUploadHistory: (params) => apiRequest(`/api/marketing/assets/upload-history?${new URLSearchParams(params || {}).toString()}`),
 
+  /** Get all rows for an upload batch (for upload detail page). */
+  getUploadBatchRows: (batchId) => apiRequest(`/api/marketing/assets/upload-history/${encodeURIComponent(batchId)}/rows`),
+
   /** Upload Excel for high-value contacts (HOD, Dean, etc.). Returns { newLeadsAdded, duplicatesSkipped, totalRows, pointsAwarded }. */
   uploadHighValueContacts: (file) => {
     const form = new FormData();

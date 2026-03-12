@@ -45,10 +45,13 @@ const StudentWorkshops = () => {
   };
 
   const canRegister = (workshop) => {
+    if (workshop.registrationClosed === true) return false;
     const count = workshop.participantsCount ?? workshop.participants?.length ?? 0;
     const max = workshop.maxParticipants ?? 0;
     return max === 0 || count < max;
   };
+
+  const isRegistrationClosed = (workshop) => workshop.registrationClosed === true;
 
   const handleRegister = async (id) => {
     try {
@@ -106,7 +109,8 @@ const StudentWorkshops = () => {
         <div className="space-y-4">
           {workshops.map((workshop) => {
             const registered = isRegistered(workshop);
-            const full = !canRegister(workshop);
+            const closed = isRegistrationClosed(workshop);
+            const full = !closed && !canRegister(workshop);
             return (
               <div
                 key={workshop.id || workshop._id}
@@ -213,6 +217,8 @@ const StudentWorkshops = () => {
                           Unregister
                         </Button>
                       </>
+                    ) : closed ? (
+                      <span className="text-sm text-amber-600 font-medium">Registration closed</span>
                     ) : full ? (
                       <span className="text-sm text-textMuted">Full</span>
                     ) : (

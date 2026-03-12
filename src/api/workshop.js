@@ -67,6 +67,14 @@ export const workshopAPI = {
     });
   },
 
+  // Program manager: stop or open registration (registrationClosed: boolean)
+  setRegistrationClosed: async (id, registrationClosed) => {
+    return apiRequest(`/api/workshops/${id}/registration`, {
+      method: 'PATCH',
+      body: JSON.stringify({ registrationClosed }),
+    });
+  },
+
   // Get workshop participants (enrolled users with details)
   getParticipants: async (id) => {
     return apiRequest(`/api/workshops/${id}/participants`);

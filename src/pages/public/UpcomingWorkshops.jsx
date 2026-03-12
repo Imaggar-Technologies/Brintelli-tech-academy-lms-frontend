@@ -110,7 +110,8 @@ const UpcomingWorkshops = () => {
           <div className="space-y-4">
             {workshops.map((workshop) => {
               const registered = isRegistered(workshop);
-              const full = (workshop.participantsCount ?? 0) >= (workshop.maxParticipants || 999);
+              const closed = workshop.registrationClosed === true;
+              const full = !closed && (workshop.participantsCount ?? 0) >= (workshop.maxParticipants || 999);
               return (
                 <div
                   key={workshop.id || workshop._id}
@@ -167,6 +168,8 @@ const UpcomingWorkshops = () => {
                         <Button variant="secondary" size="sm" onClick={() => navigate('/student/workshops')}>
                           View in dashboard
                         </Button>
+                      ) : closed ? (
+                        <span className="text-sm text-amber-600 font-medium">Registration closed</span>
                       ) : full ? (
                         <span className="text-sm text-textMuted">Full</span>
                       ) : (

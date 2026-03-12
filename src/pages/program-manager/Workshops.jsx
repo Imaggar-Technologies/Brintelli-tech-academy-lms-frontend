@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { Presentation, Plus, Search, RefreshCw, Calendar, Users, Clock, Edit2, Trash2, X, Settings, Mail, FileText, UserCircle, Trophy, Gift, MessageSquare, Award } from 'lucide-react';
+import { Presentation, Plus, Search, RefreshCw, Calendar, Users, Clock, Edit2, Trash2, X, Settings, Mail, FileText, UserCircle, Trophy, Gift, MessageSquare, Award, StopCircle, PlayCircle } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
 import Modal from '../../components/Modal';
@@ -85,6 +85,7 @@ const Workshops = () => {
   const [quizPublishing, setQuizPublishing] = useState(false);
   const [certsGenerating, setCertsGenerating] = useState(false);
   const [certsSending, setCertsSending] = useState(false);
+  const [registrationTogglingId, setRegistrationTogglingId] = useState(null);
 
   useEffect(() => {
     fetchWorkshops();
@@ -268,6 +269,27 @@ const Workshops = () => {
     } catch (error) {
       console.error('Error deleting workshop:', error);
       toast.error(error.message || 'Failed to delete workshop');
+    }
+  };
+
+  const handleToggleRegistration = async (workshop) => {
+    const id = workshop.id || workshop._id;
+    const closed = workshop.registrationClosed === true;
+    const newClosed = !closed;
+    setRegistrationTogglingId(id);
+    try {
+      const response = await workshopAPI.setRegistrationClosed(id, newClosed);
+      if (response.success) {
+        toast.success(newClosed ? 'Registration stopped for learners' : 'Registration opened for learners');
+        fetchWorkshops();
+      } else {
+        toast.error(response.message || 'Failed to update registration');
+      }
+    } catch (error) {
+      console.error('Error toggling registration:', error);
+      toast.error(error.message || 'Failed to update registration');
+    } finally {
+      setRegistrationTogglingId(null);
     }
   };
 
@@ -546,6 +568,20 @@ const Workshops = () => {
                             title="Manage resources, tutor, participants, email"
                           >
                             <Settings className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={registrationTogglingId === (workshop.id || workshop._id)}
+                            onClick={() => handleToggleRegistration(workshop)}
+                            className={`px-2 py-1 text-[10px] ${workshop.registrationClosed ? 'text-amber-600 hover:text-amber-700' : 'text-orange-600 hover:text-orange-700'}`}
+                            title={workshop.registrationClosed ? 'Open registration (learners can register again)' : 'Stop registration (learners cannot register)'}
+                          >
+                            {workshop.registrationClosed ? (
+                              <PlayCircle className="h-3 w-3" title="Open Registration" />
+                            ) : (
+                              <StopCircle className="h-3 w-3" title="Stop Registration" />
+                            )}
                           </Button>
                           <Button variant="ghost" size="sm" onClick={() => {
                             setEditingWorkshop(workshop);

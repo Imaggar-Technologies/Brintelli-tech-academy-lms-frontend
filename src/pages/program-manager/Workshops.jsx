@@ -515,6 +515,7 @@ const Workshops = () => {
                     <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-textMuted">Venue</th>
                     <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-textMuted">Tutor</th>
                     <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-textMuted">Participants</th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-textMuted">Registration</th>
                     <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-textMuted">Actions</th>
                   </tr>
                 </thead>
@@ -559,6 +560,37 @@ const Workshops = () => {
                         </button>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="flex flex-col gap-1.5">
+                          <span
+                            className={`inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${workshop.registrationClosed ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}
+                          >
+                            {workshop.registrationClosed ? 'Closed' : 'Open'}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={registrationTogglingId === (workshop.id || workshop._id)}
+                            onClick={() => handleToggleRegistration(workshop)}
+                            className={`inline-flex items-center gap-1 w-fit px-2 py-1 text-[10px] ${workshop.registrationClosed ? 'text-amber-600 hover:text-amber-700' : 'text-orange-600 hover:text-orange-700'}`}
+                            title={workshop.registrationClosed ? 'Open registration (learners can register again)' : 'Stop registration (learners cannot register)'}
+                          >
+                            {registrationTogglingId === (workshop.id || workshop._id) ? (
+                              <RefreshCw className="h-3 w-3 animate-spin" />
+                            ) : workshop.registrationClosed ? (
+                              <>
+                                <PlayCircle className="h-3 w-3" />
+                                Start
+                              </>
+                            ) : (
+                              <>
+                                <StopCircle className="h-3 w-3" />
+                                Stop
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <div className="flex items-center gap-1.5">
                           <Button
                             variant="ghost"
@@ -568,20 +600,6 @@ const Workshops = () => {
                             title="Manage resources, tutor, participants, email"
                           >
                             <Settings className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={registrationTogglingId === (workshop.id || workshop._id)}
-                            onClick={() => handleToggleRegistration(workshop)}
-                            className={`px-2 py-1 text-[10px] ${workshop.registrationClosed ? 'text-amber-600 hover:text-amber-700' : 'text-orange-600 hover:text-orange-700'}`}
-                            title={workshop.registrationClosed ? 'Open registration (learners can register again)' : 'Stop registration (learners cannot register)'}
-                          >
-                            {workshop.registrationClosed ? (
-                              <PlayCircle className="h-3 w-3" title="Open Registration" />
-                            ) : (
-                              <StopCircle className="h-3 w-3" title="Stop Registration" />
-                            )}
                           </Button>
                           <Button variant="ghost" size="sm" onClick={() => {
                             setEditingWorkshop(workshop);

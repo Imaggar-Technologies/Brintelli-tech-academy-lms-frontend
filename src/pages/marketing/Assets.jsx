@@ -4,6 +4,7 @@ import { toast } from 'react-hot-toast';
 import { Upload, Download, GraduationCap, FileSpreadsheet, Award, Users, UserCheck, History, ChevronDown, X, ChevronRight } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
+import Modal from '../../components/Modal';
 import marketingAPI from '../../api/marketing';
 
 const TAB_HIGH_VALUE = 'high-value';
@@ -194,61 +195,54 @@ const Assets = () => {
               Last upload: <strong className="text-green-600">{lastUpload.newLeadsAdded}</strong> new, <strong className="text-amber-600">{lastUpload.duplicatesSkipped}</strong> duplicates
             </span>
           )}
-          <div className="relative">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setHistoryOpen((o) => !o)}
-              className="gap-2"
-            >
-              <History className="h-4 w-4" />
-              Upload history
-              <ChevronDown className={`h-4 w-4 transition-transform ${historyOpen ? 'rotate-180' : ''}`} />
-            </Button>
-            {historyOpen && (
-              <>
-                <div className="fixed inset-0 z-10" aria-hidden onClick={() => setHistoryOpen(false)} />
-                <div className="absolute right-0 top-full z-20 mt-1 w-[420px] max-h-[70vh] overflow-hidden rounded-xl border border-brintelli-border bg-white shadow-lg">
-                  <div className="flex items-center justify-between border-b border-brintelli-border px-4 py-3 bg-brintelli-baseAlt/40">
-                    <h3 className="font-semibold text-text">Upload history</h3>
-                    <button type="button" onClick={() => setHistoryOpen(false)} className="p-1 rounded hover:bg-brintelli-border text-textMuted" aria-label="Close">
-                      <X className="h-5 w-5" />
-                    </button>
-                  </div>
-                  <div className="overflow-y-auto max-h-[60vh]">
-                    {historyLoading ? (
-                      <div className="py-8 text-center text-sm text-textMuted">Loading…</div>
-                    ) : uploadHistory.length === 0 ? (
-                      <div className="py-8 text-center text-sm text-textMuted">No uploads yet.</div>
-                    ) : (
-                      <table className="w-full text-sm">
-                        <thead className="bg-brintelli-baseAlt/60 sticky top-0">
-                          <tr>
-                            <th className="text-left py-2 px-3 font-semibold text-text">Date</th>
-                            <th className="text-left py-2 px-3 font-semibold text-text">Type</th>
-                            <th className="text-left py-2 px-3 font-semibold text-text">New</th>
-                            <th className="text-left py-2 px-3 font-semibold text-text">Duplicates</th>
-                            <th className="text-left py-2 px-3 font-semibold text-text">Missing</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-brintelli-border">
-                          {uploadHistory.map((h) => (
-                            <tr key={h.id} className="hover:bg-brintelli-baseAlt/30">
-                              <td className="py-2 px-3 text-textMuted whitespace-nowrap">{formatDateTime(h.createdAt)}</td>
-                              <td className="py-2 px-3 text-text">{h.type === 'high_value' ? 'High value' : 'Leads'}</td>
-                              <td className="py-2 px-3 text-green-600 font-medium">{h.newLeadsAdded ?? 0}</td>
-                              <td className="py-2 px-3 text-amber-600 font-medium">{h.duplicatesSkipped ?? 0}</td>
-                              <td className="py-2 px-3 text-rose-600 font-medium">{h.invalidCount ?? 0}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    )}
-                  </div>
-                </div>
-              </>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setHistoryOpen(true)}
+            className="gap-2"
+          >
+            <History className="h-4 w-4" />
+            Upload history
+            <ChevronDown className="h-4 w-4" />
+          </Button>
+
+          <Modal
+            isOpen={historyOpen}
+            onClose={() => setHistoryOpen(false)}
+            title="Upload history"
+            size="lg"
+          >
+            {historyLoading ? (
+              <div className="py-8 text-center text-sm text-textMuted">Loading…</div>
+            ) : uploadHistory.length === 0 ? (
+              <div className="py-8 text-center text-sm text-textMuted">No uploads yet.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-brintelli-baseAlt/60 sticky top-0">
+                    <tr>
+                      <th className="text-left py-2 px-3 font-semibold text-text">Date</th>
+                      <th className="text-left py-2 px-3 font-semibold text-text">Type</th>
+                      <th className="text-left py-2 px-3 font-semibold text-text">New</th>
+                      <th className="text-left py-2 px-3 font-semibold text-text">Duplicates</th>
+                      <th className="text-left py-2 px-3 font-semibold text-text">Missing</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-brintelli-border">
+                    {uploadHistory.map((h) => (
+                      <tr key={h.id} className="hover:bg-brintelli-baseAlt/30">
+                        <td className="py-2 px-3 text-textMuted whitespace-nowrap">{formatDateTime(h.createdAt)}</td>
+                        <td className="py-2 px-3 text-text">{h.type === 'high_value' ? 'High value' : 'Leads'}</td>
+                        <td className="py-2 px-3 text-green-600 font-medium">{h.newLeadsAdded ?? 0}</td>
+                        <td className="py-2 px-3 text-amber-600 font-medium">{h.duplicatesSkipped ?? 0}</td>
+                        <td className="py-2 px-3 text-rose-600 font-medium">{h.invalidCount ?? 0}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
-          </div>
+          </Modal>
         </div>
       </div>
 

@@ -109,7 +109,16 @@ const StudentWorkshopDetail = () => {
         workshopAPI.getMyFeedback(workshopId),
         workshopAPI.getMyCertificate(workshopId),
       ]);
-      if (wRes.success && wRes.data?.workshop) setWorkshop(wRes.data.workshop);
+      if (wRes.success && wRes.data?.workshop) {
+        const w = wRes.data.workshop;
+        const registered = w.participants?.some((p) => (p?.toString?.() || p) === userId);
+        if (w.registrationClosed && !registered) {
+          toast.error('Registration for this workshop is closed.');
+          navigate('/student/workshops');
+          return;
+        }
+        setWorkshop(w);
+      }
       if (aRes.success && aRes.data?.assignments) setAssignments(aRes.data.assignments);
       if (qRes.success && qRes.data?.quiz) setQuiz(qRes.data.quiz);
       if (lbRes.success && lbRes.data?.leaderboard) setLeaderboard(lbRes.data.leaderboard);

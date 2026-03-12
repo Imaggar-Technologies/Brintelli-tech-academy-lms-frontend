@@ -116,8 +116,22 @@ const StudentWorkshops = () => {
                 key={workshop.id || workshop._id}
                 role="button"
                 tabIndex={0}
-                onClick={() => navigate(`/student/workshops/${workshop.id || workshop._id}`)}
-                onKeyDown={(e) => e.key === 'Enter' && navigate(`/student/workshops/${workshop.id || workshop._id}`)}
+                onClick={() => {
+                  if (closed && !registered) {
+                    toast.error('Registration is closed for this workshop');
+                    return;
+                  }
+                  navigate(`/student/workshops/${workshop.id || workshop._id}`);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    if (closed && !registered) {
+                      toast.error('Registration is closed for this workshop');
+                      return;
+                    }
+                    navigate(`/student/workshops/${workshop.id || workshop._id}`);
+                  }
+                }}
                 className="rounded-2xl border border-brintelli-border bg-brintelli-card p-5 shadow-soft hover:border-brand-500/30 transition-colors cursor-pointer"
               >
                 <div className="flex flex-wrap items-start justify-between gap-4">

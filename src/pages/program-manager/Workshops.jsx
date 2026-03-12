@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { Presentation, Plus, Search, RefreshCw, Calendar, Users, Clock, Edit2, Trash2, X, Settings, Mail, FileText, UserCircle, Trophy, Gift, MessageSquare, Award, StopCircle, PlayCircle } from 'lucide-react';
+import { Presentation, Plus, Search, RefreshCw, Calendar, Users, Clock, Edit2, Trash2, X, Settings, Mail, FileText, UserCircle, Trophy, Gift, MessageSquare, Award, StopCircle, PlayCircle, Globe } from 'lucide-react';
 import PageHeader from '../../components/PageHeader';
 import Button from '../../components/Button';
 import Modal from '../../components/Modal';
 import Pagination from '../../components/Pagination';
+import Toggle from '../../components/Toggle';
 import workshopAPI from '../../api/workshop';
 import programAPI from '../../api/program';
 import { apiRequest } from '../../api/apiClient';
@@ -35,6 +36,7 @@ const defaultFormData = () => ({
   icon: '',
   feeCurrency: 'INR',
   feeAmount: 0,
+  registrationClosed: false,
 });
 
 const Workshops = () => {
@@ -232,6 +234,7 @@ const Workshops = () => {
         icon: formData.icon || null,
         feeCurrency: formData.feeCurrency || 'INR',
         feeAmount: formData.feeAmount ?? 0,
+        registrationClosed: formData.registrationClosed ?? false,
       };
 
       let response;
@@ -560,34 +563,16 @@ const Workshops = () => {
                         </button>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="flex flex-col gap-1.5">
-                          <span
-                            className={`inline-flex w-fit items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${workshop.registrationClosed ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}
-                          >
-                            {workshop.registrationClosed ? 'Closed' : 'Open'}
-                          </span>
-                          <Button
-                            variant="ghost"
-                            size="sm"
+                        <div className="flex flex-col items-center gap-1">
+                          <Toggle
+                            enabled={!workshop.registrationClosed}
+                            onChange={() => handleToggleRegistration(workshop)}
                             disabled={registrationTogglingId === (workshop.id || workshop._id)}
-                            onClick={() => handleToggleRegistration(workshop)}
-                            className={`inline-flex items-center gap-1 w-fit px-2 py-1 text-[10px] ${workshop.registrationClosed ? 'text-amber-600 hover:text-amber-700' : 'text-orange-600 hover:text-orange-700'}`}
-                            title={workshop.registrationClosed ? 'Open registration (learners can register again)' : 'Stop registration (learners cannot register)'}
-                          >
-                            {registrationTogglingId === (workshop.id || workshop._id) ? (
-                              <RefreshCw className="h-3 w-3 animate-spin" />
-                            ) : workshop.registrationClosed ? (
-                              <>
-                                <PlayCircle className="h-3 w-3" />
-                                Start
-                              </>
-                            ) : (
-                              <>
-                                <StopCircle className="h-3 w-3" />
-                                Stop
-                              </>
-                            )}
-                          </Button>
+                            size="sm"
+                          />
+                          <span className={`text-[10px] font-medium ${workshop.registrationClosed ? 'text-amber-600' : 'text-emerald-600'}`}>
+                            {workshop.registrationClosed ? 'Registration Closed' : 'Registration Open'}
+                          </span>
                         </div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
@@ -625,6 +610,7 @@ const Workshops = () => {
                               icon: workshop.icon || '',
                               feeCurrency: workshop.feeCurrency || 'INR',
                               feeAmount: workshop.feeAmount ?? 0,
+                              registrationClosed: !!workshop.registrationClosed,
                             });
                             setShowModal(true);
                           }} className="px-2 py-1 text-[10px]">
@@ -945,6 +931,18 @@ const Workshops = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
               placeholder="https://..."
             />
+          </div>
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <Toggle
+                enabled={!formData.registrationClosed}
+                onChange={(enabled) => setFormData({ ...formData, registrationClosed: !enabled })}
+              />
+              <span className="text-sm font-semibold">Registration Open</span>
+            </label>
+            <p className="text-[11px] text-textMuted mt-1 ml-13">
+              When enabled, learners can register for this workshop.
+            </p>
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Button variant="ghost" onClick={() => {
